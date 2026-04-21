@@ -16,11 +16,22 @@ public class AttendanceService : IAttendanceService
         _currentUserService = currentUserService;
     }
 
-    public async Task<List<Attendance>> GetAllAsync() =>
-        await _context.Attendances.ToListAsync();
+    public async Task<List<Attendance>> GetAllAsync()
+    {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        if (schoolId == null) return new List<Attendance>();
+        return await _context.Attendances
+            .Where(a => a.SchoolId == schoolId)
+            .ToListAsync();
+    }
 
-    public async Task<Attendance?> GetByIdAsync(Guid id) =>
-        await _context.Attendances.FindAsync(id);
+    public async Task<Attendance?> GetByIdAsync(Guid id)
+    {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        var attendance = await _context.Attendances.FindAsync(id);
+        if (attendance == null || attendance.SchoolId != schoolId) return null;
+        return attendance;
+    }
 
     public async Task CreateAsync(Attendance attendance)
     {
@@ -43,12 +54,11 @@ public class AttendanceService : IAttendanceService
 
     public async Task DeleteAsync(Guid id)
     {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
         var attendance = await _context.Attendances.FindAsync(id);
-        if (attendance != null)
-        {
-            _context.Attendances.Remove(attendance);
-            await _context.SaveChangesAsync();
-        }
+        if (attendance == null || attendance.SchoolId != schoolId) return;
+        _context.Attendances.Remove(attendance);
+        await _context.SaveChangesAsync();
     }
 
     public async Task<List<Attendance>> GetByStudentAsync(Guid studentId)

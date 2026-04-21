@@ -26,7 +26,8 @@ public class GradeLevelService : IGradeLevelService
     public async Task<GradeLevel> GetOrCreateAsync(string name)
     {
         name = name.Trim().ToUpper();
-        var grade = await _context.GradeLevels.FirstOrDefaultAsync(g => g.Name.ToUpper() == name);
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        var grade = await _context.GradeLevels.FirstOrDefaultAsync(g => g.Name.ToUpper() == name && g.SchoolId == schoolId);
         if (grade == null)
         {
             grade = new GradeLevel
@@ -47,12 +48,19 @@ public class GradeLevelService : IGradeLevelService
 
     public async Task<IEnumerable<GradeLevel>> GetAllAsync()
     {
-        return await _context.GradeLevels.ToListAsync();
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        if (schoolId == null) return Enumerable.Empty<GradeLevel>();
+        return await _context.GradeLevels
+            .Where(g => g.SchoolId == schoolId)
+            .ToListAsync();
     }
 
     public async Task<GradeLevel?> GetByIdAsync(Guid id)
     {
-        return await _context.GradeLevels.FindAsync(id);
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        var grade = await _context.GradeLevels.FindAsync(id);
+        if (grade == null || grade.SchoolId != schoolId) return null;
+        return grade;
     }
 
     public async Task<GradeLevel> CreateAsync(GradeLevel gradeLevel)
@@ -94,15 +102,15 @@ public class GradeLevelService : IGradeLevelService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        // Validar si el grado está en uso en alguna asignación de materia
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        var entity = await _context.GradeLevels.FindAsync(id);
+        if (entity == null || entity.SchoolId != schoolId) return false;
+
         bool enUso = await _context.SubjectAssignments.AnyAsync(sa => sa.GradeLevelId == id);
         if (enUso)
             throw new InvalidOperationException("No se puede borrar el grado porque está siendo utilizado en el catálogo de materias. Elimina o reasigna esas asignaciones primero.");
         try
         {
-            var entity = await _context.GradeLevels.FindAsync(id);
-            if (entity == null) return false;
-
             _context.GradeLevels.Remove(entity);
             await _context.SaveChangesAsync();
             return true;

@@ -76,6 +76,8 @@ public class UserController : Controller
             return BadRequest(new { message = "El rol seleccionado no es válido." });
         }
 
+        var currentSchoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -85,6 +87,7 @@ public class UserController : Controller
             DocumentId = model.DocumentId,
             Role = roleLower,
             Status = model.Status,
+            SchoolId = currentSchoolId,
             CreatedAt = DateTime.UtcNow,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.PasswordHash ?? "123456"),
             DateOfBirth = model.DateOfBirth?.ToUniversalTime(),

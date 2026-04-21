@@ -26,6 +26,14 @@ namespace SchoolManager.Services.Implementations
             return Guid.Parse(userIdClaim.Value);
         }
 
+        public Task<Guid?> GetCurrentSchoolIdAsync()
+        {
+            var claim = _httpContextAccessor.HttpContext?.User?.FindFirst("school_id");
+            if (claim != null && Guid.TryParse(claim.Value, out var schoolId) && schoolId != Guid.Empty)
+                return Task.FromResult<Guid?>(schoolId);
+            return Task.FromResult<Guid?>(null);
+        }
+
         public async Task<User?> GetCurrentUserAsync()
         {
             var userId = await GetCurrentUserIdAsync();

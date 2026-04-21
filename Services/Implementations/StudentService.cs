@@ -21,11 +21,22 @@ namespace SchoolManager.Services
             _currentUserService = currentUserService;
         }
 
-        public async Task<List<Student>> GetAllAsync() =>
-            await _context.Students.ToListAsync();
+        public async Task<List<Student>> GetAllAsync()
+        {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            if (schoolId == null) return new List<Student>();
+            return await _context.Students
+                .Where(s => s.SchoolId == schoolId)
+                .ToListAsync();
+        }
 
-        public async Task<Student?> GetByIdAsync(Guid id) =>
-            await _context.Students.FindAsync(id);
+        public async Task<Student?> GetByIdAsync(Guid id)
+        {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            var student = await _context.Students.FindAsync(id);
+            if (student == null || student.SchoolId != schoolId) return null;
+            return student;
+        }
 
         public async Task CreateAsync(Student student)
         {
@@ -41,12 +52,11 @@ namespace SchoolManager.Services
 
         public async Task DeleteAsync(Guid id)
         {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
             var student = await _context.Students.FindAsync(id);
-            if (student != null)
-            {
-                _context.Students.Remove(student);
-                await _context.SaveChangesAsync();
-            }
+            if (student == null || student.SchoolId != schoolId) return;
+            _context.Students.Remove(student);
+            await _context.SaveChangesAsync();
         }
 
         public async Task<List<Student>> GetByGroupAsync(string groupName) =>

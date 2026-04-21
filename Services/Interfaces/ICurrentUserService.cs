@@ -5,6 +5,7 @@ namespace SchoolManager.Services.Interfaces
     public interface ICurrentUserService
     {
         Task<Guid?> GetCurrentUserIdAsync();
+        Task<Guid?> GetCurrentSchoolIdAsync();
         Task<User?> GetCurrentUserAsync();
         Task<bool> IsAuthenticatedAsync();
         Task<string?> GetCurrentUserRoleAsync();

@@ -16,14 +16,17 @@ public class GroupService : IGroupService
     }
     public async Task<Group?> GetByNameAndGradeAsync(string groupName)
     {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
         return await _context.Groups
             .FirstOrDefaultAsync(g =>
-                g.Name.ToLower() == groupName.ToLower());
+                g.Name.ToLower() == groupName.ToLower() &&
+                g.SchoolId == schoolId);
     }
         public async Task<Group> GetOrCreateAsync(string name)
         {
             name = name.Trim().ToUpper();
-            var group = await _context.Groups.FirstOrDefaultAsync(g => g.Name.ToUpper() == name);
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            var group = await _context.Groups.FirstOrDefaultAsync(g => g.Name.ToUpper() == name && g.SchoolId == schoolId);
             if (group == null)
             {
                 group = new Group
@@ -44,14 +47,21 @@ public class GroupService : IGroupService
 
     public async Task<List<Group>> GetAllAsync()
     {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        if (schoolId == null) return new List<Group>();
         return await _context.Groups
-            .Include(g => g.ShiftNavigation) // Incluir la relación con Shift
+            .Where(g => g.SchoolId == schoolId)
+            .Include(g => g.ShiftNavigation)
             .ToListAsync();
     }
 
-
-    public async Task<Group?> GetByIdAsync(Guid id) =>
-        await _context.Groups.FindAsync(id);
+    public async Task<Group?> GetByIdAsync(Guid id)
+    {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        var group = await _context.Groups.FindAsync(id);
+        if (group == null || group.SchoolId != schoolId) return null;
+        return group;
+    }
 
     public async Task<Group> CreateAsync(Group group)
     {
@@ -86,18 +96,17 @@ public class GroupService : IGroupService
 
     public async Task DeleteAsync(Guid id)
     {
-        // Validar si el grupo está en uso en alguna asignación de materia
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        var group = await _context.Groups.FindAsync(id);
+        if (group == null || group.SchoolId != schoolId) return;
+
         bool enUso = await _context.SubjectAssignments.AnyAsync(sa => sa.GroupId == id);
         if (enUso)
             throw new InvalidOperationException("No se puede borrar el grupo porque está siendo utilizado en el catálogo de materias. Elimina o reasigna esas asignaciones primero.");
         try
         {
-            var group = await _context.Groups.FindAsync(id);
-            if (group != null)
-            {
-                _context.Groups.Remove(group);
-                await _context.SaveChangesAsync();
-            }
+            _context.Groups.Remove(group);
+            await _context.SaveChangesAsync();
         }
         catch (Exception ex)
         {

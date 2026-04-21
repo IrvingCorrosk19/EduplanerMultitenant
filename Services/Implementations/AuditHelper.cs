@@ -81,18 +81,18 @@ namespace SchoolManager.Services.Implementations
         /// Configura el SchoolId para una entidad
         /// </summary>
         public static async Task SetSchoolIdAsync<T>(
-            T entity, 
-            ICurrentUserService currentUserService) 
+            T entity,
+            ICurrentUserService currentUserService)
             where T : class
         {
-            var currentUser = await currentUserService.GetCurrentUserAsync();
-            if (currentUser?.SchoolId != null)
+            var schoolId = await currentUserService.GetCurrentSchoolIdAsync();
+            if (schoolId != null)
             {
                 var entityType = typeof(T);
                 var schoolIdProperty = entityType.GetProperty("SchoolId");
                 if (schoolIdProperty != null && schoolIdProperty.CanWrite)
                 {
-                    schoolIdProperty.SetValue(entity, currentUser.SchoolId);
+                    schoolIdProperty.SetValue(entity, schoolId);
                 }
             }
         }

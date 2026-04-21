@@ -37,7 +37,8 @@ public class SubjectService : ISubjectService
     public async Task<Subject> GetOrCreateAsync(string name)
     {
         name = name.Trim().ToUpper();
-        var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Name.ToUpper() == name);
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Name.ToUpper() == name && s.SchoolId == schoolId);
         if (subject == null)
         {
             subject = new Subject
@@ -58,13 +59,21 @@ public class SubjectService : ISubjectService
     }
 
     public async Task<List<Subject>> GetAllAsync()
-    {    
-
-        return await _context.Subjects.ToListAsync();
+    {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        if (schoolId == null) return new List<Subject>();
+        return await _context.Subjects
+            .Where(s => s.SchoolId == schoolId)
+            .ToListAsync();
     }
 
-    public async Task<Subject?> GetByIdAsync(Guid id) =>
-        await _context.Subjects.FindAsync(id);
+    public async Task<Subject?> GetByIdAsync(Guid id)
+    {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        var subject = await _context.Subjects.FindAsync(id);
+        if (subject == null || subject.SchoolId != schoolId) return null;
+        return subject;
+    }
 
     public async Task<Subject> CreateAsync(Subject subject)
     {
@@ -91,18 +100,17 @@ public class SubjectService : ISubjectService
 
     public async Task DeleteAsync(Guid id)
     {
-        // Validar si la materia está en uso en alguna asignación de materia
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        var subject = await _context.Subjects.FindAsync(id);
+        if (subject == null || subject.SchoolId != schoolId) return;
+
         bool enUso = await _context.SubjectAssignments.AnyAsync(sa => sa.SubjectId == id);
         if (enUso)
             throw new InvalidOperationException("No se puede borrar la materia porque está siendo utilizada en el catálogo de materias. Elimina o reasigna esas asignaciones primero.");
         try
         {
-            var subject = await _context.Subjects.FindAsync(id);
-            if (subject != null)
-            {
-                _context.Subjects.Remove(subject);
-                await _context.SaveChangesAsync();
-            }
+            _context.Subjects.Remove(subject);
+            await _context.SaveChangesAsync();
         }
         catch (Exception ex)
         {

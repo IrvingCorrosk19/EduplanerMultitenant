@@ -27,8 +27,9 @@ namespace SchoolManager.Services.Implementations
                     throw new ArgumentException("El nombre de la especialidad no puede estar vacío.", nameof(name));
 
                 name = name.Trim().ToUpper();
+                var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
                 var specialty = await _context.Specialties
-                    .FirstOrDefaultAsync(e => e.Name.ToUpper() == name);
+                    .FirstOrDefaultAsync(e => e.Name.ToUpper() == name && e.SchoolId == schoolId);
 
                 if (specialty == null)
                 {
@@ -60,12 +61,19 @@ namespace SchoolManager.Services.Implementations
 
         public async Task<List<Specialty>> GetAllAsync()
         {
-            return await _context.Specialties.ToListAsync();
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            if (schoolId == null) return new List<Specialty>();
+            return await _context.Specialties
+                .Where(s => s.SchoolId == schoolId)
+                .ToListAsync();
         }
 
         public async Task<Specialty?> GetByIdAsync(Guid id)
         {
-            return await _context.Specialties.FindAsync(id);
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            var specialty = await _context.Specialties.FindAsync(id);
+            if (specialty == null || specialty.SchoolId != schoolId) return null;
+            return specialty;
         }
 
         public async Task<Specialty> CreateAsync(Specialty specialty)
@@ -109,16 +117,15 @@ namespace SchoolManager.Services.Implementations
 
         public async Task DeleteAsync(Guid id)
         {
-            // Validar si la especialidad está en uso en alguna asignación de materia
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            var specialty = await _context.Specialties.FindAsync(id);
+            if (specialty == null || specialty.SchoolId != schoolId) return;
+
             bool enUso = await _context.SubjectAssignments.AnyAsync(sa => sa.SpecialtyId == id);
             if (enUso)
                 throw new InvalidOperationException("No se puede borrar la especialidad porque está siendo utilizada en el catálogo de materias. Elimina o reasigna esas asignaciones primero.");
-            var specialty = await _context.Specialties.FindAsync(id);
-            if (specialty != null)
-            {
-                _context.Specialties.Remove(specialty);
-                await _context.SaveChangesAsync();
-            }
+            _context.Specialties.Remove(specialty);
+            await _context.SaveChangesAsync();
         }
     }
 }
