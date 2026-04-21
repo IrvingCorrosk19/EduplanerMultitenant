@@ -97,6 +97,9 @@ public class ClubParentsController : Controller
     {
         try
         {
+            if (!await BelongsToCurrentSchoolAsync(id))
+                return NotFound(new { message = "Estudiante no encontrado en su institución." });
+
             var status = await _service.GetStudentPaymentStatusAsync(id);
             return Ok(status);
         }
@@ -113,6 +116,9 @@ public class ClubParentsController : Controller
     {
         if (request == null || request.StudentId == Guid.Empty)
             return BadRequest(new { message = "StudentId es requerido." });
+
+        if (!await BelongsToCurrentSchoolAsync(request.StudentId))
+            return NotFound(new { message = "Estudiante no encontrado en su institución." });
 
         try
         {
@@ -137,6 +143,9 @@ public class ClubParentsController : Controller
         if (request == null || request.StudentId == Guid.Empty)
             return BadRequest(new { message = "StudentId es requerido." });
 
+        if (!await BelongsToCurrentSchoolAsync(request.StudentId))
+            return NotFound(new { message = "Estudiante no encontrado en su institución." });
+
         try
         {
             await _service.ActivatePlatformAsync(request.StudentId);
@@ -151,5 +160,13 @@ public class ClubParentsController : Controller
             _logger.LogError(ex, "[ClubParents] ActivatePlatform StudentId={StudentId}", request.StudentId);
             return StatusCode(500, new { message = "Error al activar la plataforma." });
         }
+    }
+
+    private async Task<bool> BelongsToCurrentSchoolAsync(Guid studentId)
+    {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        if (!schoolId.HasValue) return true; // superadmin sin tenant — acceso permitido
+        return await _context.Users
+            .AnyAsync(u => u.Id == studentId && u.SchoolId == schoolId.Value);
     }
 }

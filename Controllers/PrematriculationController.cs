@@ -337,6 +337,16 @@ public class PrematriculationController : Controller
         if (!studentId.HasValue)
             return Json(new List<object>());
 
+        // Validar que el estudiante pertenece al colegio del usuario autenticado
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        if (schoolId.HasValue)
+        {
+            var studentBelongs = await _context.Users
+                .AnyAsync(u => u.Id == studentId.Value && u.SchoolId == schoolId.Value);
+            if (!studentBelongs)
+                return Json(new List<object>());
+        }
+
         var allGrades = await _gradeLevelService.GetAllAsync();
         var availableGrades = new List<object>();
 

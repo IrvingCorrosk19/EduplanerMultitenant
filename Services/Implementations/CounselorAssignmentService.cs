@@ -10,26 +10,36 @@ namespace SchoolManager.Services.Implementations
     {
         private readonly SchoolDbContext _context;
         private readonly ILogger<CounselorAssignmentService> _logger;
+        private readonly ICurrentUserService _currentUserService;
 
         public CounselorAssignmentService(
             SchoolDbContext context,
-            ILogger<CounselorAssignmentService> logger)
+            ILogger<CounselorAssignmentService> logger,
+            ICurrentUserService currentUserService)
         {
             _context = context;
             _logger = logger;
+            _currentUserService = currentUserService;
         }
 
         public async Task<List<CounselorAssignmentDto>> GetAllAsync()
         {
             try
             {
-                _logger.LogInformation("Obteniendo todas las asignaciones de consejeros");
-                
-                var assignments = await _context.CounselorAssignments
+                var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+                _logger.LogInformation("Obteniendo asignaciones de consejeros SchoolId={SchoolId}", schoolId);
+
+                var query = _context.CounselorAssignments
                     .Include(ca => ca.School)
                     .Include(ca => ca.User)
                     .Include(ca => ca.GradeLevel)
                     .Include(ca => ca.Group)
+                    .AsQueryable();
+
+                if (schoolId.HasValue)
+                    query = query.Where(ca => ca.SchoolId == schoolId.Value);
+
+                var assignments = await query
                     .Select(ca => new CounselorAssignmentDto
                     {
                         Id = ca.Id,
@@ -465,7 +475,11 @@ namespace SchoolManager.Services.Implementations
         {
             try
             {
-                _logger.LogInformation("Creando nueva asignación de consejero para usuario {UserId} en escuela {SchoolId}", 
+                var callerSchoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+                if (callerSchoolId.HasValue && callerSchoolId.Value != dto.SchoolId)
+                    throw new UnauthorizedAccessException("No puede crear asignaciones en una institución diferente a la suya.");
+
+                _logger.LogInformation("Creando nueva asignación de consejero para usuario {UserId} en escuela {SchoolId}",
                     dto.UserId, dto.SchoolId);
 
                 // Validar que no exista una asignación duplicada

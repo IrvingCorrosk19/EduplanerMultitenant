@@ -126,17 +126,8 @@
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
         $(document).ready(function() {
-            // Debug: Verificar datos cargados (usar solo AllGrades que ya está proyectado)
-            var allGradesFromViewBag = @Html.Raw(Json.Serialize(ViewBag.AllGrades ?? new List<object>()));
-            console.log('[FRONTEND DEBUG] ViewBag.AllGrades:', allGradesFromViewBag);
-            console.log('[FRONTEND DEBUG] Cantidad de grados en ViewBag.AllGrades:', allGradesFromViewBag ? allGradesFromViewBag.length : 0);
-            
-            // Verificar el select
             var $gradeSelect = $('#gradeSelect');
-            console.log('[FRONTEND DEBUG] Select encontrado:', $gradeSelect.length > 0);
-            console.log('[FRONTEND DEBUG] Opciones en select:', $gradeSelect.find('option').length);
-            console.log('[FRONTEND DEBUG] Opciones en select (detalle):', $gradeSelect.find('option').map(function() { return { value: $(this).val(), text: $(this).text() }; }).get());
-            $('#gradeSelect').on('change', function() {
+            $gradeSelect.on('change', function() {
                 var gradeId = $(this).val();
                 if (gradeId) {
                     // Obtener grupos disponibles

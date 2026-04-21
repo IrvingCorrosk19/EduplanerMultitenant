@@ -18,7 +18,8 @@ public class ApiBearerTokenMiddleware
     public ApiBearerTokenMiddleware(RequestDelegate next, IConfiguration configuration)
     {
         _next = next;
-        _secretKey = configuration["ApiToken:SecretKey"] ?? "EduPlaner-ApiToken-2024-HmacSecretKey-Min32Chars!!";
+        _secretKey = configuration["ApiToken:SecretKey"]
+            ?? throw new InvalidOperationException("ApiToken:SecretKey no está configurado. Defina la variable de entorno o la clave en appsettings.");
     }
 
     public async Task InvokeAsync(HttpContext context)

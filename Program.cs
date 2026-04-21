@@ -261,13 +261,33 @@ builder.Services.AddSingleton<SchoolManager.Services.Security.IQrSignatureServic
 // Previene brute force de tokens, enumeración masiva y DoS de scan_logs.
 builder.Services.AddRateLimiter(options =>
 {
+    // Escaneo QR: 60 req/min por IP
     options.AddFixedWindowLimiter("ScanApiPolicy", limiter =>
     {
         limiter.PermitLimit = 60;
         limiter.Window = TimeSpan.FromMinutes(1);
         limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        limiter.QueueLimit = 0; // sin cola — rechazar inmediatamente cuando se supera el límite
+        limiter.QueueLimit = 0;
     });
+
+    // Login web: 10 intentos/min por IP — previene fuerza bruta
+    options.AddFixedWindowLimiter("LoginPolicy", limiter =>
+    {
+        limiter.PermitLimit = 10;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiter.QueueLimit = 0;
+    });
+
+    // Login API móvil: 20 intentos/min por IP
+    options.AddFixedWindowLimiter("ApiLoginPolicy", limiter =>
+    {
+        limiter.PermitLimit = 20;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiter.QueueLimit = 0;
+    });
+
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 builder.Services.AddScoped<IStudentIdCardService, StudentIdCardService>();

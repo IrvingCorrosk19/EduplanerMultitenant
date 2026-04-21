@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SchoolManager.Models;
 using SchoolManager.Services.Interfaces;
 
 namespace SchoolManager.Controllers.Api;
@@ -10,20 +12,38 @@ namespace SchoolManager.Controllers.Api;
 public sealed class DocumentsController : ControllerBase
 {
     private readonly IDocumentStorageService _documentStorage;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly SchoolDbContext _context;
 
-    public DocumentsController(IDocumentStorageService documentStorage)
+    public DocumentsController(
+        IDocumentStorageService documentStorage,
+        ICurrentUserService currentUserService,
+        SchoolDbContext context)
     {
         _documentStorage = documentStorage;
+        _currentUserService = currentUserService;
+        _context = context;
     }
 
     /// <summary>Descarga un documento guardado por TeacherGradebook (volumen persistente).</summary>
     [HttpGet("download/{fileName}")]
-    public IActionResult Download(string fileName)
+    public async Task<IActionResult> Download(string fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName))
             return BadRequest();
 
         var decoded = Uri.UnescapeDataString(fileName);
+
+        // Validar ownership: el archivo debe pertenecer a una Activity del colegio del usuario.
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        if (schoolId.HasValue)
+        {
+            var ownerExists = await _context.Activities
+                .AnyAsync(a => a.PdfUrl == decoded && a.SchoolId == schoolId.Value);
+            if (!ownerExists)
+                return NotFound();
+        }
+
         var path = _documentStorage.TryGetExistingTeacherGradebookPath(decoded);
         if (path == null)
             return NotFound();
