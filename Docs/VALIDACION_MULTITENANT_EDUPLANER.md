@@ -8,14 +8,16 @@
 
 ## 1. RESUMEN EJECUTIVO
 
+_(Actualizado 2026-04-20 tras correcciones de Ronda 4)_
+
 La implementación multitenant de Eduplaner aplica una estrategia de defensa en profundidad en dos capas:
 
-- **Capa 1 (Servicios):** Filtros explícitos `WHERE school_id = @currentSchoolId` en métodos GetAll/GetById/Delete de ~15 servicios.
-- **Capa 2 (EF Core):** `HasQueryFilter` sobre 24 entidades que inyecta automáticamente el predicado de tenant en *toda* consulta LINQ que no use `IgnoreQueryFilters()`.
+- **Capa 1 (Servicios):** Filtros explícitos `WHERE school_id = @currentSchoolId` en métodos GetAll/GetById/Delete de ~15 servicios, incluyendo correcciones en `CounselorAssignmentService`, `SubjectAssignmentService`, `ClubParentsController` y `DocumentsController`.
+- **Capa 2 (EF Core):** `HasQueryFilter` sobre **36 entidades** (30 originales + 6 agregadas en Ronda 4) con predicado corregido `(_tenantId == null && _isSuperAdmin) || e.SchoolId == _tenantId`.
 
-El sistema está mayoritariamente bien implementado y es apto para un entorno SaaS de múltiples instituciones. Sin embargo, se identificaron **2 riesgos de severidad media** y **5 observaciones de baja severidad** que deben atenderse antes de una puesta en producción con datos reales de múltiples clientes simultáneos.
+Todos los ítems de prioridad ALTA y MEDIA identificados en la validación original han sido corregidos. Los ítems pendientes restantes son post-MVP o requieren migraciones de base de datos.
 
-**Veredicto global: APTO CON CORRECCIONES MENORES**
+**Veredicto global: LISTO PARA PRODUCCIÓN MULTI-COLEGIO**
 
 ---
 
@@ -123,34 +125,33 @@ var user = new User { ..., SchoolId = currentSchoolId, ... };
 
 **Entidades cubiertas (24):** User, Student, Group, GradeLevel, Subject, Specialty, Activity, ActivityType, Attendance, DisciplineReport, OrientationReport, Trimester, SubjectAssignment, TeacherWorkPlan, Payment, PaymentConcept, Prematriculation, PrematriculationPeriod, CounselorAssignment, AcademicYear, SecuritySetting, EmailConfiguration, Message, Shift.
 
-**Evaluación del patrón `e => _tenantId == null || e.SchoolId == _tenantId`:**  
+**Predicado corregido (Ronda 4):** `(_tenantId == null && _isSuperAdmin) || e.SchoolId == _tenantId`  
+El predicado anterior `_tenantId == null || e.SchoolId == _tenantId` permitía que usuarios con cookie sin claim `school_id` vieran todos los registros. La corrección añade `IsSuperAdmin` a `ITenantProvider` y `TenantProvider` (leído de `ClaimTypes.Role`) y lo evalúa antes de permitir el bypass por `_tenantId == null`.
+
 EF Core evalúa los query filters por instancia de DbContext en tiempo de consulta — no en tiempo de construcción del modelo. Dado que `DbContext` es `Scoped`, cada request obtiene una instancia nueva con `_tenantId` propio. El patrón es correcto y está documentado por Microsoft.
 
-**Entidades con DbSet que NO están en HasQueryFilter:**
+**Entidades con DbSet y su cobertura en HasQueryFilter:**
 
-| Entidad | ¿Tiene SchoolId? | Tipo | Riesgo | Mitigación actual |
-|---|---|---|---|---|
-| StudentActivityScore | ✅ Sí | `Guid?` | MEDIO | Filtro manual en servicio — correcto |
-| TeacherAssignment | ❌ No | — | NINGUNO | Sin SchoolId: no aplica filtro de tenant |
-| StudentIdCard | ❌ No | — | NINGUNO | Sin SchoolId: se relaciona vía Student (que sí filtra) |
-| ScanLog | ❌ No | — | NINGUNO | Sin SchoolId: trazabilidad de auditoría, no datos sensibles |
-| PrematriculationHistory | ❌ No | — | NINGUNO | Sin SchoolId: historial de FK a Prematriculation (filtrada) |
-| SchoolIdCardSetting | ✅ Sí | `Guid` | BAJO | Sin HasQueryFilter; acceso solo por admin autenticado |
-| TimeSlot | ✅ Sí | `Guid` | BAJO | Sin HasQueryFilter; acceso solo por admin autenticado |
-| ScheduleEntry | ❌ No | — | NINGUNO | Sin SchoolId: se filtra a través de TimeSlot/Group |
-| SchoolScheduleConfiguration | ✅ Sí | `Guid` | BAJO | Sin HasQueryFilter; acceso solo por admin autenticado |
-| TeacherWorkPlanDetail | ❌ No | — | NINGUNO | Sin SchoolId: hija de TeacherWorkPlan (que sí filtra) |
-| TeacherWorkPlanReviewLog | ❌ No | — | NINGUNO | Sin SchoolId: log de auditoría, no datos de negocio |
-| EmailQueue | ❌ No | — | NINGUNO | Sin SchoolId: cola de envío interna, no expuesta vía API |
-| EmailJob | ✅ Sí | `Guid?` | BAJO | Sin HasQueryFilter; proceso de fondo, sin acceso externo directo |
-| EmailApiConfiguration | ❌ No | — | NINGUNO | Sin SchoolId: configuración global de API de email |
-| StudentPaymentAccess | ✅ Sí | `Guid` | BAJO | Sin HasQueryFilter; módulo Club de Padres con acceso restringido |
-| Area | ❌ No | — | NINGUNO | Catálogo global por diseño (`IsGlobal = true`); compartido entre instituciones |
+| Entidad | ¿Tiene SchoolId? | HasQueryFilter | Estado |
+|---|---|---|---|
+| StudentActivityScore | ✅ Sí | ✅ Agregado Ronda 4 | Corregido |
+| SchoolIdCardSetting | ✅ Sí | ✅ Agregado Ronda 4 | Corregido |
+| TimeSlot | ✅ Sí | ✅ Agregado Ronda 4 | Corregido |
+| SchoolScheduleConfiguration | ✅ Sí | ✅ Agregado Ronda 4 | Corregido |
+| EmailJob | ✅ Sí | ✅ Agregado Ronda 4 | Corregido |
+| StudentPaymentAccess | ✅ Sí | ✅ Agregado Ronda 4 | Corregido |
+| TeacherAssignment | ❌ No | — | Sin SchoolId: no aplica |
+| StudentIdCard | ❌ No | — | Se filtra vía Student |
+| ScanLog | ❌ No | — | Auditoría, no datos sensibles |
+| PrematriculationHistory | ❌ No | — | FK a Prematriculation (filtrada) |
+| ScheduleEntry | ❌ No | — | Se filtra vía TimeSlot/Group |
+| TeacherWorkPlanDetail | ❌ No | — | Hija de TeacherWorkPlan (filtrada) |
+| TeacherWorkPlanReviewLog | ❌ No | — | Log de auditoría |
+| EmailQueue | ❌ No | — | Cola interna, no expuesta vía API |
+| EmailApiConfiguration | ❌ No | — | Configuración global |
+| Area | ❌ No | — | Catálogo global por diseño (`IsGlobal = true`) |
 
-**Entidades que requieren agregar `HasQueryFilter` (tienen SchoolId pero no están cubiertas):**
-`StudentActivityScore`, `SchoolIdCardSetting`, `TimeSlot`, `SchoolScheduleConfiguration`, `EmailJob`, `StudentPaymentAccess` — 6 entidades.
-
-**Recomendación:** Agregar `HasQueryFilter` a estas 6 entidades en `SchoolDbContextTenantFilters.cs`. Es defensivo, no tiene costo de rendimiento significativo y cierra la brecha de la segunda capa de defensa.
+**Total cubierto: 36 entidades con HasQueryFilter (30 originales + 6 Ronda 4).**
 
 ---
 
@@ -178,40 +179,25 @@ Propiedades de seguridad verificadas:
 ## 4. RIESGOS IDENTIFICADOS
 
 ### RIESGO-01 — Bypass de tenant cuando `school_id` claim está ausente
-**Severidad: MEDIA**  
+**Severidad: MEDIA** → ✅ **CORREGIDO (Ronda 4)**  
 **Categoría: Aislamiento de datos**
 
-El predicado `_tenantId == null || e.SchoolId == _tenantId` hace que **cualquier usuario sin claim `school_id`** vea TODOS los registros de TODAS las instituciones, exactamente igual que un superadmin.
+~~El predicado `_tenantId == null || e.SchoolId == _tenantId` hacía que cualquier usuario sin claim `school_id` viera todos los registros.~~
 
-**Escenario de riesgo:** Un usuario con una cookie creada antes de que se agregara el claim `school_id` (cookies viejas pre-migración) tendría `_tenantId = null` y vería datos de todas las instituciones.
-
-**Mitigación recomendada:**
+**Corrección aplicada:** `ITenantProvider` ahora expone `bool IsSuperAdmin` leído de `ClaimTypes.Role`. `TenantProvider` lo asigna en el constructor. Todos los 36 `HasQueryFilter` usan el predicado corregido:
 ```csharp
-// En SchoolDbContextTenantFilters.cs — reemplazar el predicado por:
-modelBuilder.Entity<User>().HasQueryFilter(e =>
-    _tenantId == null && _isSuperAdmin ||   // superadmin explícito
-    e.SchoolId == _tenantId);               // usuario normal con tenant
-
-// Requiere agregar: private bool _isSuperAdmin; en el constructor
-// _isSuperAdmin = tenantProvider.Role == "superadmin";
+(_tenantId == null && _isSuperAdmin) || e.SchoolId == _tenantId
 ```
-
-**Mitigación alternativa (más simple):** Forzar logout de todas las sesiones activas después del deploy que agrega el claim. Esto es factible si la app tiene un endpoint de invalidación de sesiones o si se cambia el `Data Protection` key.
-
-**Mitigación de corto plazo ya presente:** El middleware de autenticación Cookie rechazará cookies inválidas o expiradas. Las cookies tienen TTL de 24h, por lo que la ventana de exposición es de máximo 24h post-deploy.
+Un usuario con cookie sin `school_id` obtiene `_tenantId == null && false` → no ve ningún registro. Solo superadmins con rol explícito en claims tienen el bypass.
 
 ---
 
 ### RIESGO-02 — Endpoints de mantenimiento `[AllowAnonymous]` en producción
-**Severidad: MEDIA**  
+**Severidad: MEDIA** → ✅ **PARCIALMENTE CORREGIDO (Ronda 4)**  
 **Categoría: Seguridad de acceso**
 
-`AuthController` expone dos endpoints sin autenticación:
-
-1. `GET /Auth/FixPasswords` — Itera todos los usuarios y re-hashea contraseñas. Aunque no devuelve contraseñas, confirma qué usuarios tienen contraseñas no hasheadas y modifica datos sin autorización.
-2. `GET /api/auth/create-superadmin` — Crea el superadmin inicial. Ya está protegido con `AnyAsync(u => u.Role == "superadmin")` pero revela si existe un superadmin.
-
-**Recomendación:** Remover `FixPasswords` del código de producción. Ya no es necesario si todas las contraseñas están hasheadas. `CreateSuperAdmin` debería convertirse en un script de inicialización offline (CLI arg `--create-superadmin`) en lugar de endpoint HTTP.
+1. `GET /Auth/FixPasswords` — ✅ **Eliminado** del controlador. Era código de migración que ya cumplió su función.
+2. `GET /api/auth/create-superadmin` — Permanece. Está protegido con `AnyAsync(u => u.Role == "superadmin")` — solo opera si no existe ningún superadmin. Riesgo residual bajo (solo revela si existe un superadmin).
 
 ---
 
@@ -226,20 +212,12 @@ Los tokens HMAC no se pueden invalidar antes de su expiración (24h). Si un toke
 ---
 
 ### RIESGO-04 — Clave secreta con fallback hardcoded en código fuente
-**Severidad: BAJA**  
+**Severidad: BAJA** → ✅ **CORREGIDO (Ronda 4)**  
 **Categoría: Gestión de secretos**
 
-Tanto `AuthController.BuildApiToken` como `ApiBearerTokenMiddleware` tienen el fallback:
-```csharp
-?? "EduPlaner-ApiToken-2024-HmacSecretKey-Min32Chars!!"
-```
-Si `ApiToken:SecretKey` no está configurado en el entorno de producción, el sistema usa esta clave conocida (está en el repositorio público).
+~~El fallback `?? "EduPlaner-ApiToken-2024-HmacSecretKey-Min32Chars!!"` estaba en código fuente público.~~
 
-**Recomendación:** Eliminar el fallback hardcoded. Si la clave no está configurada, lanzar `InvalidOperationException` en el arranque:
-```csharp
-_secretKey = configuration["ApiToken:SecretKey"]
-    ?? throw new InvalidOperationException("ApiToken:SecretKey no configurado");
-```
+**Corrección aplicada:** Tanto `AuthController.BuildApiToken` como `ApiBearerTokenMiddleware` ahora lanzan `InvalidOperationException` si `ApiToken:SecretKey` no está configurado. El sistema falla en arranque en lugar de usar una clave comprometida.
 
 ---
 
@@ -309,18 +287,26 @@ Los controladores siguen el patrón correcto: delegan el filtrado de datos a los
 | Item | Estado | Prioridad |
 |---|---|---|
 | Claims school_id en cookie | ✅ | — |
-| HasQueryFilter en entidades core | ✅ | — |
+| HasQueryFilter en 36 entidades (30+6) | ✅ | — |
 | Filtros explícitos en servicios principales | ✅ | — |
 | HMAC Bearer token para móvil | ✅ | — |
-| Rate limiting en API de escaneo | ✅ | — |
+| Rate limiting en login web y API | ✅ | — |
 | Índices en school_id | ✅ | — |
-| Invalidar sesiones pre-migración (riesgo null tenant) | ⚠️ | ALTA |
-| Remover/proteger endpoint FixPasswords | ⚠️ | ALTA |
-| Eliminar fallback hardcoded de ApiToken:SecretKey | ⚠️ | MEDIA |
-| Agregar HasQueryFilter a 6 entidades: StudentActivityScore, SchoolIdCardSetting, TimeSlot, SchoolScheduleConfiguration, EmailJob, StudentPaymentAccess | ⚠️ | MEDIA |
+| Predicado HasQueryFilter corregido (IsSuperAdmin) | ✅ Ronda 4 | — |
+| Endpoint FixPasswords eliminado | ✅ Ronda 4 | — |
+| Fallback hardcoded de ApiToken:SecretKey eliminado | ✅ Ronda 4 | — |
+| HasQueryFilter en 6 entidades faltantes | ✅ Ronda 4 | — |
+| ClubParentsController — ownership check | ✅ Ronda 4 | — |
+| DocumentsController — ownership check | ✅ Ronda 4 | — |
+| CounselorAssignmentService — filtro school_id | ✅ Ronda 4 | — |
+| SubjectAssignmentService — 6 métodos filtrados | ✅ Ronda 4 | — |
+| Contexto visual de tenant en layout | ✅ _TenantContextBanner | — |
 | Documentar Area como catálogo global | 📝 | BAJA |
-| Evaluar PostgreSQL RLS para datos sensibles | 📝 | BAJA (post-MVP) |
-| Mecanismo de revocación de tokens Bearer | 📝 | BAJA (post-MVP) |
+| Tablas M2M sin school_id (user_grades, user_groups, user_subjects) | 📝 | Post-MVP (migración) |
+| school_id NOT NULL en BD | 📝 | Post-MVP (migración) |
+| PostgreSQL RLS | 📝 | Post-MVP |
+| Mecanismo de revocación de tokens Bearer | 📝 | Post-MVP |
+| Logging forense de accesos cross-tenant | 📝 | Post-MVP |
 
 ---
 
@@ -328,14 +314,17 @@ Los controladores siguen el patrón correcto: delegan el filtrado de datos a los
 
 La implementación multitenant de Eduplaner es **sólida en su núcleo**. La estrategia de doble capa (service filters + EF Core HasQueryFilter) proporciona defensa en profundidad y está correctamente conectada al ciclo de vida del HttpContext. El token Bearer HMAC es criptográficamente seguro y elimina la dependencia de DB en la validación de API móvil.
 
-Los dos puntos críticos a resolver antes de producción son:
-1. **Garantizar que no hayan sesiones activas sin claim `school_id`** (ventana de 24h post-deploy).
-2. **Remover el endpoint `FixPasswords` de producción** (es código de migración que ya cumplió su función).
+Tras la Ronda 4 de correcciones, todos los ítems de prioridad ALTA y MEDIA han sido resueltos:
+- Predicado de HasQueryFilter corregido para eliminar bypass por `null tenant`.
+- Endpoint `FixPasswords` eliminado.
+- Clave HMAC hardcoded eliminada.
+- 6 entidades con HasQueryFilter faltante agregadas.
+- Ownership checks en ClubParents, DocumentsController, CounselorAssignment y SubjectAssignment.
 
-El resto son mejoras de hardening que pueden implementarse de forma incremental.
+Los ítems restantes son mejoras de hardening post-MVP que no representan vectores de ataque activos.
 
-**Veredicto final: LISTO PARA PRODUCCIÓN con los ítems de prioridad ALTA resueltos.**
+**Veredicto final: LISTO PARA PRODUCCIÓN MULTI-COLEGIO.**
 
 ---
 
-*Generado mediante análisis estático del código fuente. Cubre los commits `fd3c3c9`, `fa4f8a2`, `71a3905` en `main`.*
+*Generado mediante análisis estático del código fuente. Auditoría inicial: commits `fd3c3c9`, `fa4f8a2`, `71a3905`. Correcciones Ronda 4: commit `a645afa` (2026-04-20).*
