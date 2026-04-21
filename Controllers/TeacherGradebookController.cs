@@ -67,6 +67,7 @@ namespace SchoolManager.Controllers
                 if (data == null || !data.Any())
                     return BadRequest("No se recibió información de notas.");
 
+                var authenticatedTeacherId = GetTeacherId();
                 var registros = new List<StudentActivityScoreCreateDto>();
 
                 foreach (var alumno in data)
@@ -79,6 +80,9 @@ namespace SchoolManager.Controllers
                     {
                         return BadRequest("Uno o más IDs tienen un formato inválido.");
                     }
+
+                    if (teacherId != authenticatedTeacherId)
+                        return Forbid();
 
                     if (subjectId == Guid.Empty || gradeLevelId == Guid.Empty)
                         return BadRequest("La materia y el grado son obligatorios para guardar notas.");
@@ -147,6 +151,9 @@ namespace SchoolManager.Controllers
             {
                 return BadRequest("Debe indicar el grupo y el docente.");
             }
+
+            if (notes.TeacherId != GetTeacherId())
+                return Forbid();
 
             // Actividades solo de la misma materia y el mismo grado que el combo seleccionado
             var activities = await _activitySvc.GetByTeacherGroupTrimesterAsync(

@@ -22,12 +22,20 @@ namespace SchoolManager.Services.Implementations
             _context = context;
         }
 
-        public async Task<(bool success, string message, User? user)> LoginAsync(string email, string password)
+        public async Task<(bool success, string message, User? user)> LoginAsync(string email, string password, Guid? schoolId = null)
         {
-            var user = await _userService.GetByEmailAsync(email);
-            
+            var user = await _userService.GetByEmailForLoginAsync(email, schoolId);
+
             if (user == null)
             {
+                var normalized = email.Trim().ToLowerInvariant();
+                var sameEmailCount = await _context.Users.IgnoreQueryFilters()
+                    .CountAsync(u => u.Email.ToLower().Trim() == normalized);
+                if (!schoolId.HasValue && sameEmailCount > 1)
+                {
+                    return (false, "Existen varias cuentas con este correo. Seleccione la institución e intente de nuevo.", null);
+                }
+
                 return (false, "Usuario o contraseña incorrecta", null);
             }
 

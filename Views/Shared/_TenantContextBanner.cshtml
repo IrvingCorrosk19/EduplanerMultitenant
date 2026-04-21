@@ -1,0 +1,36 @@
+@inject SchoolManager.Services.Interfaces.ICurrentUserService TenantBannerCurrentUser
+@{
+    var hide = ViewData["HideTenantBanner"] as bool? == true;
+    if (hide) { return; }
+
+    var school = await TenantBannerCurrentUser.GetCurrentUserSchoolAsync();
+    var role = (await TenantBannerCurrentUser.GetCurrentUserRoleAsync())?.ToLowerInvariant() ?? "";
+}
+@if (school != null)
+{
+    <div class="tenant-context-banner alert alert-light border-start border-4 border-primary py-2 px-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2 shadow-sm" role="status" aria-live="polite">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge bg-primary text-white text-uppercase" style="letter-spacing: .04em;">Institución</span>
+            @if (!string.IsNullOrEmpty(school.LogoUrl))
+            {
+                if (school.LogoUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    <img src="@school.LogoUrl" alt="" width="28" height="28" class="rounded-circle border" />
+                }
+                else
+                {
+                    <img src="/File/GetSchoolLogo?logoUrl=@school.LogoUrl" alt="" width="28" height="28" class="rounded-circle border" />
+                }
+            }
+            <strong class="text-dark">@school.Name</strong>
+            <span class="text-muted small d-none d-md-inline">Los datos de esta pantalla corresponden solo a su colegio.</span>
+        </div>
+    </div>
+}
+else if (role == "superadmin")
+{
+    <div class="tenant-context-banner alert alert-warning border-start border-4 border-warning py-2 px-3 mb-3 d-flex align-items-center gap-2 shadow-sm" role="status">
+        <span class="badge bg-warning text-dark text-uppercase">Plataforma</span>
+        <span class="small mb-0"><strong>SuperAdmin:</strong> no tiene una institución fija. Use los módulos pensados para administración global o elija escuela donde el flujo lo indique.</span>
+    </div>
+}

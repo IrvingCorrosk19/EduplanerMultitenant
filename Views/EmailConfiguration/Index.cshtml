@@ -58,7 +58,7 @@
                                     @foreach (var config in Model)
                                     {
                                         <tr>
-                                            <td>@config.SchoolId</td>
+                                            <td>@(string.IsNullOrWhiteSpace(config.SchoolName) ? config.SchoolId.ToString() : config.SchoolName)</td>
                                             <td>@config.SmtpServer</td>
                                             <td>@config.SmtpPort</td>
                                             <td>@config.FromEmail</td>

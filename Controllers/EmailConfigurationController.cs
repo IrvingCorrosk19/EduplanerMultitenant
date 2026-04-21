@@ -134,6 +134,15 @@ namespace SchoolManager.Controllers
                     return View(model);
                 }
 
+                var cu = await _currentUserService.GetCurrentUserAsync();
+                if (cu?.SchoolId == null)
+                {
+                    TempData["ErrorMessage"] = "No se pudo determinar la institución del usuario.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                model.SchoolId = cu.SchoolId.Value;
+
                 _logger.LogInformation("Creando configuración de email para SchoolId: {SchoolId}", model.SchoolId);
                 var createdConfig = await _emailConfigurationService.CreateAsync(model);
                 _logger.LogInformation("Configuración de email creada exitosamente con ID: {ConfigId}", createdConfig.Id);

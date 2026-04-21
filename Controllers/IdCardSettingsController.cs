@@ -10,6 +10,8 @@ namespace SchoolManager.Controllers;
 [Route("id-card/settings")]
 public class IdCardSettingsController : Controller
 {
+    private const string IdCardSuperAdminSchoolTempKey = "IdCardSuperAdminSchool";
+
     private readonly SchoolDbContext _context;
     private readonly ICurrentUserService _currentUserService;
 
@@ -27,7 +29,7 @@ public class IdCardSettingsController : Controller
 
         var school = await _currentUserService.GetCurrentUserSchoolAsync();
 
-        // SuperAdmin no tiene escuela: debe elegir una
+        // SuperAdmin no tiene escuela: debe elegir una (persistencia vía TempData, sin depender del querystring)
         if (school == null)
         {
             var schoolList = await _context.Schools
@@ -37,18 +39,34 @@ public class IdCardSettingsController : Controller
             ViewBag.Schools = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(schoolList, "Id", "Name");
             ViewBag.NeedSchoolSelection = true;
 
-            if (!schoolId.HasValue || schoolId == Guid.Empty)
+            Guid? effectiveSchoolId = schoolId;
+            if (effectiveSchoolId == null || effectiveSchoolId == Guid.Empty)
+            {
+                if (TempData.Peek(IdCardSuperAdminSchoolTempKey) is string persisted &&
+                    Guid.TryParse(persisted, out var fromTemp) &&
+                    fromTemp != Guid.Empty)
+                {
+                    effectiveSchoolId = fromTemp;
+                }
+            }
+
+            if (effectiveSchoolId == null || effectiveSchoolId == Guid.Empty)
                 return View(new SchoolIdCardSetting { SchoolId = Guid.Empty, TemplateKey = "default_v1", PageWidthMm = 55, PageHeightMm = 85, BackgroundColor = "#FFFFFF", PrimaryColor = "#0D6EFD", TextColor = "#111111", ShowQr = true, ShowPhoto = true, ShowSchoolPhone = true, ShowWatermark = true, Orientation = "Vertical" });
 
-            var selectedSchool = await _context.Schools.FindAsync(schoolId.Value);
+            var selectedSchool = await _context.Schools.FindAsync(effectiveSchoolId.Value);
             if (selectedSchool == null)
             {
                 TempData["IdCardSettings.Error"] = "Escuela no encontrada o inactiva.";
+                TempData.Remove(IdCardSuperAdminSchoolTempKey);
                 return RedirectToAction("Index");
             }
+
+            TempData[IdCardSuperAdminSchoolTempKey] = effectiveSchoolId.Value.ToString();
+            TempData.Keep(IdCardSuperAdminSchoolTempKey);
+
             school = selectedSchool;
             ViewBag.NeedSchoolSelection = false;
-            ViewBag.SelectedSchoolId = schoolId.Value;
+            ViewBag.SelectedSchoolId = effectiveSchoolId.Value;
             ViewBag.SelectedSchoolName = selectedSchool.Name;
         }
         else
@@ -81,6 +99,27 @@ public class IdCardSettingsController : Controller
 
         ViewBag.IdCardPolicy = school.IdCardPolicy ?? "";
         return View(settings);
+    }
+
+    [HttpPost("select-school")]
+    [ValidateAntiForgeryToken]
+    public IActionResult SelectSchool([FromForm] Guid schoolId)
+    {
+        if (schoolId == Guid.Empty)
+        {
+            TempData["IdCardSettings.Error"] = "Seleccione una institución válida.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        TempData[IdCardSuperAdminSchoolTempKey] = schoolId.ToString();
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet("clear-school")]
+    public IActionResult ClearSchoolSelection()
+    {
+        TempData.Remove(IdCardSuperAdminSchoolTempKey);
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("save")]
@@ -163,8 +202,12 @@ public class IdCardSettingsController : Controller
         TempData["Success"] = "Configuración guardada exitosamente.";
 
         var isSuperAdmin = await _currentUserService.GetCurrentUserSchoolAsync() == null;
-        return isSuperAdmin
-            ? RedirectToAction("Index", new { schoolId = model.SchoolId })
-            : RedirectToAction("Index");
+        if (isSuperAdmin)
+        {
+            TempData[IdCardSuperAdminSchoolTempKey] = model.SchoolId.ToString();
+            TempData.Keep(IdCardSuperAdminSchoolTempKey);
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 }

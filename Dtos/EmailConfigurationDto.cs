@@ -6,6 +6,8 @@ namespace SchoolManager.Dtos
     {
         public Guid Id { get; set; }
         public Guid SchoolId { get; set; }
+        /// <summary>Nombre legible de la institución (solo presentación).</summary>
+        public string? SchoolName { get; set; }
         public string SmtpServer { get; set; } = string.Empty;
         public int SmtpPort { get; set; }
         public string SmtpUsername { get; set; } = string.Empty;

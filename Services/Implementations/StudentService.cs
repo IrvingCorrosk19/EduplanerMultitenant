@@ -59,19 +59,31 @@ namespace SchoolManager.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<List<Student>> GetByGroupAsync(string groupName) =>
-            await _context.Students
-                .Where(s => s.GroupName == groupName)
+        public async Task<List<Student>> GetByGroupAsync(string groupName)
+        {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            if (schoolId == null)
+                return new List<Student>();
+            return await _context.Students
+                .Where(s => s.GroupName == groupName && s.SchoolId == schoolId)
                 .ToListAsync();
+        }
 
         public async Task<IEnumerable<StudentBasicDto>> GetByGroupAndGradeAsync(Guid groupId, Guid gradeId)
         {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            if (schoolId == null)
+                return Enumerable.Empty<StudentBasicDto>();
+
             // MEJORADO: Filtrar solo estudiantes con asignaciones activas
             var result = await (from sa in _context.StudentAssignments
                                 join student in _context.Users on sa.StudentId equals student.Id
                                 join grade in _context.GradeLevels on sa.GradeId equals grade.Id
                                 join grupo in _context.Groups on sa.GroupId equals grupo.Id
                                 where (student.Role == "estudiante" || student.Role == "student" || student.Role == "alumno")
+                                      && student.SchoolId == schoolId
+                                      && grade.SchoolId == schoolId
+                                      && grupo.SchoolId == schoolId
                                       && sa.GroupId == groupId
                                       && sa.GradeId == gradeId
                                       && sa.IsActive // Solo asignaciones activas
@@ -90,6 +102,10 @@ namespace SchoolManager.Services
 
         public async Task<IEnumerable<StudentBasicDto>> GetBySubjectGroupAndGradeAsync(Guid subjectId, Guid groupId, Guid gradeId)
         {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            if (schoolId == null)
+                return Enumerable.Empty<StudentBasicDto>();
+
             // Misma lógica que GetByGroupAndGradeAsync, pero solo si existe al menos una asignación de
             // la materia a ese grupo/grado. Se usa EXISTS en lugar de JOIN a subject_assignments: varias
             // filas (p. ej. distinto area_id) duplicaban cada estudiante en el resultado.
@@ -98,13 +114,17 @@ namespace SchoolManager.Services
                                 join grade in _context.GradeLevels on sa.GradeId equals grade.Id
                                 join grupo in _context.Groups on sa.GroupId equals grupo.Id
                                 where (student.Role == "estudiante" || student.Role == "student" || student.Role == "alumno")
+                                      && student.SchoolId == schoolId
+                                      && grade.SchoolId == schoolId
+                                      && grupo.SchoolId == schoolId
                                       && sa.GroupId == groupId
                                       && sa.GradeId == gradeId
                                       && sa.IsActive
                                       && _context.SubjectAssignments.Any(suj =>
                                           suj.SubjectId == subjectId
                                           && suj.GroupId == groupId
-                                          && suj.GradeLevelId == gradeId)
+                                          && suj.GradeLevelId == gradeId
+                                          && suj.SchoolId == schoolId)
                                 orderby student.LastName, student.Name
                                 select new StudentBasicDto
                                 {

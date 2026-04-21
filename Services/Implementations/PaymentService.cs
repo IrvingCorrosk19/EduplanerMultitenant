@@ -47,8 +47,12 @@ public class PaymentService : IPaymentService
 
     public async Task<List<PaymentDto>> GetByPrematriculationAsync(Guid prematriculationId)
     {
-        return await _context.Payments
-            .Where(p => p.PrematriculationId == prematriculationId)
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        var query = _context.Payments.Where(p => p.PrematriculationId == prematriculationId);
+        if (schoolId.HasValue)
+            query = query.Where(p => p.SchoolId == schoolId.Value);
+
+        return await query
             .Include(p => p.RegisteredByUser)
             .Include(p => p.PaymentConcept)
             .Include(p => p.Student)

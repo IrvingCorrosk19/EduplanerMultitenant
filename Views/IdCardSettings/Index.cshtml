@@ -60,6 +60,10 @@
                         }
                     </div>
                 </div>
+                <form id="idCardSchoolPostForm" method="post" action="/id-card/settings/select-school" class="d-none">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="schoolId" id="idCardSchoolPostSchoolId" value="" />
+                </form>
             }
             @if (!needSchoolSelection)
             {
@@ -74,7 +78,7 @@
                         }
                     </h4>
                     <div class="d-flex gap-1">
-                        <a href="/id-card/settings" class="btn btn-outline-secondary btn-sm" title="Cambiar escuela">Cambiar escuela</a>
+                        <a href="/id-card/settings/clear-school" class="btn btn-outline-secondary btn-sm" title="Cambiar escuela">Cambiar escuela</a>
                         <a href="/StudentIdCard/ui" class="btn btn-outline-secondary btn-sm">
                             <i class="fas fa-arrow-left me-1"></i> Volver a Carnets
                         </a>
@@ -413,7 +417,14 @@
                     } else alert('Seleccione una escuela.');
                     return;
                 }
-                window.location.href = '/id-card/settings?schoolId=' + encodeURIComponent(id);
+                var hid = document.getElementById('idCardSchoolPostSchoolId');
+                var f = document.getElementById('idCardSchoolPostForm');
+                if (hid && f) {
+                    hid.value = id;
+                    f.submit();
+                } else {
+                    window.location.href = '/id-card/settings?schoolId=' + encodeURIComponent(id);
+                }
             });
         }
         var pickers = [

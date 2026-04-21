@@ -84,13 +84,22 @@ namespace SchoolManager.Services
             if (subjectId == Guid.Empty || gradeLevelId == Guid.Empty)
                 return new GradeBookDto { Activities = new List<ActivityHeaderDto>(), Rows = new List<StudentGradeRowDto>() };
 
+            var currentUserId = await _currentUserService.GetCurrentUserIdAsync();
+            if (currentUserId == null || teacherId != currentUserId.Value)
+                return new GradeBookDto { Activities = new List<ActivityHeaderDto>(), Rows = new List<StudentGradeRowDto>() };
+
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            if (schoolId == null)
+                return new GradeBookDto { Activities = new List<ActivityHeaderDto>(), Rows = new List<StudentGradeRowDto>() };
+
             /* 2.1 Cabeceras: actividades del docente en ese grupo, trimestre, materia y grado */
             var headers = await _context.Activities
                 .Where(a => a.TeacherId == teacherId &&
                             a.GroupId == groupId &&
                             a.Trimester == trimesterCode &&
                             a.SubjectId == subjectId &&
-                            a.GradeLevelId == gradeLevelId)
+                            a.GradeLevelId == gradeLevelId &&
+                            (a.SchoolId == null || a.SchoolId == schoolId))
                 .OrderBy(a => a.CreatedAt)
                 .Select(a => new ActivityHeaderDto
                 {
@@ -115,21 +124,24 @@ namespace SchoolManager.Services
 
             var activityIds = headers.Select(h => h.Id).ToList();
 
-            /* 2.2 Estudiantes asignados a ese grupo (StudentAssignments) */
+            /* 2.2 Estudiantes asignados a ese grupo (StudentAssignments), restringidos a la institución */
             var studentIds = await _context.StudentAssignments
                 .Where(sa => sa.GroupId == groupId)
-                .Select(sa => sa.StudentId)
+                .Join(_context.Users.Where(u => u.SchoolId == schoolId),
+                    sa => sa.StudentId,
+                    u => u.Id,
+                    (sa, u) => u.Id)
                 .Distinct()
                 .ToListAsync();
 
             var students = await _context.Students
-                .Where(s => studentIds.Contains(s.Id))
+                .Where(s => studentIds.Contains(s.Id) && (s.SchoolId == null || s.SchoolId == schoolId))
                 .Select(s => new { s.Id, s.Name })
                 .ToListAsync();
 
             /* 2.3 Notas existentes */
             var scores = await _context.StudentActivityScores
-                .Where(s => activityIds.Contains(s.ActivityId))
+                .Where(s => activityIds.Contains(s.ActivityId) && (s.SchoolId == null || s.SchoolId == schoolId))
                 .ToListAsync();
 
             /* 2.4 Pivotar alumnos × actividades */
@@ -167,6 +179,23 @@ namespace SchoolManager.Services
                 {
                     throw new InvalidOperationException("No se pudo determinar la escuela del usuario actual.");
                 }
+
+                var currentUserId = await _currentUserService.GetCurrentUserIdAsync();
+                if (currentUserId == null)
+                    throw new InvalidOperationException("Usuario no autenticado.");
+
+                foreach (var dto in registros)
+                {
+                    if (dto.TeacherId != currentUserId.Value)
+                        throw new InvalidOperationException("No puede registrar calificaciones en nombre de otro docente.");
+                }
+
+                var studentIdsForValidation = registros.Select(r => r.StudentId).Distinct().ToList();
+                var outsiderStudents = await _context.Users.CountAsync(u =>
+                    studentIdsForValidation.Contains(u.Id) &&
+                    u.SchoolId != currentUserSchool.Id);
+                if (outsiderStudents > 0)
+                    throw new InvalidOperationException("Hay estudiantes que no pertenecen a su institución.");
 
                 static (Guid TeacherId, Guid SubjectId, Guid GroupId, Guid GradeLevelId, string Trimester, string Name, string Type) ActivityKey(
                     StudentActivityScoreCreateDto dto) =>
@@ -211,7 +240,8 @@ namespace SchoolManager.Services
                             a.SubjectId == scope.SubjectId &&
                             a.GroupId == scope.GroupId &&
                             a.GradeLevelId == scope.GradeLevelId &&
-                            a.Trimester == scope.Trimester)
+                            a.Trimester == scope.Trimester &&
+                            (a.SchoolId == null || a.SchoolId == currentUserSchool.Id))
                         .ToListAsync();
                     allActivities.AddRange(batch);
                 }
@@ -255,6 +285,10 @@ namespace SchoolManager.Services
                             activity.TrimesterId = trimesterIdByCode[dto.Trimester];
                         await AuditHelper.SetAuditFieldsForUpdateAsync(activity, _currentUserService);
                     }
+                    else if (activity.SchoolId.HasValue && activity.SchoolId.Value != currentUserSchool.Id)
+                    {
+                        throw new InvalidOperationException("La actividad indicada pertenece a otra institución.");
+                    }
                 }
 
                 var activityIds = activityByKey.Values.Select(a => a.Id).Distinct().ToList();
@@ -280,14 +314,18 @@ namespace SchoolManager.Services
                             ActivityId = activity.Id,
                             Score = dto.Score,
                             AcademicYearId = activeAcademicYear?.Id,
-                            CreatedAt = DateTime.UtcNow
+                            CreatedAt = DateTime.UtcNow,
+                            SchoolId = currentUserSchool.Id
                         };
+                        await AuditHelper.SetAuditFieldsForCreateAsync(row, _currentUserService);
                         _context.StudentActivityScores.Add(row);
                         scoreByStudentActivity[pair] = row;
                     }
                     else
                     {
                         row.Score = dto.Score;
+                        if (row.SchoolId == null)
+                            row.SchoolId = currentUserSchool.Id;
                     }
                 }
 
@@ -310,6 +348,14 @@ namespace SchoolManager.Services
             if (notes.SubjectId == Guid.Empty || notes.GradeLevelId == Guid.Empty)
                 return new List<StudentNotaDto>();
 
+            var currentUserId = await _currentUserService.GetCurrentUserIdAsync();
+            if (currentUserId == null || notes.TeacherId != currentUserId.Value)
+                return new List<StudentNotaDto>();
+
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            if (schoolId == null)
+                return new List<StudentNotaDto>();
+
             // Obtener las notas existentes con información del estudiante
             var notas = await _context.StudentActivityScores
                 .Include(sa => sa.Activity)
@@ -319,7 +365,9 @@ namespace SchoolManager.Services
                     sa.Activity.SubjectId == notes.SubjectId &&
                     sa.Activity.GroupId == notes.GroupId &&
                     sa.Activity.GradeLevelId == notes.GradeLevelId &&
-                    sa.Activity.Trimester == notes.Trimester)
+                    sa.Activity.Trimester == notes.Trimester &&
+                    (sa.Activity.SchoolId == null || sa.Activity.SchoolId == schoolId) &&
+                    (sa.SchoolId == null || sa.SchoolId == schoolId))
                 .ToListAsync();
 
             // Obtener información de los estudiantes
@@ -368,11 +416,19 @@ namespace SchoolManager.Services
             if (notes.SubjectId == Guid.Empty || notes.GradeLevelId == Guid.Empty)
                 return new List<PromedioFinalDto>();
 
+            var currentUserId = await _currentUserService.GetCurrentUserIdAsync();
+            if (currentUserId == null || notes.TeacherId != currentUserId.Value)
+                return new List<PromedioFinalDto>();
+
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            if (schoolId == null)
+                return new List<PromedioFinalDto>();
+
             // 1. Obtener todos los estudiantes del grupo y grado usando solo User y StudentAssignment
             // Ordenar alfabéticamente por apellido primero, luego por nombre
             var students = await _context.StudentAssignments
                 .Where(sa => sa.GroupId == notes.GroupId && sa.GradeId == notes.GradeLevelId)
-                .Join(_context.Users,
+                .Join(_context.Users.Where(u => u.SchoolId == schoolId),
                     sa => sa.StudentId,
                     u => u.Id,
                     (sa, u) => new { u.Id, u.Name, u.LastName, u.DocumentId })
@@ -382,7 +438,8 @@ namespace SchoolManager.Services
 
             // 2. Obtener todas las notas del grupo, materia, grado y docente
             var notasPorTrimestre = await _context.StudentActivityScores
-                .Join(_context.Activities,
+                .Where(score => score.SchoolId == null || score.SchoolId == schoolId)
+                .Join(_context.Activities.Where(a => a.SchoolId == null || a.SchoolId == schoolId),
                     score => score.ActivityId,
                     activity => activity.Id,
                     (score, activity) => new

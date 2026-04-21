@@ -160,6 +160,15 @@ namespace SchoolManager.Controllers
                     return RedirectToAction(nameof(Create));
                 }
 
+                var currentUserForCreate = await _currentUserService.GetCurrentUserAsync();
+                if (currentUserForCreate?.SchoolId == null)
+                {
+                    TempData["ErrorMessage"] = "No se pudo determinar la institución del usuario.";
+                    return RedirectToAction(nameof(Create));
+                }
+
+                dto.SchoolId = currentUserForCreate.SchoolId.Value;
+
                 var assignment = await _counselorAssignmentService.CreateAsync(dto);
                 
                 _logger.LogInformation("Asignación de consejero creada exitosamente con ID: {Id}", assignment.Id);
@@ -401,6 +410,12 @@ namespace SchoolManager.Controllers
                     _logger.LogWarning("Modelo inválido al crear asignación de consejero via AJAX");
                     return Json(new { success = false, message = "Datos inválidos" });
                 }
+
+                var currentUserAjax = await _currentUserService.GetCurrentUserAsync();
+                if (currentUserAjax?.SchoolId == null)
+                    return Json(new { success = false, message = "No se pudo determinar la institución del usuario." });
+
+                dto.SchoolId = currentUserAjax.SchoolId.Value;
 
                 var assignment = await _counselorAssignmentService.CreateAsync(dto);
                 

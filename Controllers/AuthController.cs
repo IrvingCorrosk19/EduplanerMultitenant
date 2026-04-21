@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using SchoolManager.Models;
 using SchoolManager.Services.Interfaces;
@@ -37,11 +38,20 @@ namespace SchoolManager.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public IActionResult Login(string returnUrl = null, string schoolInactive = null)
+        public async Task<IActionResult> Login(string returnUrl = null, string schoolInactive = null)
         {
             ViewData["ReturnUrl"] = returnUrl;
             if (!string.IsNullOrEmpty(schoolInactive))
                 TempData["Error"] = "La institución se encuentra inactiva. Contacte al administrador.";
+
+            var schoolItems = await _context.Schools.AsNoTracking()
+                .IgnoreQueryFilters()
+                .Where(s => s.IsActive)
+                .OrderBy(s => s.Name)
+                .Select(s => new SelectListItem { Value = s.Id.ToString(), Text = s.Name })
+                .ToListAsync();
+            ViewBag.TenantSchools = schoolItems;
+
             return View();
         }
 
@@ -56,7 +66,11 @@ namespace SchoolManager.Controllers
                 return View(model);
             }
 
-            var (success, message, user) = await _authService.LoginAsync(model.Email, model.Password);
+            Guid? schoolId = null;
+            if (!string.IsNullOrWhiteSpace(model.SchoolId) && Guid.TryParse(model.SchoolId, out var parsedSchool))
+                schoolId = parsedSchool;
+
+            var (success, message, user) = await _authService.LoginAsync(model.Email, model.Password, schoolId);
 
             Console.WriteLine($"[Login] Intento de login para {model.Email} - Éxito: {success}");
 
@@ -131,7 +145,7 @@ namespace SchoolManager.Controllers
                 return BadRequest(new { message = "Email y contraseña son requeridos" });
             }
 
-            var (success, message, user) = await _authService.LoginAsync(request.Email, request.Password);
+            var (success, message, user) = await _authService.LoginAsync(request.Email, request.Password, request.SchoolId);
 
             if (!success)
             {
@@ -204,6 +218,8 @@ namespace SchoolManager.Controllers
     {
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+        /// <summary>Opcional: institución cuando el correo existe en más de un colegio.</summary>
+        public Guid? SchoolId { get; set; }
         /// <summary>Cuando es "scanner", el login solo se permite para roles Inspector y Teacher.</summary>
         public string? Client { get; set; }
     }

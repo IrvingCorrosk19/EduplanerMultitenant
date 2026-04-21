@@ -5,6 +5,15 @@
 @{
     var userRole = await CurrentUserService.GetCurrentUserRoleAsync();
     var menuItems = await MenuService.GetMenuItemsForUserAsync(userRole ?? "guest");
+    var menuSchool = await CurrentUserService.GetCurrentUserSchoolAsync();
+}
+
+@if (menuSchool != null)
+{
+    <div class="px-3 py-2 mb-2 mx-2 rounded" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);">
+        <div class="text-uppercase text-muted" style="font-size: 0.65rem; letter-spacing: .06em;">Institución</div>
+        <div class="text-white text-truncate font-weight-semibold" style="font-size: 0.85rem;" title="@menuSchool.Name">@menuSchool.Name</div>
+    </div>
 }
 
 <nav class="mt-2">

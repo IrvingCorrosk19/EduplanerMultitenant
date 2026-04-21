@@ -314,6 +314,11 @@ public partial class SchoolDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasColumnType("timestamp with time zone")
                 .HasColumnName("updated_at");
+            entity.Property(e => e.SchoolId).HasColumnName("school_id");
+            entity.HasIndex(e => e.SchoolId, "IX_area_school_id");
+            entity.HasOne(d => d.School).WithMany().HasForeignKey(d => d.SchoolId)
+                .HasConstraintName("area_school_id_fkey")
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Attendance>(entity =>
@@ -1033,7 +1038,7 @@ public partial class SchoolDbContext : DbContext
 
             entity.ToTable("subject_assignments");
 
-            entity.HasIndex(e => e.SchoolId, "IX_subject_assignments_SchoolId");
+            entity.HasIndex(e => e.SchoolId, "IX_subject_assignments_school_id");
 
             entity.HasIndex(e => e.AreaId, "IX_subject_assignments_area_id");
 
@@ -1058,6 +1063,8 @@ public partial class SchoolDbContext : DbContext
                 .HasMaxLength(10)
                 .HasColumnName("status");
             entity.Property(e => e.SubjectId).HasColumnName("subject_id");
+
+            entity.Property(e => e.SchoolId).HasColumnName("school_id");
 
             entity.HasOne(d => d.Area).WithMany(p => p.SubjectAssignments)
                 .HasForeignKey(d => d.AreaId)

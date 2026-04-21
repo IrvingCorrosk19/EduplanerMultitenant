@@ -470,6 +470,21 @@
                            required />
                             <span asp-validation-for="Email" class="text-danger"></span>
                         </div>
+
+                @if (ViewBag.TenantSchools is List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> tenantSchools && tenantSchools.Count > 0)
+                {
+                    <div class="form-group-modern">
+                        <label asp-for="SchoolId">Institución <span class="fw-normal text-muted">(opcional)</span></label>
+                        <select asp-for="SchoolId" class="form-control-modern" style="appearance: auto;">
+                            <option value="">— Mismo correo en varios colegios: elija su escuela —</option>
+                            @foreach (var item in tenantSchools)
+                            {
+                                <option value="@item.Value">@item.Text</option>
+                            }
+                        </select>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.8rem;">Si el sistema le indicó que hay varias cuentas con su correo, seleccione su colegio antes de iniciar sesión.</small>
+                    </div>
+                }
                         
                 <!-- Input de Contraseña -->
                 <div class="form-group-modern">

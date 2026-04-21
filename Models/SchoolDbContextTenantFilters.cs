@@ -90,5 +90,23 @@ public partial class SchoolDbContext
 
         modelBuilder.Entity<Shift>()
             .HasQueryFilter(e => _tenantId == null || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<StudentActivityScore>()
+            .HasQueryFilter(e => _tenantId == null || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<SchoolIdCardSetting>()
+            .HasQueryFilter(e => _tenantId == null || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<TimeSlot>()
+            .HasQueryFilter(e => _tenantId == null || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<SchoolScheduleConfiguration>()
+            .HasQueryFilter(e => _tenantId == null || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<EmailJob>()
+            .HasQueryFilter(e => _tenantId == null || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<StudentPaymentAccess>()
+            .HasQueryFilter(e => _tenantId == null || e.SchoolId == _tenantId);
     }
 }

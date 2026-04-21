@@ -4,6 +4,11 @@ public interface IUserService
 {
     Task<User?> GetByEmailAsync(string email);
 
+    /// <summary>
+    /// Login y flujos anónimos: ignora filtros de tenant y resuelve email+escuela o detecta ambigüedad.
+    /// </summary>
+    Task<User?> GetByEmailForLoginAsync(string email, Guid? schoolId);
+
     Task<List<User>> GetAllAsync();
     Task<User?> GetByIdAsync(Guid id);
     Task<User?> GetByIdWithRelationsAsync(Guid id);

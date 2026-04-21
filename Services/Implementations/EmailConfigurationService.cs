@@ -248,6 +248,7 @@ namespace SchoolManager.Services.Implementations
             {
                 Id = configuration.Id,
                 SchoolId = configuration.SchoolId,
+                SchoolName = configuration.School?.Name,
                 SmtpServer = configuration.SmtpServer,
                 SmtpPort = configuration.SmtpPort,
                 SmtpUsername = configuration.SmtpUsername,

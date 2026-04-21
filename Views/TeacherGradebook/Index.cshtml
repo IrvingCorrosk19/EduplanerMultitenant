@@ -1,9 +1,9 @@
 @model SchoolManager.ViewModels.TeacherGradebookViewModel
-
-
+@inject SchoolManager.Services.Interfaces.ICurrentUserService GradebookTenantCtx
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Portal del Docente";
+    var gradebookSchool = await GradebookTenantCtx.GetCurrentUserSchoolAsync();
 }
 
 <style>
@@ -718,6 +718,10 @@
             <div>
                 <h3 class="mb-0">📘 Portal del Docente</h3>
                 <small>@Model.Teacher.FullName – @Model.Teacher.Email</small>
+                @if (gradebookSchool != null)
+                {
+                    <div class="small mt-1 opacity-90"><i class="fas fa-school me-1"></i><strong>@gradebookSchool.Name</strong> — calificaciones y asistencias solo de su institución.</div>
+                }
             </div>
             <div class="text-end">
                 <p class="mb-0 opacity-75">@TimeZoneService.GetTodayLongString()</p>

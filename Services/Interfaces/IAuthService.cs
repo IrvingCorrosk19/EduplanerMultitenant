@@ -4,7 +4,7 @@ namespace SchoolManager.Services.Interfaces
 {
     public interface IAuthService
     {
-        Task<(bool success, string message, User? user)> LoginAsync(string email, string password);
+        Task<(bool success, string message, User? user)> LoginAsync(string email, string password, Guid? schoolId = null);
         Task LogoutAsync();
         Task<bool> IsAuthenticatedAsync();
         Task<User?> GetCurrentUserAsync();

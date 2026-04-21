@@ -76,7 +76,10 @@ public class UserService : IUserService
                 existingUser.Subjects.Clear();
                 if (subjectIds.Any())
                 {
-                    var subjects = await _context.Subjects.Where(s => subjectIds.Contains(s.Id)).ToListAsync();
+                    var subjectsQuery = _context.Subjects.Where(s => subjectIds.Contains(s.Id));
+                    if (existingUser.SchoolId.HasValue)
+                        subjectsQuery = subjectsQuery.Where(s => s.SchoolId == existingUser.SchoolId);
+                    var subjects = await subjectsQuery.ToListAsync();
                     foreach (var subject in subjects)
                     {
                         existingUser.Subjects.Add(subject);
@@ -87,7 +90,10 @@ public class UserService : IUserService
                 existingUser.Groups.Clear();
                 if (groupIds.Any())
                 {
-                    var groups = await _context.Groups.Where(g => groupIds.Contains(g.Id)).ToListAsync();
+                    var groupsQuery = _context.Groups.Where(g => groupIds.Contains(g.Id));
+                    if (existingUser.SchoolId.HasValue)
+                        groupsQuery = groupsQuery.Where(g => g.SchoolId == existingUser.SchoolId);
+                    var groups = await groupsQuery.ToListAsync();
                     foreach (var group in groups)
                     {
                         existingUser.Groups.Add(group);
@@ -118,7 +124,10 @@ public class UserService : IUserService
         user.Subjects.Clear();
         if (subjectIds.Any())
         {
-            var subjects = await _context.Subjects.Where(s => subjectIds.Contains(s.Id)).ToListAsync();
+            var subjectsQuery = _context.Subjects.Where(s => subjectIds.Contains(s.Id));
+            if (user.SchoolId.HasValue)
+                subjectsQuery = subjectsQuery.Where(s => s.SchoolId == user.SchoolId);
+            var subjects = await subjectsQuery.ToListAsync();
             foreach (var subject in subjects)
             {
                 user.Subjects.Add(subject);
@@ -130,7 +139,10 @@ public class UserService : IUserService
         user.Groups.Clear();
         if (groupIds.Any())
         {
-            var groups = await _context.Groups.Where(g => groupIds.Contains(g.Id)).ToListAsync();
+            var groupsQuery = _context.Groups.Where(g => groupIds.Contains(g.Id));
+            if (user.SchoolId.HasValue)
+                groupsQuery = groupsQuery.Where(g => g.SchoolId == user.SchoolId);
+            var groups = await groupsQuery.ToListAsync();
             foreach (var group in groups)
             {
                 user.Groups.Add(group);
@@ -141,7 +153,10 @@ public class UserService : IUserService
         user.Grades.Clear();
         if (gradeLevelIds.Any())
         {
-            var grades = await _context.GradeLevels.Where(g => gradeLevelIds.Contains(g.Id)).ToListAsync();
+            var gradesQuery = _context.GradeLevels.Where(g => gradeLevelIds.Contains(g.Id));
+            if (user.SchoolId.HasValue)
+                gradesQuery = gradesQuery.Where(g => g.SchoolId == user.SchoolId);
+            var grades = await gradesQuery.ToListAsync();
             foreach (var grade in grades)
             {
                 user.Grades.Add(grade);
@@ -177,8 +192,13 @@ public class UserService : IUserService
             // La contraseña ya viene hasheada desde el controlador, no necesitamos hashearla de nuevo
             
             // Cargar las entidades completas desde la base de datos
-            var subjects = await _context.Subjects.Where(s => subjectIds.Contains(s.Id)).ToListAsync();
-            var groups = await _context.Groups.Where(g => groupIds.Contains(g.Id)).ToListAsync();
+            var schoolId = currentUser.SchoolId!.Value;
+            var subjects = await _context.Subjects
+                .Where(s => subjectIds.Contains(s.Id) && s.SchoolId == schoolId)
+                .ToListAsync();
+            var groups = await _context.Groups
+                .Where(g => groupIds.Contains(g.Id) && g.SchoolId == schoolId)
+                .ToListAsync();
 
             // Asignar las relaciones
             user.Subjects = subjects;
@@ -315,9 +335,16 @@ public class UserService : IUserService
 
             // La contraseña ya viene hasheada desde el controlador, no necesitamos hashearla de nuevo
             
-            var subjects = await _context.Subjects.Where(s => subjectIds.Contains(s.Id)).ToListAsync();
-            var groups = await _context.Groups.Where(g => groupIds.Contains(g.Id)).ToListAsync();
-            var grades = await _context.GradeLevels.Where(g => gradeLevelIds.Contains(g.Id)).ToListAsync();
+            var schoolId = currentUser.SchoolId!.Value;
+            var subjects = await _context.Subjects
+                .Where(s => subjectIds.Contains(s.Id) && s.SchoolId == schoolId)
+                .ToListAsync();
+            var groups = await _context.Groups
+                .Where(g => groupIds.Contains(g.Id) && g.SchoolId == schoolId)
+                .ToListAsync();
+            var grades = await _context.GradeLevels
+                .Where(g => gradeLevelIds.Contains(g.Id) && g.SchoolId == schoolId)
+                .ToListAsync();
 
             user.Subjects = subjects;
             user.Groups = groups;
@@ -491,6 +518,25 @@ public async Task<User?> AuthenticateAsync(string email, string password)
 
         return await _context.Users
             .FirstOrDefaultAsync(u => u.Email.ToLower().Trim() == email.ToLower().Trim());
+    }
+
+    public async Task<User?> GetByEmailForLoginAsync(string email, Guid? schoolId)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return null;
+
+        var normalized = email.ToLower().Trim();
+        var query = _context.Users
+            .IgnoreQueryFilters()
+            .Where(u => u.Email.ToLower().Trim() == normalized);
+
+        if (schoolId.HasValue && schoolId.Value != Guid.Empty)
+            return await query.FirstOrDefaultAsync(u => u.SchoolId == schoolId);
+
+        var matches = await query.ToListAsync();
+        if (matches.Count > 1)
+            return null;
+        return matches.FirstOrDefault();
     }
 
     public async Task<(bool success, string message)> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)

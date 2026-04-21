@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SchoolManager.Models;
@@ -11,9 +12,11 @@ using SchoolManager.Models;
 namespace SchoolManager.Migrations
 {
     [DbContext(typeof(SchoolDbContext))]
-    partial class SchoolDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421043444_DropLegacyEmailConfigurationsTable")]
+    partial class DropLegacyEmailConfigurationsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -375,18 +378,12 @@ namespace SchoolManager.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
-                    b.Property<Guid?>("SchoolId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("school_id");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
                         .HasName("area_pkey");
-
-                    b.HasIndex(new[] { "SchoolId" }, "IX_area_school_id");
 
                     b.HasIndex(new[] { "Name" }, "area_name_key")
                         .IsUnique();
@@ -3661,17 +3658,6 @@ namespace SchoolManager.Migrations
                     b.Navigation("School");
 
                     b.Navigation("UpdatedByUser");
-                });
-
-            modelBuilder.Entity("SchoolManager.Models.Area", b =>
-                {
-                    b.HasOne("SchoolManager.Models.School", "School")
-                        .WithMany()
-                        .HasForeignKey("SchoolId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("area_school_id_fkey");
-
-                    b.Navigation("School");
                 });
 
             modelBuilder.Entity("SchoolManager.Models.Attendance", b =>
