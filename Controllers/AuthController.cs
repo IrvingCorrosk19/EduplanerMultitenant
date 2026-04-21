@@ -4,6 +4,8 @@ using SchoolManager.Models;
 using SchoolManager.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using BCrypt.Net;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace SchoolManager.Controllers
 {
@@ -12,12 +14,25 @@ namespace SchoolManager.Controllers
         private readonly IAuthService _authService;
         private readonly IUserService _userService;
         private readonly SchoolDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(IAuthService authService, IUserService userService, SchoolDbContext context)
+        public AuthController(IAuthService authService, IUserService userService, SchoolDbContext context, IConfiguration configuration)
         {
             _authService = authService;
             _userService = userService;
             _context = context;
+            _configuration = configuration;
+        }
+
+        private string BuildApiToken(Guid userId, Guid? schoolId, string role)
+        {
+            var secretKey = _configuration["ApiToken:SecretKey"] ?? "EduPlaner-ApiToken-2024-HmacSecretKey-Min32Chars!!";
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            var safeRole = (role ?? "").Replace(":", "_"); // role cannot contain ':'
+            var payload = $"{userId}:{schoolId}:{safeRole}:{timestamp}";
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secretKey));
+            var sig = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(payload)));
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes($"{payload}:{sig}"));
         }
 
         [HttpGet]
@@ -134,15 +149,12 @@ namespace SchoolManager.Controllers
                 }
             }
 
-            // Generar token simple (GUID + timestamp en base64)
-            // En producción, usar JWT real con System.IdentityModel.Tokens.Jwt
-            var tokenData = $"{user.Id}:{user.Email}:{DateTime.UtcNow:yyyyMMddHHmmss}";
-            var tokenBytes = System.Text.Encoding.UTF8.GetBytes(tokenData);
-            var token = Convert.ToBase64String(tokenBytes);
+            var token = BuildApiToken(user.Id, user.SchoolId, user.Role);
 
-            return Ok(new { 
+            return Ok(new {
                 token = token,
                 userId = user.Id,
+                schoolId = user.SchoolId,
                 email = user.Email,
                 name = user.Name,
                 role = user.Role

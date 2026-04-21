@@ -1,25 +1,27 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
-using SchoolManager.Models;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace SchoolManager.Middleware;
 
 /// <summary>
-/// Establece el usuario en el contexto cuando la app móvil envía el token devuelto por POST /api/auth/login
-/// en el header Authorization: Bearer &lt;token&gt;. El token es base64(userId:email:timestamp).
-/// Permite que DisciplineReport y otras APIs usen CurrentUserService cuando se llama desde el APK.
+/// Autentica requests de la app móvil con el token HMAC-SHA256 devuelto por POST /api/auth/login.
+/// Formato del token: base64(userId:schoolId:timestamp:hmac_sha256(userId:schoolId:timestamp, secret)).
+/// El token tiene vigencia de 24 horas y se valida criptográficamente; no requiere consulta a BD.
 /// </summary>
 public class ApiBearerTokenMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly string _secretKey;
     private static readonly TimeSpan TokenMaxAge = TimeSpan.FromHours(24);
 
-    public ApiBearerTokenMiddleware(RequestDelegate next)
+    public ApiBearerTokenMiddleware(RequestDelegate next, IConfiguration configuration)
     {
         _next = next;
+        _secretKey = configuration["ApiToken:SecretKey"] ?? "EduPlaner-ApiToken-2024-HmacSecretKey-Min32Chars!!";
     }
 
-    public async Task InvokeAsync(HttpContext context, SchoolDbContext db)
+    public async Task InvokeAsync(HttpContext context)
     {
         if (context.User?.Identity?.IsAuthenticated != true &&
             context.Request.Headers.Authorization.FirstOrDefault() is string auth &&
@@ -30,43 +32,50 @@ public class ApiBearerTokenMiddleware
             {
                 try
                 {
-                    var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(token));
-                    var parts = decoded.Split(':', 3, StringSplitOptions.None);
-                    if (parts.Length >= 3 &&
+                    var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(token));
+                    // Format: userId:schoolId:role:timestamp:hmac
+                    var parts = decoded.Split(':', 5, StringSplitOptions.None);
+                    if (parts.Length == 5 &&
                         Guid.TryParse(parts[0], out var userId) &&
-                        DateTime.TryParseExact(parts[2], "yyyyMMddHHmmss", null, System.Globalization.DateTimeStyles.None, out var tokenTime))
+                        DateTime.TryParseExact(parts[3], "yyyyMMddHHmmss", null,
+                            System.Globalization.DateTimeStyles.None, out var tokenTime))
                     {
-                        var age = DateTime.UtcNow - tokenTime.ToUniversalTime();
-                        if (age >= TimeSpan.Zero && age <= TokenMaxAge)
-                        {
-                            var user = await db.Users.AsNoTracking()
-                                .Where(u => u.Id == userId)
-                                .Select(u => new { u.Id, u.Email, u.Name, u.LastName, u.Role, u.SchoolId })
-                                .FirstOrDefaultAsync(context.RequestAborted);
+                        var payload = $"{parts[0]}:{parts[1]}:{parts[2]}:{parts[3]}";
+                        var expectedSig = ComputeHmac(payload);
 
-                            if (user != null)
+                        var age = DateTime.UtcNow - tokenTime.ToUniversalTime();
+                        if (age >= TimeSpan.Zero && age <= TokenMaxAge &&
+                            CryptographicOperations.FixedTimeEquals(
+                                Encoding.UTF8.GetBytes(parts[4]),
+                                Encoding.UTF8.GetBytes(expectedSig)))
+                        {
+                            Guid.TryParse(parts[1], out var schoolId);
+                            var role = parts[2];
+
+                            var claims = new List<Claim>
                             {
-                                var claims = new List<Claim>
-                                {
-                                    new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                                    new(ClaimTypes.Email, user.Email ?? ""),
-                                    new(ClaimTypes.Name, $"{user.Name} {user.LastName}".Trim()),
-                                    new(ClaimTypes.Role, user.Role ?? ""),
-                                    new("school_id", user.SchoolId?.ToString() ?? "")
-                                };
-                                var identity = new ClaimsIdentity(claims, "ApiBearer");
-                                context.User = new ClaimsPrincipal(identity);
-                            }
+                                new(ClaimTypes.NameIdentifier, userId.ToString()),
+                                new(ClaimTypes.Role, role),
+                                new("school_id", schoolId == Guid.Empty ? "" : schoolId.ToString())
+                            };
+                            var identity = new ClaimsIdentity(claims, "ApiBearer");
+                            context.User = new ClaimsPrincipal(identity);
                         }
                     }
                 }
                 catch
                 {
-                    // Token inválido o expirado: seguir sin autenticar
+                    // Token malformado o inválido: seguir sin autenticar
                 }
             }
         }
 
         await _next(context);
+    }
+
+    private string ComputeHmac(string payload)
+    {
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_secretKey));
+        return Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(payload)));
     }
 }

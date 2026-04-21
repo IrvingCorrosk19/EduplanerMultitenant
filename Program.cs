@@ -195,6 +195,9 @@ builder.Services.AddDbContext<SchoolDbContext>(options =>
     options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.RowLimitingOperationWithoutOrderByWarning));
 });
 
+// Proveedor de tenant (school_id) — lee del claim, sin hit de BD
+builder.Services.AddScoped<SchoolManager.Infrastructure.ITenantProvider, SchoolManager.Infrastructure.TenantProvider>();
+
 // Registrando todos los servicios con inyección de dependencias
 builder.Services.AddScoped<ISchoolService, SchoolService>();
 builder.Services.AddScoped<IUserService, UserService>();
