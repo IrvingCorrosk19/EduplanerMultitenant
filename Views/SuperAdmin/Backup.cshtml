@@ -1,0 +1,200 @@
+@{
+    ViewData["Title"] = "Respaldo del Sistema";
+    Layout = "_SuperAdminLayout";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-database"></i> @ViewData["Title"]</h2>
+            <p class="text-muted">Gestión de copias de seguridad de la base de datos</p>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["InfoMessage"] != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show">
+            @TempData["InfoMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Información sobre Respaldos -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="alert alert-warning">
+                <h5><i class="bi bi-exclamation-triangle"></i> Importante</h5>
+                <p class="mb-0">
+                    Los respaldos de la base de datos deben realizarse directamente desde <strong>Render.com</strong> 
+                    o utilizando herramientas como <strong>pgAdmin</strong> o comandos <strong>pg_dump</strong>.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instrucciones de Respaldo -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-cloud"></i> Respaldo desde Render.com</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="mb-3">Pasos para crear un respaldo:</h6>
+                    <ol>
+                        <li class="mb-2">Inicia sesión en <a href="https://render.com" target="_blank">Render.com</a></li>
+                        <li class="mb-2">Ve a tu base de datos PostgreSQL</li>
+                        <li class="mb-2">Selecciona la pestaña <strong>"Backups"</strong></li>
+                        <li class="mb-2">Haz clic en <strong>"Create Backup"</strong></li>
+                        <li class="mb-2">El respaldo se creará automáticamente</li>
+                        <li class="mb-2">Puedes descargar el respaldo cuando esté listo</li>
+                    </ol>
+                    <a href="https://render.com" target="_blank" class="btn btn-primary w-100 mt-3">
+                        <i class="bi bi-box-arrow-up-right"></i> Abrir Render.com
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-terminal"></i> Respaldo con pg_dump</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="mb-3">Comando para crear respaldo:</h6>
+                    <div class="bg-dark text-white p-3 rounded mb-3" style="font-family: monospace; font-size: 0.9rem;">
+                        <code style="color: #00ff00;">
+                            pg_dump -h localhost<br>
+                            -U postgres -d eduplaner<br>
+                            -f backup_$(date +%Y%m%d_%H%M%S).sql
+                        </code>
+                    </div>
+
+                    <h6 class="mt-4 mb-3">Para restaurar un respaldo:</h6>
+                    <div class="bg-dark text-white p-3 rounded" style="font-family: monospace; font-size: 0.9rem;">
+                        <code style="color: #00ff00;">
+                            psql -h localhost<br>
+                            -U postgres -d eduplaner<br>
+                            -f backup_20241016_120000.sql
+                        </code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instrucciones con pgAdmin -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-hdd-stack"></i> Respaldo con pgAdmin</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Para crear un respaldo:</h6>
+                            <ol>
+                                <li class="mb-2">Abre pgAdmin y conecta al servidor de Render</li>
+                                <li class="mb-2">Haz clic derecho en la base de datos <strong>eduplaner</strong></li>
+                                <li class="mb-2">Selecciona <strong>Backup...</strong></li>
+                                <li class="mb-2">Elige la ubicación y nombre del archivo</li>
+                                <li class="mb-2">Selecciona el formato (Plain, Custom, Tar, Directory)</li>
+                                <li class="mb-2">Haz clic en <strong>Backup</strong></li>
+                            </ol>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Para restaurar un respaldo:</h6>
+                            <ol>
+                                <li class="mb-2">Abre pgAdmin y conecta al servidor</li>
+                                <li class="mb-2">Crea una nueva base de datos (o usa la existente)</li>
+                                <li class="mb-2">Haz clic derecho en la base de datos</li>
+                                <li class="mb-2">Selecciona <strong>Restore...</strong></li>
+                                <li class="mb-2">Selecciona el archivo de respaldo</li>
+                                <li class="mb-2">Haz clic en <strong>Restore</strong></li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuración de la Base de Datos -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-server"></i> Información de Conexión</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Host:</strong> <code>localhost</code></p>
+                            <p><strong>Base de Datos:</strong> <code>eduplaner</code></p>
+                            <p><strong>Usuario:</strong> <code>postgres</code></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Puerto:</strong> <code>5432</code></p>
+                            <p><strong>SSL:</strong> <code>No requerido</code></p>
+                            <p><strong>Región:</strong> <code>Local</code></p>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <i class="bi bi-shield-lock"></i> 
+                        <strong>Nota de Seguridad:</strong> No compartas las credenciales de conexión. 
+                        La contraseña debe mantenerse confidencial.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recomendaciones -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Mejores Prácticas</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li class="mb-2"><strong>Frecuencia:</strong> Realiza respaldos automáticos al menos una vez al día</li>
+                        <li class="mb-2"><strong>Almacenamiento:</strong> Guarda los respaldos en múltiples ubicaciones (local + nube)</li>
+                        <li class="mb-2"><strong>Verificación:</strong> Prueba restaurar los respaldos periódicamente</li>
+                        <li class="mb-2"><strong>Retención:</strong> Mantén respaldos de los últimos 30 días como mínimo</li>
+                        <li class="mb-2"><strong>Seguridad:</strong> Encripta los archivos de respaldo antes de almacenarlos</li>
+                        <li class="mb-2"><strong>Documentación:</strong> Mantén un registro de todos los respaldos realizados</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botón volver -->
+    <div class="row mt-4 mb-5">
+        <div class="col-12 text-center">
+            <a asp-action="Index" class="btn btn-secondary btn-lg">
+                <i class="bi bi-arrow-left"></i> Volver al Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+

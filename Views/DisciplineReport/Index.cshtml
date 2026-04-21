@@ -1,0 +1,106 @@
+@model IEnumerable<SchoolManager.Models.DisciplineReport>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Reportes de Disciplina";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-exclamation-triangle mr-2"></i>Reportes de Disciplina</h3>
+                <small>Gestionar reportes disciplinarios de estudiantes</small>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle mr-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createReportModal">
+                <i class="fas fa-plus mr-2"></i>Nuevo Reporte
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list mr-2"></i>Lista de Reportes</h5>
+                </div>
+                <div class="card-body">
+                    @if (!Model.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>No hay reportes de disciplina registrados.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="reportsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Estudiante</th>
+                                        <th>Tipo</th>
+                                        <th>Categoría</th>
+                                        <th>Estado</th>
+                                        <th>Docente</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var report in Model)
+                                    {
+                                        <tr>
+                                            <td>@TimeZoneService.ToLocalDisplayString(report.Date, "dd/MM/yyyy")</td>
+                                            <td><strong>@(report.Student?.Name ?? "N/A")</strong></td>
+                                            <td>
+                                                <span class="badge bg-info">@report.ReportType</span>
+                                            </td>
+                                            <td>@(report.Category ?? "N/A")</td>
+                                            <td>
+                                                <span class="badge @(report.Status?.ToLower() == "resuelto" ? "bg-success" : "bg-warning")">
+                                                    @report.Status
+                                                </span>
+                                            </td>
+                                            <td>@(report.Teacher?.Name ?? "N/A")</td>
+                                            <td>
+                                                <a href="@Url.Action("Details", new { id = report.Id })" class="btn btn-sm btn-info" title="Ver detalles">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#reportsTable').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+                },
+                order: [[0, 'desc']]
+            });
+        });
+    </script>
+}

@@ -1,0 +1,67 @@
+@model SchoolManager.ViewModels.EmailApiSettingsViewModel
+@{
+    ViewData["Title"] = "Correo API (Resend)";
+    Layout = "_SuperAdminLayout";
+}
+
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2><i class="fas fa-envelope-open-text"></i> @ViewData["Title"]</h2>
+            <p class="text-muted">
+                Usado por el envío masivo de contraseñas temporales (<code>/Admin/UserPasswordManagement</code>).
+                Regístrese en <a href="https://resend.com" target="_blank" rel="noopener">resend.com</a>, verifique un dominio o use el correo de prueba, y pegue la API key.
+            </p>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["SuccessMessage"]
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+    }
+
+    <div class="card card-primary card-outline col-lg-8">
+        <div class="card-header">
+            <h3 class="card-title">Resend</h3>
+        </div>
+        <form asp-action="EmailApiSettings" method="post">
+            @Html.AntiForgeryToken()
+            <div class="card-body">
+                <div class="form-group">
+                    <label asp-for="NewApiKey"></label>
+                    <input type="password" asp-for="NewApiKey" class="form-control" autocomplete="off"
+                           placeholder="@(Model.HasStoredApiKey ? "Dejar vacío para no cambiar la key actual" : "Pegue re_...")" />
+                    @if (Model.HasStoredApiKey)
+                    {
+                        <small class="form-text text-success">Ya hay una API key guardada.</small>
+                    }
+                </div>
+                <div class="form-group">
+                    <label asp-for="FromEmail"></label>
+                    <input asp-for="FromEmail" class="form-control" required />
+                    <small class="form-text text-muted">Debe estar autorizado en Resend (dominio verificado).</small>
+                </div>
+                <div class="form-group">
+                    <label asp-for="FromName"></label>
+                    <input asp-for="FromName" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="Provider"></label>
+                    <input asp-for="Provider" class="form-control" readonly />
+                </div>
+                <div class="form-check mb-3">
+                    <input asp-for="IsActive" class="form-check-input" />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                </div>
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            </div>
+            <div class="card-footer">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
+                <a href="/SuperAdmin/Index" class="btn btn-secondary">Volver</a>
+            </div>
+        </form>
+    </div>
+</div>

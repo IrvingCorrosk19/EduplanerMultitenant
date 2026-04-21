@@ -1,0 +1,152 @@
+@model List<SchoolManager.ViewModels.MessageListViewModel>
+@{
+    ViewData["Title"] = "Mensajes Enviados";
+    Layout = "_AdminLayout";
+    var stats = ViewBag.Stats as SchoolManager.ViewModels.MessageStatsViewModel;
+}
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="bi bi-send-fill"></i> Mensajes Enviados
+            </h2>
+        </div>
+    </div>
+
+    <!-- Barra de acciones -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <a href="@Url.Action("Compose", "Messaging")" class="btn btn-primary">
+                        <i class="bi bi-pencil-square"></i> Nuevo Mensaje
+                    </a>
+                    <a href="@Url.Action("Inbox", "Messaging")" class="btn btn-outline-secondary">
+                        <i class="bi bi-inbox"></i> Bandeja de Entrada
+                    </a>
+                </div>
+                <div class="col-md-6">
+                    <form asp-action="Search" method="get" class="d-flex">
+                        <input type="text" name="q" class="form-control form-control-sm me-2" 
+                               placeholder="Buscar mensajes..." />
+                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de mensajes enviados -->
+    <div class="card">
+        <div class="card-body">
+            @if (Model == null || !Model.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-send" style="font-size: 4rem; color: #ccc;"></i>
+                    <h4 class="text-muted mt-3">No has enviado mensajes</h4>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%">Asunto</th>
+                                <th style="width: 20%">Tipo</th>
+                                <th style="width: 10%">Prioridad</th>
+                                <th style="width: 15%">Fecha</th>
+                                <th style="width: 10%">Estado</th>
+                                <th style="width: 10%" class="text-center">Respuestas</th>
+                                <th style="width: 10%" class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var message in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <a href="@Url.Action("Detail", "Messaging", new { id = message.Id })" 
+                                           class="text-decoration-none text-dark">
+                                            <strong>@message.Subject</strong>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        @switch (message.MessageType)
+                                        {
+                                            case "Individual":
+                                                <span class="badge bg-primary">Individual</span>
+                                                break;
+                                            case "Group":
+                                                <span class="badge bg-info">Grupo</span>
+                                                break;
+                                            case "AllTeachers":
+                                                <span class="badge bg-success">Todos Profes</span>
+                                                break;
+                                            case "AllStudents":
+                                                <span class="badge bg-warning">Todos Estudiantes</span>
+                                                break;
+                                            case "Broadcast":
+                                                <span class="badge bg-danger">Difusión</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @switch (message.Priority)
+                                        {
+                                            case "Urgent":
+                                                <span class="badge bg-danger">Urgente</span>
+                                                break;
+                                            case "High":
+                                                <span class="badge bg-warning">Alta</span>
+                                                break;
+                                            case "Normal":
+                                                <span class="badge bg-secondary">Normal</span>
+                                                break;
+                                            case "Low":
+                                                <span class="badge bg-light text-dark">Baja</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>@TimeZoneService.ToLocalDisplayString(message.SentAt, "dd/MM/yyyy HH:mm")</small>
+                                    </td>
+                                    <td>
+                                        @if (message.IsRead)
+                                        {
+                                            <span class="badge bg-success">Leído</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning">No leído</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (message.RepliesCount > 0)
+                                        {
+                                            <span class="badge bg-info">@message.RepliesCount</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">0</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="@Url.Action("Detail", "Messaging", new { id = message.Id })" 
+                                           class="btn btn-sm btn-outline-primary" title="Ver">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+

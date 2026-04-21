@@ -1,0 +1,232 @@
+﻿<script>
+    let areaDataTable;
+
+    $(document).ready(function () {
+        areaDataTable = $('#areaTable').DataTable({
+            dom: 'rt<"row"<"col-sm-12"p>>',
+            language: {
+                zeroRecords: "No se encontraron áreas",
+                info: "",
+                infoEmpty: "",
+                infoFiltered: "",
+                paginate: {
+                    first: "«",
+                    last: "»",
+                    next: "›",
+                    previous: "‹"
+                }
+            },
+            pageLength: 10
+        });
+
+        // Conectar búsqueda personalizada
+        $('#searchAreas').on('keyup', function() {
+            areaDataTable.search(this.value).draw();
+        });
+
+        // Botón editar
+        $('#areaTable').on('click', '.btn-edit-area', function() {
+            const row = $(this).closest('tr');
+            row.find('.area-name-text, .area-description-text').addClass('d-none');
+            row.find('.area-name-input, .area-description-input').removeClass('d-none');
+            row.find('.btn-edit-area').addClass('d-none');
+            row.find('.btn-save-area').removeClass('d-none');
+        });
+
+        // Botón guardar
+        $('#areaTable').on('click', '.btn-save-area', function() {
+            const row = $(this).closest('tr');
+            const area = {
+                Id: row.data('id'),
+                Name: row.find('.area-name-input').val().trim(),
+                Description: row.find('.area-description-input').val().trim()
+            };
+
+            if (!area.Name) {
+                Swal.fire('Advertencia', 'El nombre no puede estar vacío.', 'warning');
+                return;
+            }
+
+            $.ajax({
+                url: '/Area/Edit',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(area)
+            })
+            .done(function(response) {
+                if (response.success) {
+                    row.find('.area-name-text').text(area.Name).removeClass('d-none');
+                    row.find('.area-description-text').text(area.Description).removeClass('d-none');
+                    row.find('.area-name-input, .area-description-input').addClass('d-none');
+                    row.find('.btn-edit-area').removeClass('d-none');
+                    row.find('.btn-save-area').addClass('d-none');
+                    Swal.fire('¡Actualizado!', response.message, 'success');
+                } else {
+                    Swal.fire('Error', response.message || 'Error al actualizar el área.', 'error');
+                }
+            })
+            .fail(function(error) {
+                Swal.fire('Error', 'Error al actualizar el área: ' + (error.responseText || 'Error desconocido'), 'error');
+            });
+        });
+
+        // Botón activar/desactivar
+        $('#areaTable').on('click', '.btn-toggle-area', function() {
+            const row = $(this).closest('tr');
+            const id = row.data('id');
+            const isActive = row.data('active') === 'true';
+            const action = isActive ? 'desactivar' : 'activar';
+            const actionTitle = isActive ? 'Desactivar' : 'Activar';
+
+            Swal.fire({
+                title: `¿${actionTitle} esta área?`,
+                text: isActive ? "Las áreas inactivas no aparecerán en los filtros." : "El área estará disponible nuevamente.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: isActive ? '#f59e0b' : '#22c55e',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: `Sí, ${action}`,
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/Area/ToggleActive',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ id: id })
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            // Actualizar el estado en la fila
+                            row.data('active', (!isActive).toString());
+                            
+                            // Actualizar badge
+                            const badge = row.find('.area-status-badge');
+                            if (!isActive) {
+                                badge.removeClass('bg-secondary').addClass('bg-success').text('Activa');
+                            } else {
+                                badge.removeClass('bg-success').addClass('bg-secondary').text('Inactiva');
+                            }
+                            
+                            // Actualizar botón
+                            const btn = $(this);
+                            if (!isActive) {
+                                btn.removeClass('btn-success').addClass('btn-warning')
+                                   .attr('title', 'Desactivar')
+                                   .html('<i class="bi bi-pause-circle"></i>');
+                            } else {
+                                btn.removeClass('btn-warning').addClass('btn-success')
+                                   .attr('title', 'Activar')
+                                   .html('<i class="bi bi-play-circle"></i>');
+                            }
+                            
+                            Swal.fire('¡Actualizado!', response.message, 'success');
+                        } else {
+                            Swal.fire('Error', response.message || 'Error al cambiar el estado.', 'error');
+                        }
+                    })
+                    .fail(function(error) {
+                        Swal.fire('Error', 'Error al cambiar el estado: ' + (error.responseText || 'Error desconocido'), 'error');
+                    });
+                }
+            });
+        });
+
+        // Botón eliminar
+        $('#areaTable').on('click', '.btn-delete-area', function() {
+            const row = $(this).closest('tr');
+            const id = row.data('id');
+
+            if (!id) {
+                Swal.fire('Error', 'ID no válido para eliminar.', 'error');
+                return;
+            }
+
+            Swal.fire({
+                title: '¿Eliminar esta área?',
+                text: "Esta acción no se puede deshacer. Se recomienda desactivar en lugar de eliminar.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/Area/Delete',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ id: id })
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            areaDataTable.row(row).remove().draw();
+                            Swal.fire('Eliminado', response.message, 'success');
+                        } else {
+                            Swal.fire('Error', response.message || 'Error al eliminar el área.', 'error');
+                        }
+                    })
+                    .fail(function(error) {
+                        Swal.fire('Error', 'Error al eliminar el área: ' + (error.responseText || 'Error desconocido'), 'error');
+                    });
+                }
+            });
+        });
+    });
+
+    // Función para crear nueva área
+    window.createArea = function() {
+        const name = $('#newAreaName').val().trim();
+        const description = $('#newAreaDescription').val().trim();
+
+        if (!name) {
+            Swal.fire('Advertencia', 'El nombre del área es obligatorio.', 'warning');
+            return;
+        }
+
+        const area = { name, description };
+
+        $.ajax({
+            url: '/Area/Create',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(area)
+        })
+        .done(function(response) {
+            if (response.success) {
+                const newRow = areaDataTable.row.add([
+                    `<td class="align-middle text-center">
+                        <span class="area-name-text">${response.name}</span>
+                        <input type="text" class="form-control d-none area-name-input" value="${response.name}" />
+                    </td>`,
+                    `<td class="align-middle text-center">
+                        <span class="area-description-text">${response.description || ''}</span>
+                        <textarea class="form-control d-none area-description-input">${response.description || ''}</textarea>
+                    </td>`,
+                    `<td class="align-middle text-center">
+                        <button class="btn btn-action btn-edit me-1 btn-edit-area" title="Editar">
+                            <i class="bi bi-pencil me-1"></i> Editar
+                        </button>
+                        <button class="btn btn-action btn-save d-none me-1 btn-save-area" title="Guardar">
+                            <i class="bi bi-check me-1"></i> Guardar
+                        </button>
+                        <button class="btn btn-action btn-delete btn-delete-area" title="Eliminar">
+                            <i class="bi bi-trash me-1"></i> Eliminar
+                        </button>
+                    </td>`
+                ]).draw().node();
+
+                $(newRow).attr('data-id', response.id);
+                $('#newAreaName').val('');
+                $('#newAreaDescription').val('');
+                Swal.fire('¡Creado!', response.message, 'success');
+            } else {
+                Swal.fire('Error', response.message || 'Error al crear el área.', 'error');
+            }
+        })
+        .fail(function(error) {
+            Swal.fire('Error', 'Error al crear el área: ' + (error.responseText || 'Error desconocido'), 'error');
+        });
+    };
+</script>

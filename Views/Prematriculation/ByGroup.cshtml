@@ -1,0 +1,89 @@
+@model IEnumerable<SchoolManager.Dtos.PrematriculationDto>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Estudiantes por Grupo";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-users mr-2"></i>Estudiantes Prematriculados/Matriculados por Grupo</h3>
+                <small>Listado de estudiantes prematriculados o matriculados en el grupo seleccionado</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list mr-2"></i>Lista de Estudiantes</h5>
+                </div>
+                <div class="card-body">
+                    @if (!Model.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>No hay estudiantes prematriculados o matriculados en este grupo.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="studentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Estudiante</th>
+                                        <th>Documento</th>
+                                        <th>Estado</th>
+                                        <th>Código</th>
+                                        <th>Fecha</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model)
+                                    {
+                                        <tr>
+                                            <td>@item.StudentName</td>
+                                            <td>@item.StudentDocumentId</td>
+                                            <td>
+                                                @switch (item.Status)
+                                                {
+                                                    case "Prematriculado":
+                                                        <span class="badge bg-info">Prematriculado</span>
+                                                        break;
+                                                    case "Matriculado":
+                                                        <span class="badge bg-success">Matriculado</span>
+                                                        break;
+                                                    default:
+                                                        <span class="badge bg-secondary">@item.Status</span>
+                                                        break;
+                                                }
+                                            </td>
+                                            <td><code>@item.PrematriculationCode</code></td>
+                                            <td>@TimeZoneService.ToLocalDisplayString(item.CreatedAt, "dd/MM/yyyy")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#studentsTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json"
+                },
+                "order": [[0, "asc"]]
+            });
+        });
+    </script>
+}
+

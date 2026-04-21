@@ -1,0 +1,173 @@
+@model IEnumerable<SchoolManager.Dtos.PaymentDto>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Resultados del Reporte";
+    var studentId = ViewBag.StudentId as Guid?;
+    var conceptId = ViewBag.ConceptId as Guid?;
+    var startDate = ViewBag.StartDate as DateTime?;
+    var endDate = ViewBag.EndDate as DateTime?;
+    var status = ViewBag.Status as string;
+
+    var totalAmount = Model.Sum(p => p.Amount);
+    var confirmedAmount = Model.Where(p => p.PaymentStatus == "Confirmado").Sum(p => p.Amount);
+    var pendingAmount = Model.Where(p => p.PaymentStatus == "Pendiente").Sum(p => p.Amount);
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-chart-bar mr-2"></i>Resultados del Reporte</h3>
+                <small>Pagos filtrados según los criterios seleccionados</small>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Any())
+    {
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Pagos</h5>
+                        <h3 class="text-primary">@Model.Count()</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Monto Total</h5>
+                        <h3 class="text-success">@totalAmount.ToString("C")</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Confirmados</h5>
+                        <h3 class="text-success">@confirmedAmount.ToString("C")</h3>
+                        <small>Pendientes: @pendingAmount.ToString("C")</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <a href="@Url.Action("Reports")" class="btn btn-secondary">
+                <i class="fas fa-arrow-left mr-2"></i>Nuevo Reporte
+            </a>
+            @if (Model.Any())
+            {
+                <button onclick="window.print()" class="btn btn-primary">
+                    <i class="fas fa-print mr-2"></i>Imprimir
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list mr-2"></i>Lista de Pagos</h5>
+                </div>
+                <div class="card-body">
+                    @if (!Model.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>No se encontraron pagos con los filtros seleccionados.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="reportTable">
+                                <thead>
+                                    <tr>
+                                        <th>Número de Recibo</th>
+                                        <th>Estudiante</th>
+                                        <th>Concepto</th>
+                                        <th>Monto</th>
+                                        <th>Método de Pago</th>
+                                        <th>Fecha de Pago</th>
+                                        <th>Estado</th>
+                                        <th>Fecha Confirmación</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var payment in Model)
+                                    {
+                                        <tr>
+                                            <td><code>@payment.ReceiptNumber</code></td>
+                                            <td>@(payment.StudentName ?? "N/A")</td>
+                                            <td>@(payment.PaymentConceptName ?? "-")</td>
+                                            <td><strong>@payment.Amount.ToString("C")</strong></td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(payment.PaymentMethod))
+                                                {
+                                                    <span class="badge bg-info">@payment.PaymentMethod</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>@TimeZoneService.ToLocalDisplayString(payment.PaymentDate, "dd/MM/yyyy")</td>
+                                            <td>
+                                                @if (payment.PaymentStatus == "Confirmado")
+                                                {
+                                                    <span class="badge bg-success">Confirmado</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning">Pendiente</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (payment.ConfirmedAt.HasValue)
+                                                {
+                                                    @TimeZoneService.ToLocalDisplayString(payment.ConfirmedAt, "dd/MM/yyyy HH:mm")
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="3" class="text-right">Total:</th>
+                                        <th>@totalAmount.ToString("C")</th>
+                                        <th colspan="4"></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#reportTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json"
+                },
+                "order": [[5, "desc"]],
+                "footerCallback": function (row, data, start, end, display) {
+                    // Footer ya está en HTML
+                }
+            });
+        });
+    </script>
+}
+

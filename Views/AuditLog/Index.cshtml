@@ -1,0 +1,104 @@
+@model IEnumerable<SchoolManager.Models.AuditLog>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Registro de Auditoría";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-clipboard-list mr-2"></i>Registro de Auditoría</h3>
+                <small>Historial completo de acciones del sistema</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list mr-2"></i>Logs de Auditoría</h5>
+                </div>
+                <div class="card-body">
+                    @if (!Model.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>No hay registros de auditoría.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="auditTable">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha/Hora</th>
+                                        <th>Usuario</th>
+                                        <th>Rol</th>
+                                        <th>Escuela</th>
+                                        <th>Acción</th>
+                                        <th>Recurso</th>
+                                        <th>IP</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var log in Model)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <small>
+                                                    @TimeZoneService.ToLocalDisplayString(log.Timestamp, "dd/MM/yyyy")<br>
+                                                    @TimeZoneService.ToLocalDisplayString(log.Timestamp, "HH:mm:ss")
+                                                </small>
+                                            </td>
+                                            <td><strong>@(log.UserName ?? "N/A")</strong></td>
+                                            <td>
+                                                <span class="badge bg-primary">@(log.UserRole ?? "N/A")</span>
+                                            </td>
+                                            <td><small>@(log.School?.Name ?? "N/A")</small></td>
+                                            <td>
+                                                <span class="badge @(log.Action?.ToLower().Contains("delete") == true ? "bg-danger" : log.Action?.ToLower().Contains("create") == true ? "bg-success" : "bg-info")">
+                                                    @(log.Action ?? "N/A")
+                                                </span>
+                                            </td>
+                                            <td><small>@(log.Resource ?? "N/A")</small></td>
+                                            <td><small class="text-muted">@(log.IpAddress ?? "N/A")</small></td>
+                                            <td>
+                                                <a href="@Url.Action("Details", new { id = log.Id })" class="btn btn-sm btn-info" title="Ver detalles">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                @if (log.UserId.HasValue)
+                                                {
+                                                    <a href="@Url.Action("LogsByUser", new { userId = log.UserId })" class="btn btn-sm btn-secondary" title="Ver logs del usuario">
+                                                        <i class="fas fa-user"></i>
+                                                    </a>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#auditTable').DataTable({
+                order: [[0, 'desc']],
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+                },
+                pageLength: 25
+            });
+        });
+    </script>
+}

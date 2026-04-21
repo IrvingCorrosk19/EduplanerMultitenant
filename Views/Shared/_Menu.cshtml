@@ -1,0 +1,48 @@
+@using SchoolManager.Services.Interfaces
+@inject IMenuService MenuService
+@inject ICurrentUserService CurrentUserService
+
+@{
+    var userRole = await CurrentUserService.GetCurrentUserRoleAsync();
+    var menuItems = await MenuService.GetMenuItemsForUserAsync(userRole ?? "guest");
+}
+
+<nav class="mt-2">
+    <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+        @foreach (var item in menuItems)
+        {
+            if (item.SubItems.Any())
+            {
+                <li class="nav-item">
+                    <a href="@item.Url" class="nav-link">
+                        <i class="nav-icon @item.Icon"></i>
+                        <p>
+                            @item.Title
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        @foreach (var subItem in item.SubItems)
+                        {
+                            <li class="nav-item">
+                                <a href="@subItem.Url" class="nav-link">
+                                    <i class="nav-icon @subItem.Icon"></i>
+                                    <p>@subItem.Title</p>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </li>
+            }
+            else
+            {
+                <li class="nav-item">
+                    <a href="@item.Url" class="nav-link">
+                        <i class="nav-icon @item.Icon"></i>
+                        <p>@item.Title</p>
+                    </a>
+                </li>
+            }
+        }
+    </ul>
+</nav> 

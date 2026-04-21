@@ -1,0 +1,144 @@
+@{
+    Layout = null;
+    var userName = User.Identity?.Name ?? "Usuario";
+    var isAdmin = User.IsInRole("Admin");
+    var isDirector = User.IsInRole("Director");
+    var isTeacher = User.IsInRole("Profesor");
+    var isStudent = User.IsInRole("Estudiante");
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - SchoolManager</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="~/lib/adminlte/css/adminlte.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" />
+    <!-- CSS de DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link rel="stylesheet" href="~/lib/sweetalert2/sweetalert2.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+
+
+
+
+
+</head>
+<body class="hold-transition sidebar-mini layout-fixed">
+    <div class="wrapper">
+
+        <!-- Navbar -->
+        <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a>
+                </li>
+                <li class="nav-item d-none d-sm-inline-block">
+                    <a href="@Url.Action("Index", "Home")" class="nav-link">Inicio</a>
+                </li>
+            </ul>
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <span class="nav-link"><i class="fas fa-user"></i> @userName</span>
+                </li>
+                <li class="nav-item">
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-link nav-link">
+                            <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </nav>
+        <!-- /.navbar -->
+        <!-- Sidebar -->
+        <aside class="main-sidebar sidebar-dark-primary elevation-4">
+            <!-- Brand Logo -->
+            <a href="/" class="brand-link">
+                <img src="~/images/logo.jpeg" alt="Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
+                <span class="brand-text font-weight-light">School Manager</span>
+            </a>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Sidebar Menu -->
+                <partial name="_Menu" />
+                <!-- /.sidebar-menu -->
+                
+                <!-- QL Services Logo al final del sidebar -->
+                <div class="sidebar-footer" style="padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1); margin-top: auto;">
+                    <div class="text-center">
+                        <img src="~/images/logo.jpeg" alt="QL Services" style="max-height: 40px; filter: brightness(1.1); opacity: 0.8;" class="mb-1">
+                        <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 500;">
+                            Desarrollado por QL Services
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /.sidebar -->
+        </aside>
+        <!-- /.sidebar -->
+        <!-- Contenido principal -->
+        <div class="content-wrapper">
+            <section class="content pt-4">
+                @RenderBody()
+            </section>
+        </div>
+        <!-- /.contenido principal -->
+
+        <footer class="main-footer" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 2rem 0;">
+            <div class="container-fluid">
+                <div class="row align-items-center">
+                    <div class="col-md-8 mb-3 mb-md-0">
+                        <div style="color: #ffffff;">
+                            <h6 style="font-weight: 600; margin-bottom: 0.75rem; color: #fbbf24; font-size: 1.1rem;">QL Services</h6>
+                            <p style="margin-bottom: 0.5rem; font-size: 0.95rem; line-height: 1.5;">
+                                <strong>© @DateTime.Now.Year QL Services.</strong> Todos los derechos reservados.
+                            </p>
+                            <p style="margin-bottom: 0.4rem; font-size: 0.9rem; line-height: 1.4; opacity: 0.95;">
+                                Sistema de Gestión Escolar desarrollado por <strong style="color: #fbbf24;">QL Services</strong>.
+                            </p>
+                            <p style="margin-bottom: 0; font-size: 0.85rem; font-style: italic; opacity: 0.9; line-height: 1.3;">
+                                Queda prohibida la reproducción total o parcial sin autorización expresa.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center text-md-end">
+                        <div class="d-flex align-items-center justify-content-center justify-content-md-end gap-3 mb-2">
+                        <img src="~/images/logo.jpeg" alt="QL Services Logo" class="footer-logo" style="max-height: 70px; filter: brightness(1.2) contrast(1.1); transition: transform 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                        </div>
+                        <small style="color: rgba(255, 255, 255, 0.85); font-size: 0.85rem;">Versión 1.0</small>
+                    </div>
+                </div>
+                <div class="row mt-2 pt-2" style="border-top: 1px solid rgba(255, 255, 255, 0.2);">
+                    <div class="col-12 text-center">
+                        <small style="color: rgba(255, 255, 255, 0.8); font-size: 0.8rem;">
+                            Sistema de Gestión Escolar | Desarrollado con tecnología .NET
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/adminlte/js/adminlte.min.js"></script>
+    <!-- JS de DataTables -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="~/lib/sweetalert2/sweetalert2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+
+    @RenderSection("Scripts", required: false)
+
+</body>
+</html>

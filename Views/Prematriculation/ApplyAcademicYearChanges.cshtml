@@ -1,0 +1,207 @@
+@{
+    ViewData["Title"] = "Aplicar Cambios de Año Académico";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Aplicar Cambios de Año Académico</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Inicio</a></li>
+                        <li class="breadcrumb-item active">Aplicar Cambios de Año Académico</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card card-primary">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-calendar-check"></i> Aplicar Cambios a la Base de Datos
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <h5><i class="icon fas fa-info-circle"></i> Información Importante</h5>
+                                <p>
+                                    Esta herramienta aplicará los cambios necesarios para el sistema de Años Académicos:
+                                </p>
+                                <ul>
+                                    <li>Crear la tabla <code>academic_years</code></li>
+                                    <li>Agregar la columna <code>academic_year_id</code> a las tablas:
+                                        <ul>
+                                            <li><code>trimester</code></li>
+                                            <li><code>student_assignments</code></li>
+                                            <li><code>student_activity_scores</code></li>
+                                        </ul>
+                                    </li>
+                                    <li>Crear índices y foreign keys necesarios</li>
+                                </ul>
+                                <p class="mb-0">
+                                    <strong>Nota:</strong> Los cambios se aplican de forma segura. Si una tabla, columna o índice ya existe, se omitirá automáticamente.
+                                </p>
+                            </div>
+
+                            <div class="alert alert-warning">
+                                <h5><i class="icon fas fa-exclamation-triangle"></i> Advertencia</h5>
+                                <p class="mb-0">
+                                    Asegúrate de tener un respaldo de la base de datos antes de proceder. 
+                                    Aunque los cambios son seguros, siempre es recomendable tener un respaldo.
+                                </p>
+                            </div>
+
+                            <div id="resultMessage" style="display: none;"></div>
+
+                            <form id="applyChangesForm">
+                                @Html.AntiForgeryToken()
+                                <div class="text-center mt-4">
+                                    <button type="button" class="btn btn-primary btn-lg" id="btnApplyChanges">
+                                        <i class="fas fa-play-circle"></i> Aplicar Cambios
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div id="loadingIndicator" style="display: none;" class="text-center mt-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="sr-only">Aplicando cambios...</span>
+                                </div>
+                                <p class="mt-2">Aplicando cambios a la base de datos. Por favor, espera...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/lib/sweetalert2/sweetalert2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#btnApplyChanges').on('click', function() {
+                Swal.fire({
+                    title: '¿Estás seguro?',
+                    text: 'Esta acción aplicará los cambios de Año Académico a la base de datos.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Sí, aplicar cambios',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        applyChanges();
+                    }
+                });
+            });
+
+            function applyChanges() {
+                // Mostrar indicador de carga
+                $('#btnApplyChanges').prop('disabled', true);
+                $('#loadingIndicator').show();
+                $('#resultMessage').hide();
+
+                $.ajax({
+                    url: '@Url.Action("ApplyAcademicYearChanges", "Prematriculation")',
+                    type: 'POST',
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        $('#loadingIndicator').hide();
+                        $('#btnApplyChanges').prop('disabled', false);
+
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Éxito!',
+                                text: response.message || 'Cambios aplicados correctamente',
+                                confirmButtonText: 'Aceptar'
+                            });
+                            showResultMessage('success', response.message || 'Cambios aplicados correctamente');
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: response.message || 'Ocurrió un error al aplicar los cambios',
+                                confirmButtonText: 'Aceptar'
+                            });
+                            showResultMessage('danger', response.message || 'Ocurrió un error al aplicar los cambios');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $('#loadingIndicator').hide();
+                        $('#btnApplyChanges').prop('disabled', false);
+
+                        let errorMessage = 'Ocurrió un error al aplicar los cambios';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        } else if (xhr.responseText) {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                errorMessage = response.message || errorMessage;
+                            } catch (e) {
+                                errorMessage = xhr.responseText.substring(0, 200);
+                            }
+                        }
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: errorMessage,
+                            confirmButtonText: 'Aceptar'
+                        });
+                        showResultMessage('danger', errorMessage);
+                    }
+                });
+            }
+
+            function showResultMessage(type, message) {
+                const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+                const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+                $('#resultMessage')
+                    .removeClass('alert-success alert-danger')
+                    .addClass('alert ' + alertClass)
+                    .html(`<h5><i class="icon fas ${icon}"></i> ${type === 'success' ? 'Éxito' : 'Error'}</h5><p>${message}</p>`)
+                    .show();
+            }
+
+            // Mostrar mensajes de TempData si existen
+            @if (TempData["Success"] != null)
+            {
+                <text>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Éxito',
+                    text: '@TempData["Success"]',
+                    confirmButtonText: 'Aceptar'
+                });
+                </text>
+            }
+
+            @if (TempData["Error"] != null)
+            {
+                <text>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '@TempData["Error"]',
+                    confirmButtonText: 'Aceptar'
+                });
+                </text>
+            }
+        });
+    </script>
+}
+

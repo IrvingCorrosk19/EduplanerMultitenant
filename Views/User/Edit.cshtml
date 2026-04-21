@@ -1,0 +1,169 @@
+@model SchoolManager.Models.User
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Editar Usuario";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-user-edit mr-2"></i>Editar Usuario</h3>
+                <small>Actualice la información del usuario</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Información del Usuario</h5>
+                </div>
+                <div class="card-body">
+                    @if (TempData["SuccessMessage"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show"><i class="fas fa-check-circle me-2"></i>@TempData["SuccessMessage"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+                    }
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show"><i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+                    }
+                    <form asp-action="Edit" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Foto del usuario</label>
+                            <p class="text-muted small mb-2">Se usará en el carnet estudiantil si es estudiante. JPEG o PNG; si supera 2 MB se comprimirá automáticamente (máx. de subida 12 MB).</p>
+                            <div class="d-flex align-items-start gap-3">
+                                @if (!string.IsNullOrEmpty(Model.PhotoUrl))
+                                {
+                                    <img src="@UserPhotoLinks.Href(Model.PhotoUrl)" alt="Foto" class="rounded shadow-sm" style="width:100px;height:100px;object-fit:cover;" />
+                                }
+                                else
+                                {
+                                    <div class="rounded bg-light d-flex align-items-center justify-content-center text-muted" style="width:100px;height:100px;"><i class="fas fa-user-circle fa-3x"></i></div>
+                                }
+                                <div>
+                                    <form asp-action="UpdatePhoto" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="d-inline mb-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="file" name="photo" accept=".jpg,.jpeg,.png,image/jpeg,image/png" class="form-control form-control-sm mb-1" style="max-width:240px;" />
+                                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload me-1"></i>Subir foto</button>
+                                    </form>
+                                    @if (!string.IsNullOrEmpty(Model.PhotoUrl))
+                                    {
+                                        <form asp-action="RemovePhoto" asp-route-id="@Model.Id" method="post" class="d-inline ms-1">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar la foto de este usuario?');"><i class="fas fa-trash me-1"></i>Eliminar foto</button>
+                                        </form>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Name" class="form-label">Nombre *</label>
+                                    <input asp-for="Name" class="form-control" required />
+                                    <span asp-validation-for="Name" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="LastName" class="form-label">Apellido *</label>
+                                    <input asp-for="LastName" class="form-control" required />
+                                    <span asp-validation-for="LastName" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Email" class="form-label">Correo Electrónico *</label>
+                                    <input asp-for="Email" type="email" class="form-control" required />
+                                    <span asp-validation-for="Email" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="DocumentId" class="form-label">Documento de Identidad</label>
+                                    <input asp-for="DocumentId" class="form-control" />
+                                    <span asp-validation-for="DocumentId" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Role" class="form-label">Rol *</label>
+                                    <select asp-for="Role" class="form-select" required>
+                                        @if (ViewBag.Roles != null)
+                                        {
+                                            @foreach (var item in (IEnumerable<SelectListItem>)ViewBag.Roles)
+                                            {
+                                                <option value="@item.Value">@item.Text</option>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <option value="director">Director</option>
+                                            <option value="teacher">Docente</option>
+                                            <option value="contable">Contable</option>
+                                            <option value="secretaria">Secretaria</option>
+                                        }
+                                    </select>
+                                    <span asp-validation-for="Role" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Status" class="form-label">Estado</label>
+                                    <select asp-for="Status" class="form-select">
+                                        <option value="Activo">Activo</option>
+                                        <option value="Inactivo">Inactivo</option>
+                                        <option value="Suspendido">Suspendido</option>
+                                    </select>
+                                    <span asp-validation-for="Status" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="DateOfBirth" class="form-label">Fecha de Nacimiento</label>
+                                    <input asp-for="DateOfBirth" type="date" class="form-control" />
+                                    <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="CellphonePrimary" class="form-label">Teléfono Principal</label>
+                                    <input asp-for="CellphonePrimary" class="form-control" />
+                                    <span asp-validation-for="CellphonePrimary" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="@Url.Action("Index")" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left mr-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save mr-2"></i>Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

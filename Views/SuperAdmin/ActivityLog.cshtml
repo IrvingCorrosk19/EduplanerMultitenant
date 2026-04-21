@@ -1,0 +1,169 @@
+@model SchoolManager.ViewModels.PagedResult<SchoolManager.ViewModels.AuditLogViewModel>
+@{
+    ViewData["Title"] = "Registro de Actividad";
+    Layout = "_SuperAdminLayout";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-clock-history"></i> @ViewData["Title"]</h2>
+            <p class="text-muted">Historial de acciones realizadas en el sistema</p>
+        </div>
+    </div>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Tabla de Logs -->
+    <div class="card">
+        <div class="card-header bg-dark text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-ul"></i> Registro de Actividad
+                </h5>
+                <span class="badge bg-light text-dark">
+                    Total: @Model.TotalCount registros
+                </span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Items != null && Model.Items.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 10%;">Fecha/Hora</th>
+                                <th style="width: 15%;">Usuario</th>
+                                <th style="width: 10%;">Rol</th>
+                                <th style="width: 15%;">Escuela</th>
+                                <th style="width: 10%;">Acción</th>
+                                <th style="width: 10%;">Recurso</th>
+                                <th style="width: 20%;">Detalles</th>
+                                <th style="width: 10%;">IP</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in Model.Items)
+                            {
+                                <tr>
+                                    <td>
+                                        <small>
+                                            @TimeZoneService.ToLocalDisplayString(log.Timestamp, "dd/MM/yyyy")<br>
+                                            @TimeZoneService.ToLocalDisplayString(log.Timestamp, "HH:mm:ss")
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <strong>@log.UserName</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetRoleBadgeClass(log.UserRole)">
+                                            @log.UserRole
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>@log.SchoolName</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetActionBadgeClass(log.Action)">
+                                            @log.Action
+                                        </span>
+                                    </td>
+                                    <td><small>@log.Resource</small></td>
+                                    <td>
+                                        <small class="text-muted">
+                                            @(log.Details?.Length > 100 ? log.Details.Substring(0, 100) + "..." : log.Details)
+                                        </small>
+                                    </td>
+                                    <td><small class="text-muted">@log.IpAddress</small></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                @if (Model.TotalPages > 1)
+                {
+                    <div class="card-footer">
+                        <nav>
+                            <ul class="pagination pagination-sm justify-content-center mb-0">
+                                <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                                    <a class="page-link" asp-action="ActivityLog" asp-route-page="@(Model.PageNumber - 1)">
+                                        <i class="bi bi-chevron-left"></i> Anterior
+                                    </a>
+                                </li>
+
+                                @for (int i = 1; i <= Model.TotalPages; i++)
+                                {
+                                    <li class="page-item @(Model.PageNumber == i ? "active" : "")">
+                                        <a class="page-link" asp-action="ActivityLog" asp-route-page="@i">@i</a>
+                                    </li>
+                                }
+
+                                <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                                    <a class="page-link" asp-action="ActivityLog" asp-route-page="@(Model.PageNumber + 1)">
+                                        Siguiente <i class="bi bi-chevron-right"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                        <p class="text-center text-muted small mt-2 mb-0">
+                            Página @Model.PageNumber de @Model.TotalPages
+                        </p>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="p-5 text-center text-muted">
+                    <i class="bi bi-inbox" style="font-size: 4rem;"></i>
+                    <p class="mt-3">No hay registros de actividad</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Botón volver -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <a asp-action="Index" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Volver al Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+@functions {
+    string GetRoleBadgeClass(string role)
+    {
+        return role?.ToLower() switch
+        {
+            "superadmin" => "bg-danger",
+            "admin" => "bg-primary",
+            "director" => "bg-info",
+            "teacher" => "bg-success",
+            "student" or "estudiante" => "bg-warning text-dark",
+            _ => "bg-secondary"
+        };
+    }
+
+    string GetActionBadgeClass(string action)
+    {
+        return action?.ToLower() switch
+        {
+            "create" or "crear" => "bg-success",
+            "update" or "actualizar" => "bg-info",
+            "delete" or "eliminar" => "bg-danger",
+            "login" or "logout" => "bg-primary",
+            _ => "bg-secondary"
+        };
+    }
+}
+

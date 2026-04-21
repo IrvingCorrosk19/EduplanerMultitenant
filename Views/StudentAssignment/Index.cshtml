@@ -1,0 +1,564 @@
+@model List<SchoolManager.ViewModels.StudentAssignmentOverviewViewModel>
+
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Asignación de Estudiantes";
+}
+
+<style>
+    :root {
+        --primary-color: #2563eb;
+        --secondary-color: #475569;
+        --success-color: #22c55e;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+        --light-bg: #f8fafc;
+        --border-color: #e2e8f0;
+    }
+    body { background-color: var(--light-bg); }
+    .student-portal { padding: 1.5rem 0; }
+    .portal-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    .portal-header h3 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+    .portal-header small {
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+    .card {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+        background: white;
+    }
+    .card-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: white;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1.25rem;
+        border-radius: 1rem 1rem 0 0 !important;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+    .card-body { padding: 1.5rem; }
+    .form-control, .form-select {
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary-color) 0%, #1e40af 100%);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .btn-success {
+        background: linear-gradient(135deg, var(--success-color) 0%, #16a34a 100%);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .btn-success:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .badge {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-weight: 500;
+    }
+    .badge.bg-success {
+        background-color: #dcfce7 !important;
+        color: #15803d !important;
+    }
+    .badge.bg-danger {
+        background-color: #fee2e2 !important;
+        color: #b91c1c !important;
+    }
+    .table {
+        border-radius: 0.5rem;
+        overflow: hidden;
+        margin-bottom: 0;
+    }
+    .table thead th {
+        background-color: var(--light-bg);
+        border-bottom: 2px solid var(--border-color);
+        padding: 1rem;
+        font-weight: 600;
+        color: var(--secondary-color);
+        text-align: center;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        text-align: center;
+    }
+    .search-bar {
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+    .search-bar input[type="text"] {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        background-color: white;
+        font-size: 0.95rem;
+        color: #1e293b;
+        transition: all 0.2s;
+    }
+    .search-bar input[type="text"]:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .search-bar::before {
+        content: "";
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 1rem;
+        height: 1rem;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        opacity: 0.5;
+    }
+</style>
+
+<div class="student-portal">
+    <div class="portal-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="mb-0"><i class="bi bi-mortarboard-fill me-2"></i>Asignación de Estudiantes</h3>
+            </div>
+            <div class="text-end">
+                <small class="opacity-75">@TimeZoneService.GetTodayLongString()</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="bi bi-mortarboard-fill text-white fs-4"></i>
+            <span class="fw-bold fs-4">Asignaciones Actuales</span>
+        </div>
+        <div class="card-body">
+            <div class="mb-4 d-flex justify-content-center">
+                <div class="search-input position-relative w-50">
+                    <i class="bi bi-search position-absolute" style="left: 1rem; top: 50%; transform: translateY(-50%); font-size: 1.3rem; color: var(--secondary-color);"></i>
+                    <input type="text" id="customSearch" class="form-control form-control-lg ps-5" placeholder="Buscar estudiante, correo o grupo..." autocomplete="off" />
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle text-center" id="asignacionesTable">
+                    <thead class="table-primary">
+                        <tr>
+                            <th>#</th>
+                            <th>Nombre</th>
+                            <th>Apellido</th>
+                            <th>Identificación</th>
+                            <th>Correo</th>
+                            <th>Estado</th>
+                            <th>Grado/Grupo/Jornada</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Count; i++)
+                        {
+                            var est = Model[i];
+                            <tr data-student-id="@est.StudentId">
+                                <td>@(i + 1)</td>
+                                <td class="text-start">@est.FirstName</td>
+                                <td class="text-start">@est.LastName</td>
+                                <td class="text-start">@est.DocumentId</td>
+                                <td class="text-start">@est.Email</td>
+                                <td>
+                                    <span class="badge @(est.IsActive ? "bg-success text-success bg-opacity-25" : "bg-danger text-danger bg-opacity-25") fw-bold px-3 py-2">
+                                        <i class="bi @(est.IsActive ? "bi-check-circle-fill" : "bi-x-circle-fill") me-1"></i>
+                                        @(est.IsActive ? "Activo" : "Inactivo")
+                                    </span>
+                                </td>
+                                <td class="text-start grade-group-cell">
+                                    @if (est.GradeGroupPairs != null && est.GradeGroupPairs.Count > 0)
+                                    {
+                                        foreach (var pair in est.GradeGroupPairs)
+                                        {
+                                            <div class="mb-2 p-2 bg-light rounded">
+                                                @{
+                                                    // Extraer información del formato: "Grado - Grupo | Jornada: Mañana"
+                                                    var parts = pair.Split('|');
+                                                    var gradoGrupo = parts.Length > 0 ? parts[0].Trim() : pair;
+                                                    var jornada = parts.Length > 1 ? parts[1].Replace("Jornada:", "").Trim() : "";
+                                                    
+                                                    // Determinar color del badge según jornada
+                                                    string badgeClass = "bg-secondary";
+                                                    string jornadaTexto = "Sin jornada";
+                                                    if (!string.IsNullOrEmpty(jornada))
+                                                    {
+                                                        jornadaTexto = jornada;
+                                                        jornada = jornada.ToLower();
+                                                        if (jornada.Contains("mañana")) badgeClass = "bg-info text-white";
+                                                        else if (jornada.Contains("tarde")) badgeClass = "bg-warning text-dark";
+                                                        else if (jornada.Contains("noche")) badgeClass = "bg-dark text-white";
+                                                        else if (jornada.Contains("sin")) badgeClass = "bg-secondary text-white";
+                                                    }
+                                                }
+                                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <i class="bi bi-mortarboard-fill text-primary"></i>
+                                                        <span class="fw-bold text-primary">@gradoGrupo</span>
+                                                    </div>
+                                                    <span class="badge @badgeClass px-3 py-2 fw-bold">
+                                                        <i class="bi bi-clock-fill me-1"></i>@jornadaTexto
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <em class="text-muted">Sin asignaciones</em>
+                                    }
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-primary btn-md me-2 px-3 py-1"
+                                            data-bs-toggle="modal" data-bs-target="#gradeGroupModal"
+                                            data-student-id="@est.StudentId" data-student-name="@est.FullName">
+                                        <i class="bi bi-pencil-square me-1"></i> Editar
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para mostrar y editar grado y grupo -->
+<div class="modal fade" id="gradeGroupModal" tabindex="-1" aria-labelledby="gradeGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="gradeGroupModalLabel">Asignación de <span id="modalStudentName"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="gradeGroupInfo" class="mb-4 p-3 bg-light rounded">
+                    <h6 class="mb-2 text-secondary">Asignación Actual:</h6>
+                    <div class="current-assignment fs-5"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nueva Asignación:</label>
+                    <select id="gradeGroupSelect" class="form-select form-select-lg">
+                        <option value="">-- Seleccione Grado/Grupo --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btnGuardarCambioGrupo">
+                    <i class="bi bi-check-circle me-1"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        /** SweetAlert encima del modal: solo quitar overlays de Swal. */
+        function cleanupSweetAlert() {
+            document.querySelectorAll('.swal2-container').forEach(function (c) { c.remove(); });
+            document.body.classList.remove('swal2-shown', 'swal2-height-auto');
+        }
+
+        /** Restaurar body solo si no hay modal visible (evita romper Bootstrap 5 / null en .hide). */
+        function resetBodyIfNoOpenModal() {
+            if (document.querySelector('.modal.show')) return;
+            document.querySelectorAll('.modal-backdrop').forEach(function (b) { b.remove(); });
+            document.body.classList.remove('modal-open');
+            document.body.style.paddingRight = '';
+            document.body.style.overflow = '';
+            document.documentElement.style.paddingRight = '';
+            document.documentElement.style.overflow = '';
+        }
+
+        /** Limpieza segura tras Swal o estados raros — nunca dispose del modal abierto. */
+        function forceCleanup() {
+            cleanupSweetAlert();
+            resetBodyIfNoOpenModal();
+        }
+
+        /** Quitar backdrops viejos antes de abrir (show.bs.modal); no tocar la instancia Modal. */
+        function prepareModalOpen() {
+            cleanupSweetAlert();
+            if (!document.querySelector('.modal.show')) {
+                document.querySelectorAll('.modal-backdrop').forEach(function (b) { b.remove(); });
+                document.body.classList.remove('modal-open');
+                document.body.style.paddingRight = '';
+                document.body.style.overflow = '';
+            }
+        }
+
+        /** Cierra el modal con API BS5 y quita foco del .btn-close (evita aria-hidden + foco). */
+        function hideGradeGroupModalSafe() {
+            var el = document.getElementById('gradeGroupModal');
+            if (!el) return;
+            var ae = document.activeElement;
+            if (ae && el.contains(ae)) {
+                ae.blur();
+            }
+            var inst = bootstrap.Modal.getInstance(el) || bootstrap.Modal.getOrCreateInstance(el);
+            inst.hide();
+        }
+
+        $(function () {
+            // Inicializar DataTables
+            // Muchas filas (~1.8k): evita clases CSS de orden por celda (reduce trabajo al inicializar).
+            var table = $('#asignacionesTable').DataTable({
+                language: {
+                    search: "", lengthMenu: "Mostrar _MENU_",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_",
+                    zeroRecords: "Sin coincidencias",
+                    paginate: { first: "«", last: "»", next: "›", previous: "‹" }
+                },
+                pageLength: 10,
+                responsive: true,
+                autoWidth: false,
+                orderClasses: false,
+                dom: 'rtip', // Oculta el buscador nativo
+            });
+
+            // Conectar búsqueda personalizada
+            $('#customSearch').on('keyup', function () {
+                table.search(this.value).draw();
+            });
+        });
+
+        let currentStudentId = null;
+
+        // Manejo del Modal
+        $('#gradeGroupModal').on('show.bs.modal', function (event) {
+            prepareModalOpen();
+            const button = $(event.relatedTarget);
+            currentStudentId = button.data('student-id');
+            const studentName = button.data('student-name');
+
+            $('#modalStudentName').text(studentName);
+            const infoContainer = $('#gradeGroupInfo .current-assignment');
+            const dropdown = $('#gradeGroupSelect');
+
+            // Limpiar y mostrar carga
+            infoContainer.html(`<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>`);
+            dropdown.empty().append(`<option value="">-- Seleccione Grado/Grupo --</option>`);
+
+            // Cargar asignación actual
+            $.get(`/StudentAssignment/GetGradeGroupByStudent/${currentStudentId}`)
+                .done(function (res) {
+                    if (res.success && res.data && res.data.length) {
+                        const actual = res.data.map(x => {
+                            var grupoRaw = x.grupo || '';
+                            var jornada = "";
+                            var grupo = grupoRaw;
+                            if (grupoRaw.includes("(") && grupoRaw.includes(")")) {
+                                var match = grupoRaw.match(/\(([^)]+)\)/);
+                                if (match && match[1]) {
+                                    jornada = match[1];
+                                    grupo = grupoRaw.replace(/\([^)]+\)/, "").trim();
+                                }
+                            }
+                            
+                            // Determinar color del badge según jornada
+                            var badgeClass = "bg-secondary text-white";
+                            if (jornada.toLowerCase().includes("mañana")) badgeClass = "bg-info text-white";
+                            else if (jornada.toLowerCase().includes("tarde")) badgeClass = "bg-warning text-dark";
+                            else if (jornada.toLowerCase().includes("noche")) badgeClass = "bg-dark text-white";
+                            
+                            return `
+                                <div class="d-flex align-items-center justify-content-between gap-2 mb-2 p-2 bg-light rounded">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-mortarboard-fill text-primary"></i>
+                                        <span class="fw-bold text-primary">${x.grado} - ${grupo}</span>
+                                    </div>
+                                    <span class="badge ${badgeClass} px-3 py-2 fw-bold">
+                                        <i class="bi bi-clock-fill me-1"></i>${jornada || "Sin jornada"}
+                                    </span>
+                                </div>
+                            `;
+                        }).join('');
+                        infoContainer.html(actual);
+                    } else {
+                        infoContainer.html(`<em class="text-muted">Sin asignaciones</em>`);
+                    }
+                })
+                .fail(function () {
+                    infoContainer.html(`<div class="text-danger">Error al cargar las asignaciones</div>`);
+                });
+
+            // Cargar opciones disponibles
+            $.get(`/StudentAssignment/GetAvailableGradeGroups`)
+                .done(function (res) {
+                    if (res.success && res.data) {
+                        res.data.forEach(opt => {
+                            dropdown.append(`<option value="${opt.gradeId}|${opt.groupId}">${opt.display}</option>`);
+                        });
+                    }
+                })
+                .fail(function () {
+                    dropdown.html(`<option value="">Error al cargar opciones</option>`);
+                    Swal.fire('Error', 'No se pudieron cargar las opciones disponibles.', 'error');
+                });
+        });
+
+        // Limpiar cuando se cierra el modal
+        $('#gradeGroupModal').on('hidden.bs.modal', function () {
+            currentStudentId = null;
+            $('#gradeGroupSelect').empty();
+            $('#gradeGroupInfo .current-assignment').empty();
+            cleanupSweetAlert();
+            resetBodyIfNoOpenModal();
+        });
+
+        // Guardar cambios
+        $('#btnGuardarCambioGrupo').on('click', function () {
+            if (!currentStudentId) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo identificar al estudiante.',
+                    didClose: () => forceCleanup()
+                });
+                return;
+            }
+
+            const selected = $('#gradeGroupSelect').val();
+            if (!selected) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Atención',
+                    text: 'Debe seleccionar una nueva combinación de grado y grupo.',
+                    didClose: () => forceCleanup()
+                });
+                return;
+            }
+
+            const [gradeId, groupId] = selected.split('|');
+            const $btn = $(this).prop('disabled', true);
+            
+            Swal.fire({
+                title: '¿Guardar cambios?',
+                text: 'Se actualizará la asignación del estudiante.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#22c55e',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, guardar',
+                cancelButtonText: 'Cancelar',
+                allowOutsideClick: true,
+                didClose: () => forceCleanup()
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('/StudentAssignment/UpdateGroupAndGrade', { 
+                        studentId: currentStudentId, 
+                        gradeId, 
+                        groupId 
+                    })
+                    .done(function (resp) {
+                        if (resp.success) {
+                            const row = $(`tr[data-student-id="${currentStudentId}"]`);
+                            const displayText = $('#gradeGroupSelect option:selected').text();
+                            row.find('.grade-group-cell').html(`<strong>${displayText}</strong>`);
+                            hideGradeGroupModalSafe();
+                            
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Éxito!',
+                                text: resp.message,
+                                timer: 1500,
+                                showConfirmButton: false,
+                                didClose: () => {
+                                    forceCleanup();
+                                    location.reload(); // Forzar recarga de la página
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: resp.message || 'No se pudo guardar la asignación.',
+                                didClose: () => forceCleanup()
+                            });
+                        }
+                    })
+                    .fail(function (xhr) {
+                        var msg = 'Hubo un problema al guardar los cambios. Por favor, intente nuevamente.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) { msg = xhr.responseJSON.message; }
+                        else if (xhr.responseText && xhr.responseText.indexOf('{') === 0) {
+                            try { var j = JSON.parse(xhr.responseText); if (j.message) msg = j.message; } catch (e) { }
+                        }
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: msg,
+                            didClose: () => forceCleanup()
+                        });
+                    })
+                    .always(function () {
+                        $btn.prop('disabled', false);
+                    });
+                } else {
+                    $btn.prop('disabled', false);
+                    cleanupSweetAlert();
+                }
+            });
+        });
+
+        $(document).on('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            var m = document.getElementById('gradeGroupModal');
+            if (m && m.classList.contains('show')) {
+                hideGradeGroupModalSafe();
+            } else {
+                cleanupSweetAlert();
+                resetBodyIfNoOpenModal();
+            }
+        });
+    </script>
+}

@@ -1,0 +1,128 @@
+@model IEnumerable<SchoolManager.Dtos.PrematriculationPeriodDto>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Períodos de Prematrícula";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-calendar-alt mr-2"></i>Gestión de Períodos de Prematrícula</h3>
+                <small>Configuración y administración de períodos de prematrícula</small>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle mr-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle mr-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-list mr-2"></i>Lista de Períodos</h5>
+                        <a href="@Url.Action("Create")" class="btn btn-light btn-sm">
+                            <i class="fas fa-plus mr-2"></i>Nuevo Período
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="periodsTable">
+                            <thead>
+                                <tr>
+                                    <th>Fecha Inicio</th>
+                                    <th>Fecha Fin</th>
+                                    <th>Estado</th>
+                                    <th>Cupo Máximo</th>
+                                    <th>Asignación Auto</th>
+                                    <th>Período Activo</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var period in Model)
+                                {
+                                    <tr>
+                                        <td>@TimeZoneService.ToLocalDisplayString(period.StartDate, "dd/MM/yyyy HH:mm")</td>
+                                        <td>@TimeZoneService.ToLocalDisplayString(period.EndDate, "dd/MM/yyyy HH:mm")</td>
+                                        <td>
+                                            @if (period.IsActive)
+                                            {
+                                                <span class="badge bg-success">Activo</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">Inactivo</span>
+                                            }
+                                        </td>
+                                        <td>@period.MaxCapacityPerGroup</td>
+                                        <td>
+                                            @if (period.AutoAssignByShift)
+                                            {
+                                                <span class="badge bg-info">Sí</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">No</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (period.IsPeriodActive)
+                                            {
+                                                <span class="badge bg-success">En Curso</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">Finalizado/No Iniciado</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <a href="@Url.Action("Edit", new { id = period.Id })" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="post" action="@Url.Action("Delete", new { id = period.Id })" style="display:inline;" onsubmit="return confirm('¿Está seguro de eliminar este período?');">
+                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#periodsTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json"
+                },
+                "order": [[0, "desc"]]
+            });
+        });
+    </script>
+}
+

@@ -1,0 +1,737 @@
+@model SchoolManager.ViewModels.SuperAdminStudentDirectoryPageVm
+@{
+    ViewData["Title"] = "Directorio de estudiantes";
+    Layout = "_SuperAdminLayout";
+    var f = Model.Filter;
+}
+@Html.AntiForgeryToken()
+
+<div class="card card-outline card-primary shadow-sm mb-4">
+    <div class="card-header">
+        <h3 class="card-title mb-0"><i class="fas fa-filter me-2"></i>Filtros</h3>
+    </div>
+    <div class="card-body">
+        <form asp-action="StudentDirectory" method="get" id="filterForm">
+            <input type="hidden" name="Page" id="directoryPageField" value="@f.Page" />
+            <div class="row g-3">
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label" for="Search">Buscar</label>
+                    <input type="text" class="form-control" id="Search" name="Search" value="@f.Search"
+                           placeholder="Nombre, apellido, correo o cédula" autocomplete="off" />
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label" for="SchoolId">Escuela</label>
+                    <select class="form-select" id="SchoolId" name="SchoolId" asp-items="Model.SchoolOptions"></select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label" for="GradeId">Nivel / grado</label>
+                    <select class="form-select" id="GradeId" name="GradeId" asp-items="Model.GradeOptions"></select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label" for="GroupId">Grupo</label>
+                    <select class="form-select" id="GroupId" name="GroupId" asp-items="Model.GroupOptions"></select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label" for="ShiftId">Jornada (matrícula)</label>
+                    <select class="form-select" id="ShiftId" name="ShiftId" asp-items="Model.ShiftOptions"></select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label" for="PageSize">Registros por página</label>
+                    <select class="form-select" id="PageSize" name="PageSize">
+                        @foreach (var ps in new[] { 25, 50, 100 })
+                        {
+                            if (f.PageSize == ps)
+                            {
+                                <option value="@ps" selected>@ps</option>
+                            }
+                            else
+                            {
+                                <option value="@ps">@ps</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label" for="UserStatus">Estado del usuario</label>
+                    <select class="form-select" id="UserStatus" name="UserStatus">
+                        @{
+                            var statusOpts = new[] { ("", "Todos"), ("active", "Activo"), ("inactive", "Inactivo") };
+                        }
+                        @foreach (var o in statusOpts)
+                        {
+                            if (string.Equals(f.UserStatus ?? "", o.Item1, StringComparison.Ordinal))
+                            {
+                                <option value="@o.Item1" selected>@o.Item2</option>
+                            }
+                            else
+                            {
+                                <option value="@o.Item1">@o.Item2</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="OnlyWithoutAssignment" name="OnlyWithoutAssignment" value="true"
+                               checked="@(f.OnlyWithoutAssignment)" />
+                        <label class="form-check-label" for="OnlyWithoutAssignment">
+                            Solo estudiantes sin matrícula activa (sin asignación de grado/grupo vigente)
+                        </label>
+                    </div>
+                </div>
+                <div class="col-12 d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-1"></i> Aplicar filtros
+                    </button>
+                    <a asp-action="StudentDirectory" class="btn btn-outline-secondary">
+                        <i class="fas fa-undo me-1"></i> Limpiar
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <p class="text-muted mb-0">
+        <i class="fas fa-info-circle me-1"></i>
+        @if (Model.TotalCount == 0)
+        {
+            <span>Sin resultados.</span>
+        }
+        else
+        {
+            <span>Mostrando @Model.DisplayFrom–@Model.DisplayTo de @Model.TotalCount registro(s).</span>
+        }
+        La jornada en matrícula y la del perfil del usuario pueden diferir.
+    </p>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        <span id="offlineQueueBadge" class="badge bg-secondary">Pendientes offline: 0</span>
+        <span id="networkStateBadge" class="badge bg-success">En línea</span>
+        <button type="button" id="btnSyncOfflinePhotos" class="btn btn-outline-success btn-sm">
+            <i class="fas fa-cloud-upload-alt me-1"></i> Sincronizar fotos pendientes
+        </button>
+        <div class="input-group" style="max-width: 280px;">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+            <input type="text" class="form-control" id="tableQuickFilter" placeholder="Filtrar filas visibles…" autocomplete="off" />
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover table-striped align-middle mb-0" id="studentDirectoryTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Foto</th>
+                    <th>Estudiante</th>
+                    <th>Cédula</th>
+                    <th>Correo</th>
+                    <th>Escuela</th>
+                    <th>Nivel / grado</th>
+                    <th>Grupo</th>
+                    <th>Jornada (matrícula)</th>
+                    <th>Jornada (perfil)</th>
+                    <th>Estado</th>
+                    <th>Foto</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Rows.Any())
+                {
+                    <tr class="no-results-row">
+                        <td colspan="11" class="text-center text-muted py-4">No hay resultados con los filtros actuales.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var row in Model.Rows)
+                    {
+                        <tr data-search="@($"{row.FullName} {row.DocumentId} {row.Email} {row.SchoolName} {row.GradeLevelName} {row.GroupName} {row.ShiftName} {row.UserShift} {row.Status}")">
+                            <td>
+                                <img src="@UserPhotoLinks.Href(row.PhotoUrl)" alt="Foto @row.FullName" class="student-thumb" loading="lazy" decoding="async" />
+                            </td>
+                            <td>@row.FullName</td>
+                            <td>@(string.IsNullOrWhiteSpace(row.DocumentId) ? "—" : row.DocumentId)</td>
+                            <td><small>@row.Email</small></td>
+                            <td>@(string.IsNullOrWhiteSpace(row.SchoolName) ? "—" : row.SchoolName)</td>
+                            <td>
+                                @if (row.HasActiveAssignment)
+                                {
+                                    @row.GradeLevelName
+                                }
+                                else
+                                {
+                                    <span class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Sin matrícula</span>
+                                }
+                            </td>
+                            <td>@(row.HasActiveAssignment && !string.IsNullOrWhiteSpace(row.GroupName) ? row.GroupName : "—")</td>
+                            <td>@(string.IsNullOrWhiteSpace(row.ShiftName) ? "—" : row.ShiftName)</td>
+                            <td>@(string.IsNullOrWhiteSpace(row.UserShift) ? "—" : row.UserShift)</td>
+                            <td>
+                                @if (string.Equals(row.Status, "active", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <span class="badge bg-success">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@(string.IsNullOrWhiteSpace(row.Status) ? "—" : row.Status)</span>
+                                }
+                            </td>
+                            <td>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary btn-photo-manage"
+                                        data-user-id="@row.UserId"
+                                        data-full-name="@row.FullName"
+                                        data-document-id="@row.DocumentId"
+                                        data-grade="@(row.GradeLevelName ?? "Sin matrícula")"
+                                        data-group="@(row.GroupName ?? "Sin grupo")"
+                                        data-shift="@(row.ShiftName ?? row.UserShift ?? "Sin jornada")"
+                                        data-photo-url="@row.PhotoUrl">
+                                    <i class="fas fa-camera me-1"></i> Tomar/Subir
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.TotalPages > 1)
+    {
+        <div class="card-footer d-flex flex-wrap align-items-center justify-content-between gap-2 py-3">
+            <span class="text-muted small">Página @f.Page de @Model.TotalPages</span>
+            <nav aria-label="Paginación directorio">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(f.Page <= 1 ? "disabled" : "")">
+                        @if (f.Page <= 1)
+                        {
+                            <span class="page-link">Anterior</span>
+                        }
+                        else
+                        {
+                            <a class="page-link" asp-action="StudentDirectory" asp-all-route-data="Model.GetDirectoryQueryForPage(f.Page - 1)">Anterior</a>
+                        }
+                    </li>
+                    @{
+                        var window = 2;
+                        var from = Math.Max(1, f.Page - window);
+                        var to = Math.Min(Model.TotalPages, f.Page + window);
+                        if (from > 1)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-action="StudentDirectory" asp-all-route-data="Model.GetDirectoryQueryForPage(1)">1</a>
+                            </li>
+                            if (from > 2)
+                            {
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                            }
+                        }
+                        for (var p = from; p <= to; p++)
+                        {
+                            var isCurrent = p == f.Page;
+                            if (isCurrent)
+                            {
+                                <li class="page-item active" aria-current="page">
+                                    <span class="page-link">@p</span>
+                                </li>
+                            }
+                            else
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-action="StudentDirectory" asp-all-route-data="Model.GetDirectoryQueryForPage(p)">@p</a>
+                                </li>
+                            }
+                        }
+                        if (to < Model.TotalPages)
+                        {
+                            if (to < Model.TotalPages - 1)
+                            {
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                            }
+                            <li class="page-item">
+                                <a class="page-link" asp-action="StudentDirectory" asp-all-route-data="Model.GetDirectoryQueryForPage(Model.TotalPages)">@Model.TotalPages</a>
+                            </li>
+                        }
+                    }
+                    <li class="page-item @(f.Page >= Model.TotalPages ? "disabled" : "")">
+                        @if (f.Page >= Model.TotalPages)
+                        {
+                            <span class="page-link">Siguiente</span>
+                        }
+                        else
+                        {
+                            <a class="page-link" asp-action="StudentDirectory" asp-all-route-data="Model.GetDirectoryQueryForPage(f.Page + 1)">Siguiente</a>
+                        }
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+<div class="modal fade" id="studentPhotoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-camera me-2"></i>Foto del estudiante</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="small text-muted mb-2" id="studentPhotoMeta"></div>
+                <div class="text-center mb-3">
+                    <img id="studentPhotoPreviewImg" src="" alt="Vista previa" class="img-thumbnail" style="max-width: 170px; max-height: 170px; object-fit: cover; display:none;" />
+                    <div id="studentPhotoPreviewPlaceholder" class="student-thumb-placeholder mx-auto" style="width:170px;height:170px;">
+                        <i class="fas fa-user fa-2x"></i>
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                    <button type="button" id="btnTakePhotoNow" class="btn btn-primary">
+                        <i class="fas fa-camera me-1"></i> Tomar foto ahora
+                    </button>
+                    <button type="button" id="btnChoosePhoto" class="btn btn-outline-secondary">
+                        <i class="fas fa-image me-1"></i> Elegir desde galería
+                    </button>
+                </div>
+                <input type="file"
+                       id="studentPhotoInput"
+                       class="d-none"
+                       accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                       capture="environment" />
+                <input type="file"
+                       id="studentPhotoInputGallery"
+                       class="d-none"
+                       accept=".jpg,.jpeg,.png,image/jpeg,image/png" />
+                <small class="text-muted">Toca “Tomar foto ahora” para abrir cámara. En iPad/iPhone puede mostrar menú Cámara/Fotos. Si la foto supera 2 MB se comprimirá automáticamente (máx. de subida 12 MB).</small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btnRemoveStudentPhoto" class="btn btn-outline-danger">
+                    <i class="fas fa-trash me-1"></i> Eliminar foto
+                </button>
+                <button type="button" id="btnSaveStudentPhoto" class="btn btn-primary">
+                    <i class="fas fa-upload me-1"></i> Subir ahora
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var filterForm = document.getElementById('filterForm');
+            var pageField = document.getElementById('directoryPageField');
+            if (filterForm && pageField) {
+                filterForm.addEventListener('submit', function () {
+                    pageField.value = '1';
+                });
+            }
+
+            var input = document.getElementById('tableQuickFilter');
+            var currentStudentId = null;
+            var currentMetaText = '';
+            var currentPhotoUrl = null;
+            var tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            var token = tokenInput ? tokenInput.value : '';
+            var photoModalEl = document.getElementById('studentPhotoModal');
+            var photoModal = photoModalEl ? new bootstrap.Modal(photoModalEl) : null;
+            var photoInput = document.getElementById('studentPhotoInput');
+            var photoInputGallery = document.getElementById('studentPhotoInputGallery');
+            var btnTakePhotoNow = document.getElementById('btnTakePhotoNow');
+            var btnChoosePhoto = document.getElementById('btnChoosePhoto');
+            var previewImg = document.getElementById('studentPhotoPreviewImg');
+            var previewPlaceholder = document.getElementById('studentPhotoPreviewPlaceholder');
+            var meta = document.getElementById('studentPhotoMeta');
+            var btnSave = document.getElementById('btnSaveStudentPhoto');
+            var btnRemove = document.getElementById('btnRemoveStudentPhoto');
+            var btnSync = document.getElementById('btnSyncOfflinePhotos');
+            var queueBadge = document.getElementById('offlineQueueBadge');
+            var networkBadge = document.getElementById('networkStateBadge');
+
+            var DB_NAME = 'student_photo_offline_db';
+            var DB_STORE = 'photo_queue';
+            var DB_VERSION = 1;
+            var syncing = false;
+
+            function buildUserPhotoHref(stored) {
+                return '/File/GetUserPhoto?photoUrl=' + encodeURIComponent(stored || '');
+            }
+
+            if (input) {
+                var quickFilterTimer = null;
+                function applyQuickFilter() {
+                    var q = (input.value || '').toLowerCase().trim();
+                    var rows = document.querySelectorAll('#studentDirectoryTable tbody tr[data-search]');
+                    rows.forEach(function (tr) {
+                        var hay = (tr.getAttribute('data-search') || '').toLowerCase();
+                        tr.style.display = !q || hay.indexOf(q) !== -1 ? '' : 'none';
+                    });
+                }
+                input.addEventListener('input', function () {
+                    clearTimeout(quickFilterTimer);
+                    quickFilterTimer = setTimeout(applyQuickFilter, 200);
+                });
+            }
+
+            function setNetworkBadge() {
+                if (navigator.onLine) {
+                    networkBadge.className = 'badge bg-success';
+                    networkBadge.textContent = 'En línea';
+                } else {
+                    networkBadge.className = 'badge bg-warning text-dark';
+                    networkBadge.textContent = 'Sin conexión';
+                }
+            }
+
+            function setPreview(stored) {
+                currentPhotoUrl = stored || '';
+                previewImg.src = buildUserPhotoHref(stored);
+                previewImg.style.display = '';
+                previewPlaceholder.style.display = 'none';
+                btnRemove.disabled = !currentPhotoUrl;
+            }
+
+            function applyThumbToTable(userId, stored) {
+                var btn = document.querySelector('.btn-photo-manage[data-user-id="' + userId + '"]');
+                if (!btn) return;
+                btn.setAttribute('data-photo-url', stored || '');
+                var row = btn.closest('tr');
+                if (!row) return;
+                var thumbCell = row.children[0];
+                if (!thumbCell) return;
+                thumbCell.innerHTML = '<img src="' + buildUserPhotoHref(stored) + '" alt="Foto estudiante" class="student-thumb" loading="lazy" decoding="async" />';
+            }
+
+            function applyPendingToRow(userId, pending) {
+                var btn = document.querySelector('.btn-photo-manage[data-user-id="' + userId + '"]');
+                if (!btn) return;
+                if (pending) {
+                    btn.classList.remove('btn-outline-primary');
+                    btn.classList.add('btn-outline-warning');
+                    btn.innerHTML = '<i class="fas fa-clock me-1"></i> Pendiente sync';
+                } else {
+                    btn.classList.remove('btn-outline-warning');
+                    btn.classList.add('btn-outline-primary');
+                    btn.innerHTML = '<i class="fas fa-camera me-1"></i> Tomar/Subir';
+                }
+            }
+
+            function openDb() {
+                return new Promise(function (resolve, reject) {
+                    var request = indexedDB.open(DB_NAME, DB_VERSION);
+                    request.onupgradeneeded = function (event) {
+                        var db = event.target.result;
+                        if (!db.objectStoreNames.contains(DB_STORE)) {
+                            var store = db.createObjectStore(DB_STORE, { keyPath: 'id' });
+                            store.createIndex('createdAt', 'createdAt', { unique: false });
+                        }
+                    };
+                    request.onsuccess = function () { resolve(request.result); };
+                    request.onerror = function () { reject(request.error); };
+                });
+            }
+
+            async function queuePhotoOffline(studentId, file, metaText) {
+                var db = await openDb();
+                var tx = db.transaction(DB_STORE, 'readwrite');
+                tx.objectStore(DB_STORE).add({
+                    id: crypto.randomUUID(),
+                    studentId: studentId,
+                    file: file,
+                    metaText: metaText || '',
+                    createdAt: Date.now()
+                });
+                await new Promise(function (resolve, reject) {
+                    tx.oncomplete = function () { resolve(); };
+                    tx.onerror = function () { reject(tx.error); };
+                    tx.onabort = function () { reject(tx.error); };
+                });
+                db.close();
+            }
+
+            async function getAllQueuedPhotos() {
+                var db = await openDb();
+                var tx = db.transaction(DB_STORE, 'readonly');
+                var req = tx.objectStore(DB_STORE).getAll();
+                var rows = await new Promise(function (resolve, reject) {
+                    req.onsuccess = function () { resolve(req.result || []); };
+                    req.onerror = function () { reject(req.error); };
+                });
+                db.close();
+                return rows;
+            }
+
+            async function deleteQueuedPhoto(id) {
+                var db = await openDb();
+                var tx = db.transaction(DB_STORE, 'readwrite');
+                tx.objectStore(DB_STORE).delete(id);
+                await new Promise(function (resolve, reject) {
+                    tx.oncomplete = function () { resolve(); };
+                    tx.onerror = function () { reject(tx.error); };
+                    tx.onabort = function () { reject(tx.error); };
+                });
+                db.close();
+            }
+
+            async function refreshQueueBadge() {
+                var rows = await getAllQueuedPhotos();
+                queueBadge.textContent = 'Pendientes offline: ' + rows.length;
+                return rows;
+            }
+
+            async function uploadPhoto(studentId, file) {
+                var fd = new FormData();
+                fd.append('userId', studentId);
+                fd.append('photo', file);
+                fd.append('__RequestVerificationToken', token);
+                var res = await fetch('/SuperAdmin/StudentDirectoryUpdatePhoto', {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin',
+                    headers: {
+                        'RequestVerificationToken': token,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                var raw = await res.text();
+                var data = null;
+                try {
+                    data = raw ? JSON.parse(raw) : null;
+                } catch {
+                    data = null;
+                }
+
+                if (!res.ok) {
+                    var msg = (data && data.message) ? data.message : ('Error HTTP ' + res.status + ' al guardar la foto.');
+                    throw new Error(msg);
+                }
+                if (!data || !data.success) {
+                    throw new Error((data && data.message) ? data.message : 'No se pudo guardar la foto.');
+                }
+                return data.photoUrl || '';
+            }
+
+            async function syncQueuedPhotos() {
+                if (syncing || !navigator.onLine) return;
+                syncing = true;
+                btnSync.disabled = true;
+                btnSync.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Sincronizando...';
+                try {
+                    var rows = await getAllQueuedPhotos();
+                    rows.sort(function (a, b) { return a.createdAt - b.createdAt; });
+                    for (var i = 0; i < rows.length; i++) {
+                        var item = rows[i];
+                        try {
+                            var photoUrl = await uploadPhoto(item.studentId, item.file);
+                            await deleteQueuedPhoto(item.id);
+                            applyThumbToTable(item.studentId, photoUrl);
+                            applyPendingToRow(item.studentId, false);
+                        } catch {
+                            // Si falla una, la dejamos en cola y seguimos con las demás.
+                        }
+                    }
+                } finally {
+                    await refreshQueueBadge();
+                    syncing = false;
+                    btnSync.disabled = false;
+                    btnSync.innerHTML = '<i class="fas fa-cloud-upload-alt me-1"></i> Sincronizar fotos pendientes';
+                }
+            }
+
+            async function processPhoto(file, autoMode) {
+                if (!currentStudentId || !file) return;
+                if (navigator.onLine) {
+                    try {
+                        if (autoMode) {
+                            btnSave.disabled = true;
+                            btnSave.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Subiendo...';
+                        }
+                        var url = await uploadPhoto(currentStudentId, file);
+                        setPreview(url);
+                        applyThumbToTable(currentStudentId, url);
+                        applyPendingToRow(currentStudentId, false);
+                        photoInput.value = '';
+                        if (autoMode && window.SchoolUi) {
+                            window.SchoolUi.toastSuccess('Foto guardada correctamente');
+                        }
+                    } catch (err) {
+                        var msg = (err && err.message) ? err.message : 'No se pudo subir la foto. Compruebe su conexión e intente de nuevo.';
+                        if (window.SchoolUi) window.SchoolUi.error('No se pudo subir la foto', msg);
+                        else alert(msg);
+                    } finally {
+                        btnSave.disabled = false;
+                        btnSave.innerHTML = '<i class="fas fa-upload me-1"></i> Subir ahora';
+                    }
+                } else {
+                    try {
+                        await queuePhotoOffline(currentStudentId, file, currentMetaText);
+                        await refreshQueueBadge();
+                        applyPendingToRow(currentStudentId, true);
+                        photoInput.value = '';
+                        if (window.SchoolUi) {
+                            window.SchoolUi.info(
+                                'Sin conexión',
+                                'La foto quedó guardada en este dispositivo. Se subirá automáticamente cuando recupere internet; también puede usar «Sincronizar fotos pendientes».');
+                        } else alert('Sin conexión: la foto quedó guardada en este dispositivo.');
+                    } catch {
+                        if (window.SchoolUi) {
+                            window.SchoolUi.error('No se pudo guardar offline', 'Este navegador no permite guardar la foto sin conexión. Intente con otro navegador o cuando tenga internet.');
+                        } else alert('No se pudo guardar la foto offline en este navegador.');
+                    }
+                }
+            }
+
+            document.addEventListener('click', function (ev) {
+                var btn = ev.target.closest('.btn-photo-manage');
+                if (!btn || !photoModal) return;
+                currentStudentId = btn.getAttribute('data-user-id');
+                setPreview(btn.getAttribute('data-photo-url') || '');
+                photoInput.value = '';
+                currentMetaText = 'Estudiante: ' + (btn.getAttribute('data-full-name') || '') +
+                    ' | Cédula: ' + (btn.getAttribute('data-document-id') || '—') +
+                    ' | Grado: ' + (btn.getAttribute('data-grade') || '—') +
+                    ' | Grupo: ' + (btn.getAttribute('data-group') || '—') +
+                    ' | Jornada: ' + (btn.getAttribute('data-shift') || '—');
+                meta.textContent = currentMetaText;
+                photoModal.show();
+            });
+
+            async function handlePickedFile(file) {
+                if (!file) return;
+                var objectUrl = URL.createObjectURL(file);
+                previewImg.src = objectUrl;
+                previewImg.style.display = '';
+                previewPlaceholder.style.display = 'none';
+                // Subida automática inmediata, como flujo tipo app.
+                await processPhoto(file, true);
+            }
+
+            photoInput.addEventListener('change', async function () {
+                var file = this.files && this.files[0];
+                await handlePickedFile(file);
+            });
+
+            photoInputGallery.addEventListener('change', async function () {
+                var file = this.files && this.files[0];
+                await handlePickedFile(file);
+            });
+
+            btnTakePhotoNow.addEventListener('click', function () {
+                photoInput.value = '';
+                photoInput.click();
+            });
+
+            btnChoosePhoto.addEventListener('click', function () {
+                photoInputGallery.value = '';
+                photoInputGallery.click();
+            });
+
+            btnSave.addEventListener('click', async function () {
+                var file = photoInput.files && photoInput.files[0];
+                if (!file) {
+                    if (window.SchoolUi) {
+                        window.SchoolUi.warning('Falta la imagen', 'Seleccione un archivo o use la cámara antes de pulsar Subir.');
+                    } else alert('Seleccione o tome una foto primero.');
+                    return;
+                }
+                await processPhoto(file, false);
+            });
+
+            btnRemove.addEventListener('click', async function () {
+                if (!currentStudentId) return;
+                var ok = true;
+                if (window.SchoolUi) {
+                    var c = await window.SchoolUi.confirmDanger(
+                        '¿Quitar la foto?',
+                        'El estudiante quedará sin foto de perfil hasta que suba una nueva.');
+                    ok = c.isConfirmed;
+                } else {
+                    ok = confirm('¿Eliminar foto del estudiante?');
+                }
+                if (!ok) return;
+                var fd = new FormData();
+                fd.append('userId', currentStudentId);
+                fd.append('__RequestVerificationToken', token);
+                btnRemove.disabled = true;
+                try {
+                    var res = await fetch('/SuperAdmin/StudentDirectoryRemovePhoto', {
+                        method: 'POST',
+                        body: fd,
+                        credentials: 'same-origin',
+                        headers: {
+                            'RequestVerificationToken': token,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    var raw = await res.text();
+                    var data = null;
+                    try {
+                        data = raw ? JSON.parse(raw) : null;
+                    } catch {
+                        data = null;
+                    }
+                    if (!res.ok) {
+                        var em = (data && data.message) ? data.message : ('Error al eliminar la foto (código ' + res.status + ').');
+                        if (window.SchoolUi) window.SchoolUi.error('No se pudo eliminar', em);
+                        else alert(em);
+                        return;
+                    }
+                    if (!data.success) {
+                        var em2 = data.message || 'No se pudo eliminar la foto.';
+                        if (window.SchoolUi) window.SchoolUi.error('No se pudo eliminar', em2);
+                        else alert(em2);
+                        return;
+                    }
+                    setPreview('');
+                    applyThumbToTable(currentStudentId, '');
+                    if (window.SchoolUi) window.SchoolUi.toastSuccess('Foto eliminada');
+                } catch {
+                    if (window.SchoolUi) {
+                        window.SchoolUi.error('Error de conexión', 'No pudimos contactar al servidor. Revise su internet e intente otra vez.');
+                    } else alert('Error de red al eliminar la foto.');
+                } finally {
+                    btnRemove.disabled = !currentPhotoUrl;
+                }
+            });
+
+            btnSync.addEventListener('click', async function () {
+                await syncQueuedPhotos();
+            });
+
+            window.addEventListener('online', async function () {
+                setNetworkBadge();
+                await syncQueuedPhotos();
+            });
+            window.addEventListener('offline', function () {
+                setNetworkBadge();
+            });
+
+            setNetworkBadge();
+            refreshQueueBadge();
+            syncQueuedPhotos();
+        })();
+    </script>
+
+    <style>
+        .student-thumb {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid #dbe4f0;
+            box-shadow: 0 1px 2px rgba(0,0,0,.08);
+        }
+        .student-thumb-placeholder {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 1px dashed #cbd5e1;
+            color: #94a3b8;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+}

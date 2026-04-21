@@ -1,0 +1,255 @@
+@model SchoolManager.Dtos.PaymentCreateDto
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Realizar Pago";
+    var prematriculations = ViewBag.Prematriculations as List<SchoolManager.Models.Prematriculation> ?? new List<SchoolManager.Models.Prematriculation>();
+    var selectedPrematriculation = ViewBag.SelectedPrematriculation as SchoolManager.Models.Prematriculation;
+    var existingPayments = ViewBag.ExistingPayments as List<SchoolManager.Dtos.PaymentDto> ?? new List<SchoolManager.Dtos.PaymentDto>();
+    var paymentConcepts = ViewBag.PaymentConcepts as List<SchoolManager.Dtos.PaymentConceptDto> ?? new List<SchoolManager.Dtos.PaymentConceptDto>();
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-credit-card mr-2"></i>Realizar Pago</h3>
+                <small>Realice el pago de matrícula o concepto académico</small>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle mr-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (selectedPrematriculation != null)
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Información de la Prematrícula</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Código:</strong> <code>@selectedPrematriculation.PrematriculationCode</code></p>
+                                <p><strong>Estudiante:</strong> @(selectedPrematriculation.Student?.Name ?? "N/A") @(selectedPrematriculation.Student?.LastName ?? "")</p>
+                                <p><strong>Grado:</strong> @(selectedPrematriculation.Grade?.Name ?? "No asignado")</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Estado:</strong> 
+                                    @switch (selectedPrematriculation.Status)
+                                    {
+                                        case "Prematriculado":
+                                            <span class="badge bg-info">Prematriculado</span>
+                                            break;
+                                        case "Pagado":
+                                            <span class="badge bg-primary">Pagado</span>
+                                            break;
+                                        case "Matriculado":
+                                            <span class="badge bg-success">Matriculado</span>
+                                            break;
+                                        default:
+                                            <span class="badge bg-secondary">@selectedPrematriculation.Status</span>
+                                            break;
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (existingPayments.Any())
+        {
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-history mr-2"></i>Pagos Registrados</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Recibo</th>
+                                            <th>Monto</th>
+                                            <th>Fecha</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var payment in existingPayments)
+                                        {
+                                            <tr>
+                                                <td><code>@payment.ReceiptNumber</code></td>
+                                                <td>@payment.Amount.ToString("C")</td>
+                                                <td>@TimeZoneService.ToLocalDisplayString(payment.PaymentDate, "dd/MM/yyyy")</td>
+                                                <td>
+                                                    @if (payment.PaymentStatus == "Confirmado")
+                                                    {
+                                                        <span class="badge bg-success">Confirmado</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-warning">Pendiente</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-credit-card mr-2"></i>Nuevo Pago</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="PayFromPortal" method="post" enctype="multipart/form-data">
+                        <input type="hidden" asp-for="PrematriculationId" value="@selectedPrematriculation?.Id" />
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                        @if (!prematriculations.Any())
+                        {
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>No tiene prematrículas disponibles para pagar.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Seleccionar Prematrícula</label>
+                                <select id="prematriculationSelect" class="form-select" onchange="location.href='@Url.Action("PayFromPortal")?prematriculationId=' + this.value;">
+                                    <option value="">Seleccione una prematrícula</option>
+                                    @foreach (var prem in prematriculations)
+                                    {
+                                        <option value="@prem.Id" selected="@(selectedPrematriculation?.Id == prem.Id)">
+                                            @(prem.Student?.Name ?? "") @(prem.Student?.LastName ?? "") - @(prem.Grade?.Name ?? "N/A") - @prem.PrematriculationCode
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                        }
+
+                        @if (selectedPrematriculation != null)
+                        {
+                            <div class="mb-3">
+                                <label asp-for="PaymentConceptId" class="form-label">Concepto de Pago</label>
+                                <select asp-for="PaymentConceptId" class="form-select" id="paymentConceptSelect">
+                                    <option value="">Seleccione un concepto (opcional)</option>
+                                    @foreach (var concept in paymentConcepts)
+                                    {
+                                        <option value="@concept.Id" data-amount="@concept.Amount">
+                                            @concept.Name - @concept.Amount.ToString("C")
+                                        </option>
+                                    }
+                                </select>
+                                <span asp-validation-for="PaymentConceptId" class="text-danger"></span>
+                                <small class="form-text text-muted">Al seleccionar un concepto, el monto se establecerá automáticamente</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Amount" class="form-label">Monto Pagado *</label>
+                                <input asp-for="Amount" type="number" step="0.01" class="form-control" required id="amountInput" />
+                                <span asp-validation-for="Amount" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="PaymentMethod" class="form-label">Método de Pago *</label>
+                                <select asp-for="PaymentMethod" class="form-select" id="paymentMethodSelect" required>
+                                    <option value="">Seleccione un método de pago</option>
+                                    <option value="Tarjeta">Tarjeta de Crédito/Débito (Simulado - Confirmación automática)</option>
+                                    <option value="Transferencia">Transferencia Bancaria</option>
+                                    <option value="Depósito">Depósito Bancario</option>
+                                    <option value="Yappy">Yappy</option>
+                                    <option value="Efectivo">Efectivo</option>
+                                </select>
+                                <span asp-validation-for="PaymentMethod" class="text-danger"></span>
+                                <small class="form-text text-muted">
+                                    <strong>Nota:</strong> El pago con tarjeta está en modo simulado. Los métodos manuales (Transferencia, Depósito, Yappy) requieren adjuntar comprobante y serán verificados por contabilidad.
+                                </small>
+                            </div>
+
+                            <div class="mb-3" id="receiptImageDiv" style="display: none;">
+                                <label for="receiptImageFile" class="form-label">Comprobante de Pago (Imagen) *</label>
+                                <input type="file" name="receiptImageFile" id="receiptImageFile" class="form-control" accept="image/*" />
+                                <span asp-validation-for="ReceiptImage" class="text-danger"></span>
+                                <small class="form-text text-muted">Adjunte una imagen del comprobante de pago (JPG, PNG)</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Notes" class="form-label">Notas (Opcional)</label>
+                                <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Información adicional sobre el pago"></textarea>
+                                <span asp-validation-for="Notes" class="text-danger"></span>
+                            </div>
+
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                <strong>Importante:</strong>
+                                <ul class="mb-0 mt-2">
+                                    <li>Los pagos con tarjeta se confirman automáticamente y activan la matrícula</li>
+                                    <li>Los pagos manuales quedan pendientes de verificación por contabilidad</li>
+                                    <li>Recibirá una notificación cuando su pago sea confirmado</li>
+                                </ul>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="@Url.Action("MyPayments")" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left mr-2"></i>Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-credit-card mr-2"></i>Realizar Pago
+                                </button>
+                            </div>
+                        }
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function() {
+            // Mostrar/ocultar campo de comprobante según método de pago
+            $('#paymentMethodSelect').change(function() {
+                var method = $(this).val();
+                if (method === 'Transferencia' || method === 'Depósito' || method === 'Yappy') {
+                    $('#receiptImageDiv').show();
+                    $('#receiptImageFile').prop('required', true);
+                } else {
+                    $('#receiptImageDiv').hide();
+                    $('#receiptImageFile').prop('required', false);
+                }
+            });
+
+            // Actualizar monto cuando se selecciona un concepto
+            $('#paymentConceptSelect').change(function() {
+                var selectedOption = $(this).find('option:selected');
+                var amount = selectedOption.data('amount');
+                if (amount) {
+                    $('#amountInput').val(amount);
+                }
+            });
+        });
+    </script>
+}
+

@@ -1,0 +1,302 @@
+@model SchoolManager.ViewModels.ChangePasswordViewModel
+@{
+    ViewData["Title"] = "Cambiar Contraseña";
+    Layout = "_AdminLayout";
+}
+
+<style>
+    .password-container {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    .password-card {
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        border: none;
+    }
+    .password-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: white;
+        border-radius: 1rem 1rem 0 0;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    .form-control:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+    }
+    .btn-change-password {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .btn-change-password:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    .password-strength {
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+    }
+    .strength-weak { color: #ef4444; }
+    .strength-medium { color: #f59e0b; }
+    .strength-strong { color: #10b981; }
+</style>
+
+<div class="container-fluid">
+    <div class="password-container">
+        <div class="card password-card">
+            <div class="password-header">
+                <h3 class="mb-0">
+                    <i class="fas fa-lock me-2"></i>
+                    Cambiar Contraseña
+                </h3>
+                <p class="mb-0 mt-2 opacity-75">Actualiza tu contraseña de forma segura</p>
+            </div>
+            <div class="card-body p-4">
+                <form  menos unos id="changePasswordForm" novalidate>
+                    <div class="mb-3 position-relative">
+                        <label for="CurrentPassword" class="form-label">
+                            <i class="fas fa-key me-1"></i> Contraseña Actual
+                        </label>
+                        <input type="password" 
+                               class="form-control" 
+                               id="CurrentPassword" 
+                               name="CurrentPassword" 
+                               required
+                               autocomplete="current-password">
+                        <button type="button" class="btn btn-outline-secondary position-absolute top-50 end-0 translate-middle-y me-3" id="toggleCurrentPassword" style="border: none; background: none; z-index: 10; margin-top: 12px;">
+                            <i class="fas fa-eye" id="toggleCurrentIcon"></i>
+                        </button>
+                        <div class="invalid-feedback">La contraseña actual es obligatoria</div>
+                    </div>
+
+                    <div class="mb-3 position-relative">
+                        <label for="NewPassword" class="form-label">
+                            <i class="fas fa-lock me-1"></i> Nueva Contraseña
+                        </label>
+                        <input type="password" 
+                               class="form-control" 
+                               id="NewPassword" 
+                               name="NewPassword" 
+                               required 
+                               minlength="8"
+                               autocomplete="new-password">
+                        <button type="button" class="btn btn-outline-secondary position-absolute top-50 end-0 translate-middle-y me-3" id="toggleNewPassword" style="border: none; background: none; z-index: 10; margin-top: 12px;">
+                            <i class="fas fa-eye" id="toggleNewIcon"></i>
+                        </button>
+                        <div class="invalid-feedback">La nueva contraseña debe tener al menos 8 caracteres</div>
+                        <div id="passwordStrength" class="password-strength"></div>
+                    </div>
+
+                    <div class="mb-4 position-relative">
+                        <label for="ConfirmPassword" class="form-label">
+                            <i class="fas fa-check-circle me-1"></i> Confirmar Nueva Contraseña
+                        </label>
+                        <input type="password" 
+                               class="form-control" 
+                               id="ConfirmPassword" 
+                               name="ConfirmPassword" 
+                               required
+                               autocomplete="new-password">
+                        <button type="button" class="btn btn-outline-secondary position-absolute top-50 end-0 translate-middle-y me-3" id="toggleConfirmPassword" style="border: none; background: none; z-index: 10; margin-top: 12px;">
+                            <i class="fas fa-eye" id="toggleConfirmIcon"></i>
+                        </button>
+                        <div class="invalid-feedback">Las contraseñas no coinciden</div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-change-password text-white">
+                            <i class="fas fa-save me-2"></i>
+                            Cambiar Contraseña
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).ready(function () {
+            // Funcionalidad para mostrar/ocultar contraseñas
+            $('#toggleCurrentPassword').on('click', function() {
+                const passwordInput = $('#CurrentPassword');
+                const toggleIcon = $('#toggleCurrentIcon');
+                
+                if (passwordInput.attr('type') === 'password') {
+                    passwordInput.attr('type', 'text');
+                    toggleIcon.removeClass('fa-eye').addClass('fa-eye-slash');
+                } else {
+                    passwordInput.attr('type', 'password');
+                    toggleIcon.removeClass('fa-eye-slash').addClass('fa-eye');
+                }
+            });
+
+            $('#toggleNewPassword').on('click', function() {
+                const passwordInput = $('#NewPassword');
+                const toggleIcon = $('#toggleNewIcon');
+                
+                if (passwordInput.attr('type') === 'password') {
+                    passwordInput.attr('type', 'text');
+                    toggleIcon.removeClass('fa-eye').addClass('fa-eye-slash');
+                } else {
+                    passwordInput.attr('type', 'password');
+                    toggleIcon.removeClass('fa-eye-slash').addClass('fa-eye');
+                }
+            });
+
+            $('#toggleConfirmPassword').on('click', function() {
+                const passwordInput = $('#ConfirmPassword');
+                const toggleIcon = $('#toggleConfirmIcon');
+                
+                if (passwordInput.attr('type') === 'password') {
+                    passwordInput.attr('type', 'text');
+                    toggleIcon.removeClass('fa-eye').addClass('fa-eye-slash');
+                } else {
+                    passwordInput.attr('type', 'password');
+                    toggleIcon.removeClass('fa-eye-slash').addClass('fa-eye');
+                }
+            });
+
+            // Validación de fortaleza de contraseña
+            $('#NewPassword').on('input', function() {
+                const password = $(this).val();
+                const strength = calculatePasswordStrength(password);
+                const strengthElement = $('#passwordStrength');
+                
+                if (password.length === 0) {
+                    strengthElement.text('').removeClass('strength-weak strength-medium strength-strong');
+                    return;
+                }
+                
+                if (strength < 3) {
+                    strengthElement.text('Contraseña débil').removeClass('strength-medium strength-strong').addClass('strength-weak');
+                } else if (strength < 5) {
+                    strengthElement.text('Contraseña media').removeClass('strength-weak strength-strong').addClass('strength-medium');
+                } else {
+                    strengthElement.text('Contraseña fuerte').removeClass('strength-weak strength-medium').addClass('strength-strong');
+                }
+            });
+
+            // Validación de confirmación de contraseña
+            $('#ConfirmPassword').on('input', function() {
+                const newPassword = $('#NewPassword').val();
+                const confirmPassword = $(this).val();
+                
+                if (confirmPassword && newPassword !== confirmPassword) {
+                    this.setCustomValidity('Las contraseñas no coinciden');
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+
+            // Envío del formulario
+            $('#changePasswordForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const form = this;
+                if (!form.checkValidity()) {
+                    e.stopPropagation();
+                    form.classList.add('was-validated');
+                    return;
+                }
+
+                const formData = {
+                    CurrentPassword: $('#CurrentPassword').val(),
+                    NewPassword: $('#NewPassword').val(),
+                    ConfirmPassword: $('#ConfirmPassword').val()
+                };
+
+                // Mostrar loading
+                const submitBtn = $(this).find('button[type="submit"]');
+                const originalText = submitBtn.html();
+                submitBtn.html('<i class="fas fa-spinner fa-spin me-2"></i>Cambiando...').prop('disabled', true);
+
+                $.ajax({
+                    url: '/ChangePassword/ChangePassword',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Contraseña Actualizada!',
+                                text: 'Tu contraseña ha sido cambiada exitosamente. Por favor, inicia sesión nuevamente.',
+                                confirmButtonColor: '#10b981',
+                                confirmButtonText: 'Entendido'
+                            }).then(() => {
+                                form.reset();
+                                form.classList.remove('was-validated');
+                                $('#passwordStrength').text('').removeClass('strength-weak strength-medium strength-strong');
+                            });
+                        } else {
+                            let errorTitle = 'Error al Cambiar Contraseña';
+                            let errorText = response.message;
+                            
+                            // Personalizar mensajes de error
+                            if (response.message.includes('contraseña actual es incorrecta')) {
+                                errorTitle = 'Contraseña Actual Incorrecta';
+                                errorText = 'La contraseña actual que ingresaste no es correcta. Por favor, verifica e intenta nuevamente.';
+                            } else if (response.message.includes('al menos 8 caracteres')) {
+                                errorTitle = 'Contraseña Muy Corta';
+                                errorText = 'La nueva contraseña debe tener al menos 8 caracteres para mayor seguridad.';
+                            } else if (response.message.includes('diferente a la actual')) {
+                                errorTitle = 'Contraseña Duplicada';
+                                errorText = 'La nueva contraseña debe ser diferente a tu contraseña actual.';
+                            } else if (response.message.includes('Usuario no autenticado')) {
+                                errorTitle = 'Sesión Expirada';
+                                errorText = 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.';
+                            } else if (response.message.includes('Usuario no encontrado')) {
+                                errorTitle = 'Error de Usuario';
+                                errorText = 'No se pudo encontrar tu información de usuario. Contacta al administrador.';
+                            }
+                            
+                            Swal.fire({
+                                icon: 'error',
+                                title: errorTitle,
+                                text: errorText,
+                                confirmButtonColor: '#ef4444',
+                                confirmButtonText: 'Entendido'
+                            });
+                        }
+                    },
+                    error: function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Error inesperado al cambiar la contraseña',
+                            confirmButtonColor: '#ef4444'
+                        });
+                    },
+                    complete: function() {
+                        submitBtn.html(originalText).prop('disabled', false);
+                    }
+                });
+            });
+        });
+
+        function calculatePasswordStrength(password) {
+            let strength = 0;
+            
+            // Longitud
+            if (password.length >= 8) strength++;
+            if (password.length >= 12) strength++;
+            
+            // Caracteres
+            if (/[a-z]/.test(password)) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^A-Za-z0-9]/.test(password)) strength++;
+            
+            return strength;
+        }
+    </script>
+}

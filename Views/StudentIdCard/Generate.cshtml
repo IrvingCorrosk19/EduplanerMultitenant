@@ -1,0 +1,628 @@
+@model SchoolManager.ViewModels.StudentIdCardGenerateViewModel
+@{
+    Layout = "_SuperAdminLayout";
+    var hasCard = Model.HasActiveCard;
+    ViewData["Title"] = Model.StudentNotFound ? "Carnet" : (hasCard ? "Carnet — " + Model.Card!.FullName : "Generar Carnet");
+    var isVertical = string.Equals(Model.Orientation, "Vertical", StringComparison.OrdinalIgnoreCase);
+    var primary = Model.PrimaryColor;
+    var bg = Model.BackgroundColor;
+    var text = Model.TextColor;
+    var borderColor = "#e5e7eb";
+    const int maxAllergies = 100;
+    string? allergiesTxt = null;
+    if (Model.ShowAllergies && !string.IsNullOrWhiteSpace(Model.Allergies))
+    {
+        var a = Model.Allergies.Trim();
+        allergiesTxt = a.Length > maxAllergies ? a[..(maxAllergies - 3)] + "..." : a;
+    }
+    var showBackFace = Model.ShowQr;
+    var hasLogo = !string.IsNullOrWhiteSpace(Model.SchoolLogoUrl);
+    var showWm = Model.ShowWatermark && hasLogo;
+    var hasEmergencyQr = hasCard && Model.ShowQr && !string.IsNullOrEmpty(Model.Card?.EmergencyInfoQrImageDataUrl);
+    var gradeGroupCompact = "—";
+    if (hasCard && Model.Card != null)
+    {
+        var gradeG = Model.Card.Grade?.Trim() ?? "";
+        var groupG = string.IsNullOrWhiteSpace(Model.Card.Group) ? "" : Model.Card.Group.Trim();
+        gradeGroupCompact = (string.IsNullOrWhiteSpace(gradeG) && string.IsNullOrWhiteSpace(groupG)) ? "—"
+            : string.IsNullOrWhiteSpace(groupG) ? gradeG
+            : string.IsNullOrWhiteSpace(gradeG) ? groupG
+            : $"{gradeG}-{groupG}";
+    }
+}
+
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    .idcard-generate-alert-print {
+        font-size: 0.9rem;
+    }
+
+    .idcard-faces-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 2rem;
+        padding: 1.5rem;
+        background: #f0f2f5;
+        border-radius: 12px;
+    }
+
+    .idcard-face-label {
+        text-align: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .idcard-face {
+        width: @(isVertical ? "210px" : "342px");
+        max-width: 100%;
+        aspect-ratio: @(isVertical ? "55 / 85" : "85 / 55");
+        height: @(isVertical ? "334px" : "216px");
+        max-height: @(isVertical ? "334px" : "216px");
+        background: @bg;
+        /* Esquinas solo abajo: evita franjas blancas arriba y en laterales del encabezado al imprimir / captura Puppeteer */
+        border-radius: 0 0 8px 8px;
+        padding: 0;
+        position: relative;
+        overflow: hidden;
+        /* Sin borde superior: evita línea clara entre borde y header; el azul llega al borde del contenido */
+        border: 1px solid @borderColor;
+        border-top: none;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+        color: @text;
+        font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+    }
+
+    /* Reverso: recuperar borde superior (el frente lo omite para fundir header azul) */
+    .idcard-face-back-screen .idcard-face {
+        border-top: 1px solid @borderColor;
+    }
+
+    /* Solo frente: respaldo bajo el header (reverso no lleva bloque azul arriba) */
+    .idcard-col-front .idcard-face::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 14px;
+        background: @primary;
+        z-index: 1;
+        pointer-events: none;
+    }
+
+    .idcard-watermark {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .idcard-watermark img {
+        width: 42%;
+        max-width: 100px;
+        opacity: 0.14;
+        object-fit: contain;
+    }
+
+    .idcard-z1 { position: relative; z-index: 2; }
+
+    /* ── HEADER: dominante — logo grande + nombre colegio prominente ── */
+    .idcard-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 6px 5px;
+        background: @primary;
+        gap: 4px;
+        box-sizing: border-box;
+        margin: 0;
+        width: 100%;
+    }
+
+    .idcard-logo-center {
+        max-width: 48px;
+        max-height: 48px;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+    }
+
+    .idcard-school-name {
+        font-size: 8.5pt;
+        font-weight: 800;
+        color: #fff;
+        text-align: center;
+        line-height: 1.2;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    /* ── FOTO: protagonista absoluta ── */
+    .idcard-photo-center {
+        display: flex;
+        justify-content: center;
+        padding-top: 6px;
+        flex-shrink: 0;
+    }
+
+    .idcard-photo-inner {
+        width: 100px;
+        height: 100px;
+        min-height: 100px;
+        border: 1.5px solid @primary;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.04);
+        font-size: 6pt;
+        font-weight: 600;
+        color: @text;
+        border-radius: 3px;
+    }
+
+    .idcard-photo-inner img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* ── DATOS: centrados, mayor jerarquía tipográfica ── */
+    .idcard-data-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 6px 8px 0;
+        gap: 1px;
+        flex-shrink: 0;
+    }
+
+    /* ── SPACER: empuja bloque inferior al fondo (min-height 0 para no forzar overflow del QR) ── */
+    .idcard-spacer {
+        flex: 1 1 0;
+        min-height: 0;
+    }
+
+    /* ── BLOQUE INFERIOR UNIFICADO: Póliza + ID + QR (flush con los bordes) ── */
+    .idcard-policy-section {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        box-sizing: border-box;
+        background: #E6EEF7;
+        padding: 6px 10px 6px 7px;
+        margin: 0;
+        border-radius: 0 0 8px 8px;
+        flex-shrink: 0;
+        min-height: 0;
+    }
+
+    .idcard-policy-section .policy-text {
+        flex: 1 1 0;
+        min-width: 0;
+        padding-right: 2px;
+    }
+
+    .idcard-policy-section .policy-label {
+        display: flex;
+        align-items: baseline;
+        gap: 3px;
+        font-size: 6.3pt;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        color: @primary;
+        line-height: 1.3;
+        margin-bottom: 2px;
+    }
+
+    .idcard-policy-section .policy-label .policy-label-icon {
+        font-size: 5.6pt;
+        opacity: 0.9;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+
+    .idcard-policy-section .policy-number {
+        font-size: 6.5pt;
+        color: @text;
+        line-height: 1.22;
+    }
+
+    .idcard-policy-section .policy-id {
+        font-size: 7pt;
+        font-weight: 800;
+        color: @text;
+        margin-top: 3px;
+        line-height: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .idcard-policy-section .policy-qr {
+        flex: 0 0 auto;
+        flex-shrink: 0;
+        align-self: center;
+        line-height: 0;
+    }
+
+    .idcard-policy-section .policy-qr img {
+        width: 52px;
+        height: 52px;
+        max-width: 100%;
+        display: block;
+        object-fit: contain;
+    }
+
+    /* ── FOOTER: oculto en preview (aparece en PDF) ── */
+    .idcard-footer-front {
+        display: none;
+    }
+
+    /* ── REVERSO (sin cambios) ── */
+
+    .idcard-back-inner {
+        padding: 10px 8px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        overflow-y: auto;
+        min-height: 0;
+        position: relative;
+    }
+
+    /* Reserva fija para QR emergencia: Chromium/Puppeteer (PDF masivo) no siempre respeta margin-top:auto igual que el navegador interactivo */
+    .idcard-back-inner--emergency {
+        padding-bottom: 86px;
+    }
+
+    .idcard-back-verify-wrap { text-align: center; margin-bottom: 6px; flex-shrink: 0; }
+    .idcard-back-verify-wrap .idcard-back-qr { width: 76px; height: 76px; margin: 0 auto 2px; }
+    .idcard-back-verify-wrap .idcard-back-qr-caption { font-size: 5.5pt; color: @text; opacity: 0.85; max-width: 200px; margin: 0 auto; line-height: 1.2; }
+    .idcard-back-qr img { width: 100%; height: 100%; display: block; }
+    .idcard-back-body { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; width: 100%; }
+    .idcard-back-emergency-footer {
+        position: absolute;
+        left: 4px;
+        right: 4px;
+        bottom: 10px;
+        text-align: center;
+        width: auto;
+    }
+    .idcard-back-emergency-footer .idcard-back-qr { width: 64px; height: 64px; margin: 0 auto 3px; }
+    .idcard-back-emergency-caption { font-size: 6pt; font-weight: 700; color: @text; line-height: 1.2; }
+    .idcard-policy { font-size: 6.5pt; line-height: 1.35; color: @text; max-height: 72px; overflow-y: auto; text-align: center; margin-top: 4px; white-space: pre-wrap; }
+    .idcard-back-line { font-size: 7pt; margin-top: 3px; color: @text; }
+
+    .print-actions {
+        text-align: center;
+        margin-top: 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: center;
+    }
+
+    @@media print {
+        .idcard-faces-row {
+            padding: 0 !important;
+            background: #fff !important;
+        }
+        .idcard-face {
+            box-shadow: none !important;
+        }
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12 text-center mb-3">
+            <h2><i class="fas fa-id-card"></i> Carnet estudiantil</h2>
+            @if (!Model.StudentNotFound)
+            {
+                <p class="text-muted small mb-0">@Model.SchoolName</p>
+            }
+        </div>
+    </div>
+
+    @if (Model.StudentNotFound)
+    {
+        <div class="row justify-content-center">
+            <div class="col-md-6 text-center">
+                <div class="alert alert-danger"><i class="fas fa-user-slash me-2"></i>Estudiante no encontrado.</div>
+                <a href="/StudentIdCard/ui" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Volver</a>
+            </div>
+        </div>
+    }
+    else if (!hasCard)
+    {
+        @if (Model.UsesCustomPdfTemplate)
+        {
+            <div class="alert alert-warning py-2 small mx-auto no-print" style="max-width:640px">
+                <i class="fas fa-layer-group me-1"></i>
+                Esta escuela utiliza una plantilla PDF personalizada. La vista previa web puede variar ligeramente del PDF final.
+            </div>
+        }
+        <div class="row justify-content-center">
+            <div class="col-md-6 text-center">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    Este estudiante no tiene carnet activo. Pulse <strong>Generar carnet</strong> para emitirlo.
+                </div>
+                <button id="btnGenerate" type="button" class="btn btn-primary btn-lg" onclick="generateCard('@Model.StudentId')">
+                    <i class="fas fa-id-card"></i> Generar carnet
+                </button>
+                <a href="/StudentIdCard/ui" class="btn btn-secondary btn-lg ms-2"><i class="fas fa-arrow-left"></i> Volver</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        @if (Model.UsesCustomPdfTemplate)
+        {
+            <div class="alert alert-warning py-2 small mx-auto mb-3 no-print" style="max-width:720px">
+                <i class="fas fa-file-pdf me-1"></i>
+                Este carnet utiliza una plantilla PDF personalizada de la escuela. La vista previa web puede variar ligeramente del PDF final.
+            </div>
+        }
+        <div class="alert alert-info border-0 mx-auto mb-3" style="max-width:720px">
+            <i class="fas fa-file-pdf text-primary me-2"></i>
+            <strong>Descargue el PDF</strong> para imprimir el carnet completo (frente y reverso, impresión a doble cara según su impresora).
+            <br><small class="text-muted">Nota: el logo en el PDF se imprime con sus colores originales. Use un logo con fondo transparente o colores apropiados para el color primario configurado.</small>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-12 col-xl-11">
+                <div class="idcard-faces-row">
+                    <div class="idcard-col-front">
+                        <div class="idcard-face-label no-print">Frente</div>
+                        <div class="idcard-face" id="idCardFront">
+                            @* Watermark *@
+                            @if (showWm)
+                            {
+                                <div class="idcard-watermark" aria-hidden="true">
+                                    <img src="/File/GetSchoolLogo?logoUrl=@Uri.EscapeDataString(Model.SchoolLogoUrl ?? "")" alt="" onerror="this.parentElement.style.display='none'" />
+                                </div>
+                            }
+
+                            @* ZONA 1: Header — logo centrado + nombre centrado *@
+                            <div class="idcard-header idcard-z1">
+                                @if (hasLogo)
+                                {
+                                    <img src="/File/GetSchoolLogo?logoUrl=@Uri.EscapeDataString(Model.SchoolLogoUrl ?? "")" alt="" class="idcard-logo-center" onerror="this.style.display='none'" />
+                                }
+                                <div class="idcard-school-name">@Model.SchoolName</div>
+                            </div>
+
+                            @* ZONA 2: Foto centrada *@
+                            @if (Model.ShowPhoto)
+                            {
+                                <div class="idcard-photo-center idcard-z1">
+                                    <div class="idcard-photo-inner">
+                                        <img src="@UserPhotoLinks.Href(Model.Card!.PhotoUrl)" alt="Foto" />
+                                    </div>
+                                </div>
+                            }
+
+                            @* ZONA 3: Datos centrados — jerarquía tipográfica clara *@
+                            <div class="idcard-data-center idcard-z1">
+                                <div style="font-size:9pt;font-weight:700;color:@text;line-height:1.15">@Model.Card!.FullName</div>
+                                @if (Model.ShowDocumentId && !string.IsNullOrWhiteSpace(Model.DocumentId))
+                                {
+                                    <div style="font-size:6.5pt;color:@text">Cédula: @Model.DocumentId</div>
+                                }
+                                <div style="font-size:6.5pt;color:@text;line-height:1.25">@gradeGroupCompact</div>
+                                @if (Model.ShowAcademicYear && !string.IsNullOrWhiteSpace(Model.AcademicYear))
+                                {
+                                    <div style="font-size:6.5pt;color:@text">Año: @Model.AcademicYear</div>
+                                }
+                            </div>
+
+                            @* SPACER: empuja el bloque inferior al fondo *@
+                            <div class="idcard-spacer"></div>
+
+                            @* ZONA 4+5: Bloque unificado — Póliza + ID + QR (flush con bordes) *@
+                            <div class="idcard-policy-section idcard-z1">
+                                <div class="policy-text">
+                                    @if (Model.ShowPolicyNumber && !string.IsNullOrWhiteSpace(Model.PolicyNumber))
+                                    {
+                                        <div class="policy-label">
+                                            <i class="fas fa-shield-alt policy-label-icon" aria-hidden="true"></i>
+                                            <span>Póliza de Seguro Educativo</span>
+                                        </div>
+                                        <div class="policy-number">@Model.PolicyNumber</div>
+                                    }
+                                    @* Se omite el ID visual en la vista previa (se mantiene en PDF y trazabilidad interna). *@
+                                </div>
+                                @if (Model.ShowQr && !string.IsNullOrEmpty(Model.Card!.QrImageDataUrl))
+                                {
+                                    <div class="policy-qr">
+                                        <img src="@Model.Card.QrImageDataUrl" alt="QR" />
+                                    </div>
+                                }
+                            </div>
+
+                            @* ZONA 6: Footer *@
+                            <div class="idcard-footer-front idcard-z1">Emitido: @DateTime.UtcNow.ToString("dd/MM/yyyy")</div>
+                        </div>
+                    </div>
+
+                    @if (showBackFace)
+                    {
+                        <div class="idcard-face-back-screen">
+                            <div class="idcard-face-label">Reverso</div>
+                            <div class="idcard-face d-flex flex-column">
+                                @if (showWm)
+                                {
+                                    <div class="idcard-watermark" aria-hidden="true"><img src="/File/GetSchoolLogo?logoUrl=@Uri.EscapeDataString(Model.SchoolLogoUrl ?? "")" alt="" onerror="this.parentElement.style.display='none'" /></div>
+                                }
+                                <div class="idcard-back-inner idcard-z1 @(hasEmergencyQr ? "idcard-back-inner--emergency" : "")">
+                                    @if (Model.ShowQr && !string.IsNullOrEmpty(Model.Card!.QrImageDataUrl))
+                                    {
+                                        <div class="idcard-back-verify-wrap">
+                                            <div class="idcard-back-qr"><img src="@Model.Card.QrImageDataUrl" alt="QR verificación" /></div>
+                                            <div class="idcard-back-qr-caption">Verificación del carnet</div>
+                                        </div>
+                                    }
+                                    <div class="idcard-back-body">
+                                        <div class="fw-bold" style="font-size:9pt">@Model.SchoolName</div>
+                                        <div class="idcard-back-line opacity-90">Escanea el código superior para verificar la información del carnet</div>
+                                        <div class="idcard-back-line fw-semibold">Carnet: @Model.Card!.CardNumber</div>
+                                        @if (!string.IsNullOrWhiteSpace(Model.IdCardPolicy))
+                                        {
+                                            <div class="idcard-policy">@Model.IdCardPolicy</div>
+                                        }
+                                        @if (Model.ShowSchoolPhone && !string.IsNullOrWhiteSpace(Model.SchoolPhone))
+                                        {
+                                            <div class="idcard-back-line">Tel. colegio: @Model.SchoolPhone</div>
+                                        }
+                                        @if (Model.ShowEmergencyContact && (!string.IsNullOrWhiteSpace(Model.EmergencyContactName) || !string.IsNullOrWhiteSpace(Model.EmergencyContactPhone)))
+                                        {
+                                            <div class="idcard-back-line">Contacto emergencia: @(Model.EmergencyContactName ?? "—")</div>
+                                            @if (!string.IsNullOrWhiteSpace(Model.EmergencyContactPhone))
+                                            {
+                                                <div class="idcard-back-line">Tel: @Model.EmergencyContactPhone</div>
+                                            }
+                                        }
+                                        @if (allergiesTxt != null)
+                                        {
+                                            <div class="idcard-back-line">Alergias: @allergiesTxt</div>
+                                        }
+                                    </div>
+                                    @if (hasEmergencyQr)
+                                    {
+                                        <div class="idcard-back-emergency-footer">
+                                            <div class="idcard-back-qr"><img src="@Model.Card!.EmergencyInfoQrImageDataUrl" alt="QR emergencia" /></div>
+                                            <div class="idcard-back-emergency-caption">Escaneame en caso de emergencia</div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="align-self-center text-muted small" style="max-width:220px">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Con <strong>QR desactivado</strong> en la configuración, el PDF solo incluye el frente (sin reverso).
+                        </div>
+                    }
+                </div>
+
+                <div class="print-actions">
+                    <button type="button" class="btn btn-primary btn-lg" id="btnDownloadPdf"
+                            data-pdf-url="@Url.Action("Print", "StudentIdCard", new { studentId = Model.Card!.StudentId })"
+                            data-filename="@($"carnet-{Model.Card.StudentId:N}.pdf")">
+                        <i class="fas fa-file-pdf"></i> Descargar PDF
+                    </button>
+                    <button type="button" class="btn btn-warning btn-lg" id="btnRegenerate" onclick="generateCard('@Model.Card.StudentId')">
+                        <i class="fas fa-sync-alt"></i> Regenerar carnet
+                    </button>
+                    <a href="@Url.Action("Index", "StudentIdCard")" class="btn btn-secondary btn-lg"><i class="fas fa-arrow-left"></i> Volver</a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<script>
+    (function () {
+        var btn = document.getElementById('btnDownloadPdf');
+        if (!btn) return;
+        btn.addEventListener('click', async function () {
+            var url = btn.getAttribute('data-pdf-url');
+            var name = btn.getAttribute('data-filename') || 'carnet.pdf';
+            btn.disabled = true;
+            var prev = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando PDF...';
+            try {
+                var r = await fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+                var ct = (r.headers.get('content-type') || '').toLowerCase();
+                if (r.status === 401) {
+                    if (window.SchoolUi) {
+                        window.SchoolUi.warning('Sesión finalizada', 'Inicie sesión de nuevo y vuelva a descargar el carnet.');
+                    } else alert('Sesión expirada.');
+                    return;
+                }
+                if (!r.ok) {
+                    var errText = await r.text();
+                    var msg = errText || ('No se pudo generar el PDF (código ' + r.status + ').');
+                    if (window.SchoolUi) window.SchoolUi.error('No se pudo descargar el PDF', msg.length > 600 ? msg.substring(0, 600) + '…' : msg);
+                    else alert(msg);
+                    return;
+                }
+                if (!ct.includes('pdf')) {
+                    var t = await r.text();
+                    var preview = t.substring(0, 500) || 'El servidor no devolvió un archivo PDF.';
+                    if (window.SchoolUi) {
+                        window.SchoolUi.error('Archivo no válido', preview.length > 400 ? preview.substring(0, 400) + '…' : preview);
+                    } else alert(preview);
+                    return;
+                }
+                var blob = await r.blob();
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(a.href);
+            } catch (e) {
+                if (window.SchoolUi) {
+                    window.SchoolUi.error('Sin conexión', 'Compruebe su internet o intente más tarde.');
+                } else alert('Error de red al descargar el PDF.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = prev;
+            }
+        });
+    })();
+</script>
+<script>
+    function generateCard(id) {
+        var btn = document.getElementById('btnGenerate') || document.getElementById('btnRegenerate');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+        }
+        var antiforgeryInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        fetch('/StudentIdCard/api/generate/' + id, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': antiforgeryInput ? antiforgeryInput.value : ''
+            }
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data && data.cardNumber) {
+                window.location.href = '/StudentIdCard/ui/generate/' + id;
+            } else {
+                var gm = data.message || 'No se pudo generar el carnet. Si el problema continúa, contacte al administrador.';
+                if (window.SchoolUi) window.SchoolUi.error('No se pudo generar el carnet', gm);
+                else alert('Error: ' + gm);
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-id-card"></i> Generar carnet'; }
+            }
+        })
+        .catch(function () {
+            if (window.SchoolUi) {
+                window.SchoolUi.error('Error de conexión', 'No pudimos comunicarnos con el servidor. Revise su red e intente de nuevo.');
+            } else alert('Error de red al generar el carnet.');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-id-card"></i> Generar carnet'; }
+        });
+    }
+</script>

@@ -1,0 +1,63 @@
+@model SchoolManager.Models.Attendance
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Detalles de Asistencia";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-info-circle mr-2"></i>Detalles de Asistencia</h3>
+                <small>Información completa del registro</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-calendar-check mr-2"></i>Información de Asistencia</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Fecha:</dt>
+                        <dd class="col-sm-8"><strong>@Model.Date.ToString("dd/MM/yyyy")</strong></dd>
+
+                        <dt class="col-sm-4">Estudiante:</dt>
+                        <dd class="col-sm-8">@(Model.Student?.Name ?? "N/A")</dd>
+
+                        <dt class="col-sm-4">Grado:</dt>
+                        <dd class="col-sm-8">@(Model.Grade?.Name ?? "N/A")</dd>
+
+                        <dt class="col-sm-4">Grupo:</dt>
+                        <dd class="col-sm-8">@(Model.Group?.Name ?? "N/A")</dd>
+
+                        <dt class="col-sm-4">Estado:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge @(Model.Status?.ToLower() == "presente" ? "bg-success" : Model.Status?.ToLower() == "ausente" ? "bg-danger" : "bg-warning")">
+                                @Model.Status
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-4">Docente:</dt>
+                        <dd class="col-sm-8">@(Model.Teacher?.Name ?? "N/A")</dd>
+
+                        <dt class="col-sm-4">Fecha de Creación:</dt>
+                        <dd class="col-sm-8">@TimeZoneService.ToLocalDisplayString(Model.CreatedAt, "dd/MM/yyyy HH:mm")</dd>
+                    </dl>
+
+                    <div class="mt-4">
+                        <a href="@Url.Action("Edit", new { id = Model.Id })" class="btn btn-warning">
+                            <i class="fas fa-edit mr-2"></i>Editar
+                        </a>
+                        <a href="@Url.Action("Index")" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left mr-2"></i>Volver
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

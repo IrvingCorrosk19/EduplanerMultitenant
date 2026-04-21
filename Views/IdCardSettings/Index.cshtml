@@ -1,0 +1,517 @@
+@model SchoolManager.Models.SchoolIdCardSetting
+@{
+    Layout = "_SuperAdminLayout";
+    ViewData["Title"] = "Configuración del Carnet Estudiantil";
+    var needSchoolSelection = ViewBag.NeedSchoolSelection as bool? ?? false;
+    var schoolList = ViewBag.Schools as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+<style>
+    .idcard-preview-card { font-family: 'Segoe UI', system-ui, sans-serif; }
+    .idcard-preview-header { display: flex; align-items: center; padding: 4px 8px; }
+    .idcard-preview-body { flex: 1; min-height: 80px; }
+    .idcard-preview-photo { display: none; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.65rem; color: #666; }
+    .idcard-preview-info { min-width: 0; }
+    .idcard-preview-name { font-size: 0.75rem; line-height: 1.2; }
+    .idcard-preview-number { font-size: 0.7rem; font-weight: 600; }
+    .idcard-preview-details { font-size: 0.65rem; opacity: 0.9; }
+    .idcard-preview-footer { text-align: center; font-size: 0.6rem; opacity: 0.85; }
+    .idcard-preview-back-header { color: #fff; font-size: 0.7rem; }
+    .idcard-preview-back-qr { min-height: 100px; }
+</style>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-8">
+            @if (needSchoolSelection)
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header py-3">
+                        <h4 class="mb-0">
+                            <i class="fas fa-school text-primary me-2"></i>
+                            Seleccionar escuela
+                        </h4>
+                    </div>
+                    <div class="card-body p-4">
+                        <p class="text-muted mb-3">Elija la escuela para la cual desea configurar el carnet estudiantil.</p>
+                        <div class="row align-items-end">
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold">Escuela</label>
+                                <select id="schoolSelect" class="form-select form-select-lg">
+                                    <option value="">-- Seleccione una escuela --</option>
+                                    @if (schoolList != null)
+                                    {
+                                        @foreach (Microsoft.AspNetCore.Mvc.Rendering.SelectListItem item in schoolList)
+                                        {
+                                            <option value="@item.Value">@item.Text</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-4 mt-2 mt-md-0">
+                                <button type="button" id="btnContinueSchool" class="btn btn-primary btn-lg w-100">
+                                    <i class="fas fa-arrow-right me-1"></i> Continuar
+                                </button>
+                            </div>
+                        </div>
+                        @if (schoolList == null || !schoolList.Any())
+                        {
+                            <div class="alert alert-warning mt-3 mb-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i>No hay escuelas activas en el sistema. Cree una escuela desde el menú SuperAdmin.
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            @if (!needSchoolSelection)
+            {
+            <div class="card shadow-sm">
+                <div class="card-header py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <h4 class="mb-0">
+                        <i class="fas fa-id-card text-primary me-2"></i>
+                        Configuración del Carnet Estudiantil
+                        @if (ViewBag.SelectedSchoolName != null)
+                        {
+                            <span class="badge bg-secondary ms-2">@ViewBag.SelectedSchoolName</span>
+                        }
+                    </h4>
+                    <div class="d-flex gap-1">
+                        <a href="/id-card/settings" class="btn btn-outline-secondary btn-sm" title="Cambiar escuela">Cambiar escuela</a>
+                        <a href="/StudentIdCard/ui" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i> Volver a Carnets
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+                            <i class="fas fa-check-circle me-2"></i> @TempData["Success"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                        </div>
+                    }
+                    @if (TempData["IdCardSettings.Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i> @TempData["IdCardSettings.Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                        </div>
+                    }
+
+                    <form method="post" action="/id-card/settings/save" id="idCardSettingsForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="SchoolId" />
+                        <input type="hidden" asp-for="Id" />
+                        <input type="hidden" asp-for="TemplateKey" />
+
+                        <section class="mb-4">
+                            <h5 class="text-secondary border-bottom pb-2 mb-3">
+                                <i class="fas fa-palette me-1"></i> Colores
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Color primario</label>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="color" asp-for="PrimaryColor" class="form-control form-control-color p-1" style="width: 3rem; height: 2.5rem; cursor: pointer;" id="PrimaryColorPicker" />
+                                        <span class="form-control form-control-sm text-muted" style="max-width: 7rem;" id="PrimaryColorHex">@Model.PrimaryColor</span>
+                                    </div>
+                                    <small class="text-muted">Barra superior y acentos del carnet</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Color de texto</label>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="color" asp-for="TextColor" class="form-control form-control-color p-1" style="width: 3rem; height: 2.5rem; cursor: pointer;" id="TextColorPicker" />
+                                        <span class="form-control form-control-sm text-muted" style="max-width: 7rem;" id="TextColorHex">@Model.TextColor</span>
+                                    </div>
+                                    <small class="text-muted">Texto principal</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Color de fondo</label>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="color" asp-for="BackgroundColor" class="form-control form-control-color p-1" style="width: 3rem; height: 2.5rem; cursor: pointer;" id="BackgroundColorPicker" />
+                                        <span class="form-control form-control-sm text-muted" style="max-width: 7rem;" id="BackgroundColorHex">@Model.BackgroundColor</span>
+                                    </div>
+                                    <small class="text-muted">Fondo del carnet</small>
+                                </div>
+                            </div>
+                        </section>
+
+                        <hr />
+
+                        <section class="mb-4">
+                            <h5 class="text-secondary border-bottom pb-2 mb-3">
+                                <i class="fas fa-ruler-combined me-1"></i> Dimensiones
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Ancho (mm)</label>
+                                    <input type="number" asp-for="PageWidthMm" class="form-control" min="30" max="100" />
+                                    <small class="text-muted">Vertical: 55 mm · Horizontal: 85 mm (tipo CR)</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Alto (mm)</label>
+                                    <input type="number" asp-for="PageHeightMm" class="form-control" min="50" max="150" />
+                                    <small class="text-muted">Vertical: 85 mm · Horizontal: 55 mm</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Sangrado (mm)</label>
+                                    <input type="number" asp-for="BleedMm" class="form-control" min="0" max="5" />
+                                    <small class="text-muted">Margen para impresión</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Plantilla</label>
+                                    <input type="text" asp-for="TemplateKey" class="form-control bg-light" readonly />
+                                </div>
+                            </div>
+                            <div class="row g-3 mt-1">
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Orientación del carnet</label>
+                                    <div class="d-flex gap-4">
+                                        <div class="form-check">
+                                            <input type="radio" asp-for="Orientation" value="Vertical" class="form-check-input" id="OrientationVertical" />
+                                            <label class="form-check-label" for="OrientationVertical">Vertical (55 × 85 mm)</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input type="radio" asp-for="Orientation" value="Horizontal" class="form-check-input" id="OrientationHorizontal" />
+                                            <label class="form-check-label" for="OrientationHorizontal">Horizontal (85 × 55 mm)</label>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Define el tamaño y orientación de la tarjeta impresa.</small>
+                                </div>
+                            </div>
+                        </section>
+
+                        <hr />
+
+                        <section class="mb-4">
+                            <h5 class="text-secondary border-bottom pb-2 mb-3">
+                                <i class="fas fa-toggle-on me-1"></i> Opciones
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" asp-for="ShowQr" class="form-check-input" id="ShowQr" />
+                                        <label class="form-check-label fw-semibold" for="ShowQr">
+                                            <i class="fas fa-qrcode me-1"></i> Mostrar código QR
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ms-4">Incluir QR para validación (reverso del carnet)</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" asp-for="ShowPhoto" class="form-check-input" id="ShowPhoto" />
+                                        <label class="form-check-label fw-semibold" for="ShowPhoto">
+                                            <i class="fas fa-user-circle me-1"></i> Mostrar foto del estudiante
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ms-4">Cuando esté disponible</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" asp-for="ShowSchoolPhone" class="form-check-input" id="ShowSchoolPhone" />
+                                        <label class="form-check-label fw-semibold" for="ShowSchoolPhone">
+                                            <i class="fas fa-phone me-1"></i> Mostrar teléfono del colegio
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ms-4">En el reverso del carnet</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" asp-for="ShowEmergencyContact" class="form-check-input" id="ShowEmergencyContact" />
+                                        <label class="form-check-label fw-semibold" for="ShowEmergencyContact">
+                                            <i class="fas fa-user-plus me-1"></i> Mostrar contacto de emergencia
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ms-4">En el reverso del carnet</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" asp-for="ShowAllergies" class="form-check-input" id="ShowAllergies" />
+                                        <label class="form-check-label fw-semibold" for="ShowAllergies">
+                                            <i class="fas fa-allergies me-1"></i> Mostrar alergias
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ms-4">En el reverso del carnet</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" asp-for="ShowWatermark" class="form-check-input" id="ShowWatermark" />
+                                        <label class="form-check-label fw-semibold" for="ShowWatermark">
+                                            <i class="fas fa-tint me-1"></i> Marca de agua (logo del colegio)
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ms-4">Logo semi-transparente en frente y reverso del carnet</small>
+                                </div>
+                            </div>
+                        </section>
+
+                        <hr />
+
+                        <section class="mb-4">
+                            <h5 class="text-secondary border-bottom pb-2 mb-3">
+                                <i class="fas fa-star me-1"></i> Diseño moderno
+                                <span class="badge bg-info text-dark ms-2" style="font-size:0.65rem;">NUEVO</span>
+                            </h5>
+                            <div class="alert alert-info py-2 mb-3 small">
+                                <i class="fas fa-info-circle me-1"></i>
+                                El diseño moderno agrega soporte para cédula, póliza, año lectivo e insignia secundaria.
+                                El diseño clásico sigue disponible cuando esta opción está desactivada.
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" asp-for="UseModernLayout" class="form-check-input" id="UseModernLayout" />
+                                        <label class="form-check-label fw-semibold" for="UseModernLayout">
+                                            <i class="fas fa-magic me-1"></i> Activar diseño moderno
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ms-4">Cambia el frente del carnet al nuevo layout. El reverso siempre usa el diseño estándar.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" asp-for="ShowDocumentId" class="form-check-input" id="ShowDocumentId" />
+                                        <label class="form-check-label fw-semibold" for="ShowDocumentId">
+                                            <i class="fas fa-id-badge me-1"></i> Mostrar cédula del estudiante
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ms-4">Solo en diseño moderno</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" asp-for="ShowPolicyNumber" class="form-check-input" id="ShowPolicyNumber" />
+                                        <label class="form-check-label fw-semibold" for="ShowPolicyNumber">
+                                            <i class="fas fa-shield-alt me-1"></i> Mostrar número de póliza
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ms-4 text-warning">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>Temporal: valor generado automáticamente hasta integrar campo real
+                                    </small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" asp-for="ShowAcademicYear" class="form-check-input" id="ShowAcademicYear" />
+                                        <label class="form-check-label fw-semibold" for="ShowAcademicYear">
+                                            <i class="fas fa-calendar-alt me-1"></i> Mostrar año lectivo
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ms-4">Tomado de la asignación activa del estudiante</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" asp-for="ShowSecondaryLogo" class="form-check-input" id="ShowSecondaryLogo" />
+                                        <label class="form-check-label fw-semibold" for="ShowSecondaryLogo">
+                                            <i class="fas fa-award me-1"></i> Mostrar insignia secundaria
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ms-4">Escudo, sello o logo adicional en el encabezado (derecha)</small>
+                                </div>
+                                <div class="col-12" id="secondaryLogoUrlGroup">
+                                    <label class="form-label fw-semibold">URL de la insignia secundaria</label>
+                                    <input type="url" asp-for="SecondaryLogoUrl" class="form-control"
+                                           placeholder="https://... o /uploads/insignia.png" />
+                                    <small class="text-muted">URL pública o ruta local bajo /uploads/. Solo se usa si "Mostrar insignia secundaria" está activo.</small>
+                                </div>
+                            </div>
+                        </section>
+
+                        <hr />
+
+                        <section class="mb-4">
+                            <h5 class="text-secondary border-bottom pb-2 mb-3">
+                                <i class="fas fa-file-contract me-1"></i> Política del carnet
+                            </h5>
+                            <p class="text-muted small">Texto único por escuela que se muestra en el reverso del carnet (debajo del código QR). Opcional.</p>
+                            <textarea name="IdCardPolicy" id="IdCardPolicy" class="form-control" rows="4" placeholder="Ej.: Este carnet es propiedad del colegio. Su uso es personal e intransferible.">@(ViewBag.IdCardPolicy ?? "")</textarea>
+                        </section>
+
+                        <div class="d-flex flex-wrap gap-2 mt-4 pt-3 border-top">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Guardar configuración
+                            </button>
+                            <button type="button" class="btn btn-outline-info" id="btnPreviewCard" data-bs-toggle="modal" data-bs-target="#idCardPreviewModal">
+                                <i class="fas fa-eye me-1"></i> Vista previa
+                            </button>
+                            <a href="/StudentIdCard/ui" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Volver a Carnets
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Modal Vista Previa del Carnet -->
+<div class="modal fade" id="idCardPreviewModal" tabindex="-1" aria-labelledby="idCardPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="idCardPreviewModalLabel">
+                    <i class="fas fa-id-card text-primary me-2"></i>Vista previa del carnet
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body bg-light py-4">
+                <p class="text-muted small mb-3">Así se verá el carnet con la configuración actual (colores, dimensiones y opciones).</p>
+                <div class="d-flex flex-wrap justify-content-center gap-4 align-items-start" id="previewCardsContainer">
+                    <!-- Frente del carnet -->
+                    <div class="text-center">
+                        <div class="small fw-semibold text-secondary mb-2">Frente</div>
+                        <div id="previewCardFront" class="idcard-preview-card shadow-sm rounded overflow-hidden" style="width: 280px;">
+                            <div class="idcard-preview-header" id="previewHeader" style="height: 28px;"></div>
+                            <div class="idcard-preview-body d-flex p-2" id="previewBody">
+                                <div class="idcard-preview-photo flex-shrink-0 me-2" id="previewPhotoWrap" style="width: 52px; height: 62px;"></div>
+                                <div class="idcard-preview-info flex-grow-1 text-start small">
+                                    <div class="idcard-preview-name fw-bold mb-1" id="previewName">Nombre del Estudiante</div>
+                                    <div class="idcard-preview-number mb-1" id="previewNumber">Carnet #12345</div>
+                                    <div class="idcard-preview-details" id="previewDetails">Grado · Grupo · Jornada</div>
+                                    <div class="idcard-preview-qr mt-1" id="previewQrWrap" style="display: none;">
+                                        <span class="idcard-preview-qr-label">QR verificación</span>
+                                        <div class="d-inline-block border rounded p-1 bg-white" style="width: 36px; height: 36px;"><i class="fas fa-qrcode fa-lg"></i></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="idcard-preview-footer small py-1" id="previewFooter">Emitido: dd/mm/aaaa</div>
+                        </div>
+                    </div>
+                    <!-- Reverso (solo si ShowQr) -->
+                    <div class="text-center" id="previewBackWrap" style="display: none;">
+                        <div class="small fw-semibold text-secondary mb-2">Reverso (QR)</div>
+                        <div id="previewCardBack" class="idcard-preview-card shadow-sm rounded overflow-hidden" style="width: 280px;">
+                            <div class="idcard-preview-back-header p-2 text-center small fw-bold" id="previewBackHeader">Código de verificación</div>
+                            <div class="idcard-preview-back-qr d-flex align-items-center justify-content-center p-3" id="previewBackQr">
+                                <div class="border rounded p-2 bg-white"><canvas id="previewBackQrCanvas" width="120" height="120"></canvas></div>
+                            </div>
+                            <div class="idcard-preview-footer small py-1" id="previewBackFooter">Escanea para validar</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 small text-muted">
+                    <span id="previewDimensions">Dimensiones: 55 × 85 mm</span>
+                    <span class="ms-2">·</span>
+                    <span id="previewOptions">QR: Sí · Foto: No</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var schoolSelect = document.getElementById('schoolSelect');
+        var btnContinue = document.getElementById('btnContinueSchool');
+        if (btnContinue && schoolSelect) {
+            btnContinue.addEventListener('click', function() {
+                var id = schoolSelect.value;
+                if (!id) {
+                    if (window.SchoolUi) {
+                        window.SchoolUi.warning('Falta la escuela', 'Seleccione una institución en la lista para continuar.');
+                    } else alert('Seleccione una escuela.');
+                    return;
+                }
+                window.location.href = '/id-card/settings?schoolId=' + encodeURIComponent(id);
+            });
+        }
+        var pickers = [
+            { picker: 'PrimaryColorPicker', hex: 'PrimaryColorHex' },
+            { picker: 'TextColorPicker', hex: 'TextColorHex' },
+            { picker: 'BackgroundColorPicker', hex: 'BackgroundColorHex' }
+        ];
+        pickers.forEach(function(p) {
+            var el = document.getElementById(p.picker);
+            var hexEl = document.getElementById(p.hex);
+            if (el && hexEl) {
+                el.addEventListener('input', function() { hexEl.textContent = el.value; });
+            }
+        });
+
+        // Vista previa del carnet: actualizar al abrir el modal con los valores del formulario
+        var modal = document.getElementById('idCardPreviewModal');
+        var form = document.getElementById('idCardSettingsForm');
+        if (modal && form) {
+            modal.addEventListener('show.bs.modal', function() {
+                var primary = (form.querySelector('[name="PrimaryColor"]') || form.querySelector('#PrimaryColorPicker'))?.value || '#0D6EFD';
+                var text = (form.querySelector('[name="TextColor"]') || form.querySelector('#TextColorPicker'))?.value || '#111111';
+                var bg = (form.querySelector('[name="BackgroundColor"]') || form.querySelector('#BackgroundColorPicker'))?.value || '#FFFFFF';
+                var orientation = (form.querySelector('[name="Orientation"]:checked') || form.querySelector('input[name="Orientation"][value="Vertical"]'))?.value || 'Vertical';
+                var wMm = 55, hMm = 85;
+                if (orientation === 'Horizontal') { wMm = 85; hMm = 55; } else { wMm = 55; hMm = 85; }
+                var showQr = (form.querySelector('[name="ShowQr"]') || form.querySelector('#ShowQr'))?.checked !== false;
+                var showPhoto = (form.querySelector('[name="ShowPhoto"]') || form.querySelector('#ShowPhoto'))?.checked === true;
+
+                var scale = 280 / Math.max(wMm, hMm);
+                var cardW = Math.round(wMm * scale);
+                var cardH = Math.round(hMm * scale);
+
+                var front = document.getElementById('previewCardFront');
+                var backWrap = document.getElementById('previewBackWrap');
+                var header = document.getElementById('previewHeader');
+                var body = document.getElementById('previewBody');
+                var footer = document.getElementById('previewFooter');
+                var photoWrap = document.getElementById('previewPhotoWrap');
+                var qrWrap = document.getElementById('previewQrWrap');
+                var nameEl = document.getElementById('previewName');
+                var numberEl = document.getElementById('previewNumber');
+                var detailsEl = document.getElementById('previewDetails');
+
+                if (front) {
+                    front.style.width = cardW + 'px';
+                    front.style.minHeight = cardH + 'px';
+                    front.style.backgroundColor = bg;
+                    front.style.color = text;
+                }
+                if (header) {
+                    header.style.backgroundColor = primary;
+                    header.style.color = '#fff';
+                }
+                if (footer) {
+                    footer.style.backgroundColor = bg;
+                    footer.style.color = text;
+                    footer.style.borderTop = '1px solid ' + (text === '#FFFFFF' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)');
+                }
+                if (numberEl) numberEl.style.color = primary;
+                photoWrap.style.display = showPhoto ? 'flex' : 'none';
+                if (photoWrap && showPhoto) {
+                    photoWrap.style.border = '2px solid ' + primary;
+                    photoWrap.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                }
+                qrWrap.style.display = showQr ? 'block' : 'none';
+                backWrap.style.display = showQr ? 'block' : 'none';
+
+                var backCard = document.getElementById('previewCardBack');
+                var backHeader = document.getElementById('previewBackHeader');
+                var backFooter = document.getElementById('previewBackFooter');
+                if (backCard) {
+                    backCard.style.width = cardW + 'px';
+                    backCard.style.minHeight = cardH + 'px';
+                    backCard.style.backgroundColor = bg;
+                    backCard.style.color = text;
+                }
+                if (backHeader) { backHeader.style.backgroundColor = primary; backHeader.style.color = '#fff'; }
+                if (backFooter) { backFooter.style.backgroundColor = bg; backFooter.style.color = text; }
+
+                var dimEl = document.getElementById('previewDimensions');
+                var optEl = document.getElementById('previewOptions');
+                if (dimEl) dimEl.textContent = 'Dimensiones: ' + wMm + ' × ' + hMm + ' mm';
+                if (optEl) optEl.textContent = 'QR: ' + (showQr ? 'Sí' : 'No') + ' · Foto: ' + (showPhoto ? 'Sí' : 'No');
+
+                if (showQr) {
+                    var qrCanvas = document.getElementById('previewBackQrCanvas');
+                    if (qrCanvas && typeof QRCode !== 'undefined') {
+                        var ctx = qrCanvas.getContext('2d');
+                        if (ctx) ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+                        QRCode.toCanvas(qrCanvas, 'Vista-previa-carnet-config', { width: 110, margin: 1, color: { dark: '#000000', light: '#ffffff' } }, function (err) {
+                            if (err) console.warn('[IdCardPreview] QR:', err);
+                        });
+                    }
+                }
+            });
+        }
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" crossorigin="anonymous" id="qrcodeLibIdCard"></script>
+}

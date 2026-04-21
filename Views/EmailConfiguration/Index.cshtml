@@ -1,0 +1,183 @@
+@model List<SchoolManager.Dtos.EmailConfigurationDto>
+@{
+    ViewData["Title"] = "Configuraciones de Email";
+    Layout = "_AdminLayout";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-envelope me-2"></i>
+                        Configuraciones de Email
+                    </h3>
+                    <div class="card-tools">
+                        <a asp-action="Create" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>
+                            Nueva Configuración
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (TempData["SuccessMessage"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>
+                            @TempData["SuccessMessage"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            @TempData["ErrorMessage"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    @if (Model.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover table-bordered">
+                                <thead class="table-primary">
+                                    <tr>
+                                        <th>Escuela</th>
+                                        <th>Servidor SMTP</th>
+                                        <th>Puerto</th>
+                                        <th>Email Origen</th>
+                                        <th>Estado</th>
+                                        <th>Última Actualización</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var config in Model)
+                                    {
+                                        <tr>
+                                            <td>@config.SchoolId</td>
+                                            <td>@config.SmtpServer</td>
+                                            <td>@config.SmtpPort</td>
+                                            <td>@config.FromEmail</td>
+                                            <td>
+                                                <span class="badge @(config.IsActive ? "bg-success" : "bg-secondary")">
+                                                    @(config.IsActive ? "Activo" : "Inactivo")
+                                                </span>
+                                            </td>
+                                            <td>@TimeZoneService.ToLocalDisplayString(config.UpdatedAt, "dd/MM/yyyy HH:mm")</td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <a asp-action="Details" asp-route-id="@config.Id" class="btn btn-sm btn-info" title="Ver detalles">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    <a asp-action="Edit" asp-route-id="@config.Id" class="btn btn-sm btn-warning" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <button type="button" class="btn btn-sm btn-success test-connection" data-id="@config.Id" title="Probar conexión">
+                                                        <i class="fas fa-plug"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-danger delete-config" data-id="@config.Id" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-envelope fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay configuraciones de email</h5>
+                            <p class="text-muted">Comienza creando una nueva configuración de email para tu escuela.</p>
+                            <a asp-action="Create" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>
+                                Crear Configuración
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación de eliminación -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar esta configuración de email?</p>
+                <p class="text-muted">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Eliminar configuración
+            $('.delete-config').click(function() {
+                var id = $(this).data('id');
+                $('#deleteForm').attr('action', '@Url.Action("Delete")/' + id);
+                $('#deleteModal').modal('show');
+            });
+
+            // Probar conexión
+            $('.test-connection').click(function() {
+                var id = $(this).data('id');
+                var button = $(this);
+                var originalHtml = button.html();
+                
+                button.html('<i class="fas fa-spinner fa-spin"></i>');
+                button.prop('disabled', true);
+
+                $.post('@Url.Action("TestConnection")', { id: id })
+                    .done(function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Conexión Exitosa',
+                                text: response.message,
+                                timer: 3000
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error de Conexión',
+                                text: response.message
+                            });
+                        }
+                    })
+                    .fail(function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'No se pudo probar la conexión'
+                        });
+                    })
+                    .always(function() {
+                        button.html(originalHtml);
+                        button.prop('disabled', false);
+                    });
+            });
+        });
+    </script>
+}

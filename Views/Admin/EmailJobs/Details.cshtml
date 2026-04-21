@@ -1,0 +1,200 @@
+@model SchoolManager.ViewModels.EmailJobDetailsViewModel
+@{
+    ViewData["Title"] = "Detalle de Lote";
+    Layout = "_AdminLayout";
+
+    var retryJobUrl  = Url.Action("RetryJobFailed", "EmailJobs", new { jobId  = Model.JobId });
+    var retryItemUrl = Url.Action("RetryItem",      "EmailJobs");    // base; queueItemId + ?jobId se añaden en JS
+    var hasFailedItems = Model.FailedCount > 0;
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1><i class="fas fa-envelope-open-text mr-2"></i>Detalle de Lote</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Inicio</a></li>
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index", "EmailJobs")">Lotes de Correo</a></li>
+                        <li class="breadcrumb-item active">Detalle</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            @Html.AntiForgeryToken()
+
+            @* Tarjetas de resumen *@
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card card-primary card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-info-circle mr-2"></i>Información del lote
+                            </h3>
+                            <div class="card-tools">
+                                <span id="statusBadge" class="@Model.StatusBadgeCss">@Model.Status</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <dl class="row mb-0">
+                                        <dt class="col-5">Job ID</dt>
+                                        <dd class="col-7"><code class="small">@Model.JobId</code></dd>
+                                        <dt class="col-5">Correlación</dt>
+                                        <dd class="col-7"><code class="small">@Model.CorrelationId</code></dd>
+                                        <dt class="col-5">Creado por</dt>
+                                        <dd class="col-7">@Model.CreatedByName</dd>
+                                        @if (Model.SchoolName != null)
+                                        {
+                                            <dt class="col-5">Escuela</dt>
+                                            <dd class="col-7">@Model.SchoolName</dd>
+                                        }
+                                    </dl>
+                                </div>
+                                <div class="col-sm-6">
+                                    <dl class="row mb-0">
+                                        <dt class="col-5">Solicitado</dt>
+                                        <dd class="col-7">@Model.RequestedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</dd>
+                                        <dt class="col-5">Iniciado</dt>
+                                        <dd class="col-7">@(Model.StartedAt?.ToLocalTime().ToString("HH:mm:ss") ?? "—")</dd>
+                                        <dt class="col-5">Completado</dt>
+                                        <dd class="col-7" id="completedAt">
+                                            @(Model.CompletedAt?.ToLocalTime().ToString("HH:mm:ss") ?? "—")
+                                        </dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="row">
+                        <div class="col-6 col-md-12 col-lg-6">
+                            <div class="info-box bg-gradient-success">
+                                <span class="info-box-icon"><i class="fas fa-check"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Enviados</span>
+                                    <span class="info-box-number" id="sentCount">@Model.SentCount / @Model.TotalItems</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-12 col-lg-6">
+                            <div class="info-box bg-gradient-danger">
+                                <span class="info-box-icon"><i class="fas fa-times"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Fallidos</span>
+                                    <span class="info-box-number" id="failedCount">@Model.FailedCount</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress progress-sm mt-1">
+                        <div id="progressBar" class="progress-bar bg-success"
+                             style="width:@(Model.ProgressPct < 0 ? 0 : Model.ProgressPct)%">
+                        </div>
+                    </div>
+                    <div class="text-center small mt-1" id="progressPct">
+                        @(Model.ProgressPct < 0 ? "Sin ítems" : $"{Model.ProgressPct}%")
+                    </div>
+                </div>
+            </div>
+
+            @* Tabla de ítems *@
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-list mr-2"></i>Ítems de la cola</h3>
+                    <div class="card-tools d-flex align-items-center gap-2">
+                        @if (Model.IsActive)
+                        {
+                            <span class="badge bg-warning text-dark mr-2" title="Se actualiza cada 15s">
+                                <i class="fas fa-sync-alt fa-spin mr-1"></i>En progreso
+                            </span>
+                        }
+                        @if (hasFailedItems)
+                        {
+                            <button id="btnRetryAll"
+                                    class="btn btn-sm btn-warning"
+                                    title="Reintentar todos los correos fallidos de este lote">
+                                <i class="fas fa-redo-alt mr-1"></i>Reintentar fallidos (@Model.FailedCount)
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div class="card-body table-responsive p-0">
+                    <table id="tblItems" class="table table-hover table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>Correo</th>
+                                <th>Estado</th>
+                                <th class="text-center">Intentos</th>
+                                <th>Código error</th>
+                                <th>Message ID</th>
+                                <th>Procesado</th>
+                                <th>Próximo intento</th>
+                                <th class="text-center" style="width:70px">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsTbody">
+                            @foreach (var item in Model.Items)
+                            {
+                                <tr>
+                                    <td>@item.Email</td>
+                                    <td><span class="@item.StatusBadgeCss">@item.Status</span></td>
+                                    <td class="text-center">@item.Attempts / @item.MaxAttempts</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(item.ErrorCode))
+                                        {
+                                            <code class="small text-danger">@item.ErrorCode</code>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(item.ProviderMessageId))
+                                        {
+                                            <code class="small text-muted">@item.ProviderMessageId</code>
+                                        }
+                                    </td>
+                                    <td>@(item.ProcessedAt?.ToLocalTime().ToString("HH:mm:ss") ?? "—")</td>
+                                    <td>@(item.NextAttemptAt?.ToLocalTime().ToString("HH:mm:ss") ?? "—")</td>
+                                    <td class="text-center">
+                                        @if (item.CanRetry)
+                                        {
+                                            <button class="btn btn-xs btn-outline-warning btn-retry-item"
+                                                    data-item-id="@item.Id"
+                                                    data-email="@item.Email"
+                                                    title="Reintentar este correo">
+                                                <i class="fas fa-redo-alt"></i>
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/js/emailJobs.js" asp-append-version="true"></script>
+    <script>
+        EmailJobs.initDetails(
+            '@Model.JobId',
+            @Model.IsActive.ToString().ToLower(),
+            '@Url.Action("DetailsJson", "EmailJobs", new { jobId = Model.JobId })',
+            '@retryJobUrl',
+            '@retryItemUrl'
+        );
+    </script>
+}

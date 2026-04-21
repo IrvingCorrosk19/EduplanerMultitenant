@@ -1,0 +1,60 @@
+💰 MÓDULO 3: PAGOS (Actualizado con verificación de pagos manuales)
+🎯 Objetivo
+Gestionar los pagos de matrícula y otros conceptos académicos, permitiendo que los acudientes paguen desde el portal y que los pagos manuales (transferencias, depósitos, Yappy) se verifiquen antes de confirmar. Todos los pagos quedan vinculados al estudiante y generan recibos electrónicos.
+👥 Roles con acceso
+Administrador:
+Configura conceptos de pago y montos.
+Supervisa pagos pendientes y confirmados.
+Bloquea o habilita estados de matrícula según pagos.
+Encargado de Contabilidad:
+Valida los pagos realizados por métodos manuales (transferencias, depósitos, Yappy).
+Cambia el estado de pago a confirmado después de verificar en el banco.
+Acudiente / Padre:
+Realiza pagos desde el portal:
+Tarjeta de crédito/débito: pago automático y confirmado al instante.
+Transferencia, Yappy o depósito: debe adjuntar imagen o comprobante del pago.
+Recibe notificación de que el pago está pendiente de verificación.
+Visualiza pagos confirmados y pendientes, con recibos electrónicos descargables.
+Docente / Coordinador Académico:
+Consulta estado de pagos de estudiantes de su grupo.
+
+⚙️ Flujo principal
+1. Pago desde portal
+Acudiente selecciona concepto y estudiante.
+Métodos de pago:
+⚠️ Tarjeta de crédito/débito → pago SIMULADO (confirmación automática sin procesamiento real).
+   NOTA: En producción se requiere integrar con pasarela de pagos real (Stripe, PayPal, Yappy, etc.).
+Transferencia, depósito o Yappy → solicita adjuntar imagen del comprobante.
+Pago queda en estado: Pendiente de verificación.
+Notificación automática al encargado de contabilidad sobre el pago pendiente.
+2. Verificación de pagos manuales
+El encargado de contabilidad revisa el comprobante y valida el pago en el banco.
+Una vez confirmado, cambia el estado del pago a Confirmado en el portal.
+El sistema actualiza automáticamente el estado de matrícula del estudiante si corresponde.
+3. Consulta y seguimiento
+Acudientes: visualización de pagos pendientes y confirmados, con recibos electrónicos descargables.
+Administración / Contabilidad: reportes por concepto, estudiante o periodo.
+Alertas automáticas para pagos pendientes de verificación o matrícula bloqueada.
+
+🔄 Validaciones y reglas
+No se puede matricular un estudiante si el pago correspondiente no está confirmado.
+Cada pago debe registrar un número de recibo único (electrónico o físico).
+Validación de montos: no se aceptan pagos menores al definido por concepto.
+Control de duplicados de recibo.
+Registro histórico de pagos y auditoría de cambios.
+
+📊 Visualización y reportes
+Reportes por estudiante, concepto o periodo: montos, fechas y recibos.
+Exportación PDF o Excel.
+Filtrado por: estudiante, concepto, periodo, estado de pago.
+Acudientes: vista clara de pagos pendientes y confirmados, con opción de descargar recibos electrónicos.
+
+💾 Requerimientos técnicos
+Tabla pagos con campos:
+id_pago, id_estudiante, concepto, monto, fecha_pago, numero_recibo, estado_pago, registrado_por, metodo_pago, imagen_comprobante
+Tabla conceptos_pago con:
+id_concepto, nombre_concepto, monto, periodicidad, activo
+Integración con Módulo de Matrícula para habilitar estados automáticamente.
+Control de acceso por rol (Administrador, Contabilidad, Acudiente, Docente).
+Notificaciones automáticas cuando un pago es registrado o confirmado.
+

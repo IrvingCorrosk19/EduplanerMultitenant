@@ -1,0 +1,52 @@
+@{
+    Layout = "_LoginLayout";
+    ViewData["Title"] = "Registro";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <h2 class="text-center mb-4">Registro de Usuario</h2>
+                    
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger">
+                            @TempData["Error"]
+                        </div>
+                    }
+
+                    <form method="post" action="@Url.Action("Register")">
+                        <div class="mb-3">
+                            <label class="form-label">Correo Electrónico *</label>
+                            <input type="email" name="Email" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña *</label>
+                            <input type="password" name="Password" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Confirmar Contraseña *</label>
+                            <input type="password" name="ConfirmPassword" class="form-control" required />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 mb-3">
+                            Registrarse
+                        </button>
+
+                        <div class="text-center">
+                            <a href="@Url.Action("Login")">¿Ya tienes cuenta? Inicia sesión</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -1,0 +1,145 @@
+@model IEnumerable<SchoolManager.Dtos.PaymentDto>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Gestión de Pagos";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-money-bill-wave mr-2"></i>Gestión de Pagos de Prematrícula</h3>
+                <small>Registro y confirmación de pagos de prematrícula</small>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle mr-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <a href="@Url.Action("Search")" class="btn btn-primary">
+                <i class="fas fa-search mr-2"></i>Buscar Prematrícula para Pago
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list mr-2"></i>Lista de Pagos</h5>
+                </div>
+                <div class="card-body">
+                    @if (!Model.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>No hay pagos registrados.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="paymentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Número de Recibo</th>
+                                        <th>Concepto</th>
+                                        <th>Monto</th>
+                                        <th>Método de Pago</th>
+                                        <th>Fecha de Pago</th>
+                                        <th>Registrado Por</th>
+                                        <th>Estado</th>
+                                        <th>Fecha de Confirmación</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var payment in Model)
+                                    {
+                                        <tr>
+                                            <td><code>@payment.ReceiptNumber</code></td>
+                                            <td>@(payment.PaymentConceptName ?? "-")</td>
+                                            <td>@payment.Amount.ToString("C")</td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(payment.PaymentMethod))
+                                                {
+                                                    <span class="badge bg-info">@payment.PaymentMethod</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>@TimeZoneService.ToLocalDisplayString(payment.PaymentDate, "dd/MM/yyyy")</td>
+                                            <td>@(payment.RegisteredByName ?? "N/A")</td>
+                                            <td>
+                                                @if (payment.PaymentStatus == "Confirmado")
+                                                {
+                                                    <span class="badge bg-success">Confirmado</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning">Pendiente</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (payment.ConfirmedAt.HasValue)
+                                                {
+                                                    @TimeZoneService.ToLocalDisplayString(payment.ConfirmedAt, "dd/MM/yyyy HH:mm")
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <a href="@Url.Action("Details", new { id = payment.Id })" class="btn btn-sm btn-info" title="Ver detalles">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                @if (!string.IsNullOrEmpty(payment.ReceiptImage))
+                                                {
+                                                    <a href="@payment.ReceiptImage" target="_blank" class="btn btn-sm btn-secondary" title="Ver comprobante">
+                                                        <i class="fas fa-image"></i>
+                                                    </a>
+                                                }
+                                                @if (payment.PaymentStatus != "Confirmado")
+                                                {
+                                                    <form method="post" action="@Url.Action("Confirm", new { id = payment.Id })" style="display:inline;" onsubmit="return confirm('¿Confirma este pago?');">
+                                                        <button type="submit" class="btn btn-sm btn-success" title="Confirmar pago">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#paymentsTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json"
+                },
+                "order": [[2, "desc"]]
+            });
+        });
+    </script>
+}
+

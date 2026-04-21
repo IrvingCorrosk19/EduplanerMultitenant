@@ -1,0 +1,89 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Reportes de Pagos";
+    var paymentConcepts = ViewBag.PaymentConcepts as List<SchoolManager.Dtos.PaymentConceptDto> ?? new List<SchoolManager.Dtos.PaymentConceptDto>();
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-chart-bar mr-2"></i>Reportes de Pagos</h3>
+                <small>Genere reportes de pagos por concepto, estudiante o período</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-filter mr-2"></i>Filtros del Reporte</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="GenerateReport" method="post">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Concepto de Pago</label>
+                                <select name="conceptId" class="form-select">
+                                    <option value="">Todos los conceptos</option>
+                                    @foreach (var concept in paymentConcepts)
+                                    {
+                                        <option value="@concept.Id">@concept.Name</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Estado del Pago</label>
+                                <select name="status" class="form-select">
+                                    <option value="">Todos los estados</option>
+                                    <option value="Confirmado">Confirmado</option>
+                                    <option value="Pendiente">Pendiente</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Fecha Inicio</label>
+                                <input type="date" name="startDate" class="form-control" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Fecha Fin</label>
+                                <input type="date" name="endDate" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Estudiante (Opcional)</label>
+                            <input type="text" name="studentSearch" id="studentSearch" class="form-control" placeholder="Buscar por nombre o documento" />
+                            <input type="hidden" name="studentId" id="studentId" />
+                            <small class="form-text text-muted">Deje vacío para incluir todos los estudiantes</small>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="@Url.Action("Index")" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left mr-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-file-pdf mr-2"></i>Generar Reporte
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Aquí se puede agregar autocompletado para estudiantes si se desea
+        $(document).ready(function() {
+            // Placeholder para autocompletado de estudiantes
+        });
+    </script>
+}
+

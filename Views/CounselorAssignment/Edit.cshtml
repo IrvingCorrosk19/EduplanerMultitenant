@@ -1,0 +1,378 @@
+@model SchoolManager.Dtos.CounselorAssignmentDto
+
+@{
+    ViewData["Title"] = "Editar Asignación de Consejero";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="content-wrapper">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">
+                        <i class="bi bi-pencil-square me-2"></i>
+                        Editar Asignación de Consejero
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Inicio</a></li>
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index")">Asignaciones de Consejeros</a></li>
+                        <li class="breadcrumb-item active">Editar Asignación</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <!-- Mensajes de error -->
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    @TempData["ErrorMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-person-gear me-2"></i>
+                                Editar Información de la Asignación
+                            </h3>
+                        </div>
+                        <form asp-action="Edit" method="post">
+                            <div class="card-body">
+                                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                                
+                                <!-- Información del consejero (solo lectura) -->
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-person me-1"></i>
+                                        Consejero
+                                    </label>
+                                    <div class="input-group">
+                                        <div class="input-group-text">
+                                            <i class="bi bi-person-fill"></i>
+                                        </div>
+                                        <input type="text" class="form-control" value="@Model.UserFullName (@Model.UserEmail)" readonly>
+                                    </div>
+                                    <small class="form-text text-muted">El consejero no se puede cambiar. Para cambiar el consejero, elimine esta asignación y cree una nueva.</small>
+                                </div>
+
+                                <!-- Tipo de Asignación -->
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-diagram-3 me-1"></i>
+                                        Tipo de Asignación *
+                                    </label>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="assignmentType" id="combinationType" value="combination" checked>
+                                                <label class="form-check-label" for="combinationType">
+                                                    <i class="bi bi-diagram-3 text-primary me-1"></i>
+                                                    <strong>Por Combinación</strong>
+                                                    <br>
+                                                    <small class="text-muted">Consejero de grado-grupo específico</small>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Combinación Grado-Grupo -->
+                                <div class="form-group mb-3" id="combinationSection">
+                                    <label class="form-label">
+                                        <i class="bi bi-diagram-3 me-1"></i>
+                                        Combinación Grado - Grupo
+                                    </label>
+                                    <select id="gradeGroupCombination" class="form-select" required>
+                                        <option value="">Seleccione una combinación válida</option>
+                                        @if (ViewBag.ValidCombinations != null)
+                                        {
+                                            @foreach (var combination in ViewBag.ValidCombinations)
+                                            {
+                                                <option value="@combination.GradeId|@combination.GroupId" 
+                                                        data-grade-id="@combination.GradeId" 
+                                                        data-group-id="@combination.GroupId"
+                                                        selected="@(Model.GradeId == combination.GradeId && Model.GroupId == combination.GroupId)">
+                                                    @combination.DisplayText
+                                                </option>
+                                            }
+                                        }
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Solo se muestran las combinaciones que tienen estudiantes asignados
+                                    </small>
+                                    <span asp-validation-for="GradeId" class="text-danger"></span>
+                                    <span asp-validation-for="GroupId" class="text-danger"></span>
+                                </div>
+
+                                <!-- Campos ocultos para GradeId y GroupId -->
+                                <input type="hidden" asp-for="GradeId" id="hiddenGradeId" />
+                                <input type="hidden" asp-for="GroupId" id="hiddenGroupId" />
+
+                                <!-- Estado -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <div class="form-check">
+                                                <input asp-for="IsCounselor" class="form-check-input" type="checkbox">
+                                                <label asp-for="IsCounselor" class="form-check-label">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    Es Consejero
+                                                </label>
+                                            </div>
+                                            <span asp-validation-for="IsCounselor" class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <div class="form-check">
+                                                <input asp-for="IsActive" class="form-check-input" type="checkbox">
+                                                <label asp-for="IsActive" class="form-check-label">
+                                                    <i class="bi bi-play-circle me-1"></i>
+                                                    Activo
+                                                </label>
+                                            </div>
+                                            <span asp-validation-for="IsActive" class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Información adicional -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label">
+                                                <i class="bi bi-calendar-plus me-1"></i>
+                                                Fecha de Creación
+                                            </label>
+                                            <input type="text" class="form-control" value="@TimeZoneService.ToLocalDisplayString(Model.CreatedAt, "dd/MM/yyyy HH:mm")" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label">
+                                                <i class="bi bi-calendar-check me-1"></i>
+                                                Última Actualización
+                                            </label>
+                                            <input type="text" class="form-control" value="@TimeZoneService.ToLocalDisplayString(Model.UpdatedAt, "dd/MM/yyyy HH:mm")" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <div class="d-flex justify-content-between">
+                                    <a href="@Url.Action("Index")" class="btn btn-secondary">
+                                        <i class="bi bi-arrow-left me-1"></i>
+                                        Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Guardar Cambios
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <!-- Información actual -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Información Actual
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <strong>Consejero:</strong><br>
+                                <span class="text-primary">@Model.UserFullName</span><br>
+                                <small class="text-muted">@Model.UserEmail</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>Tipo de Asignación:</strong><br>
+                                <span class="badge bg-primary">
+                                    <i class="bi bi-diagram-3 me-1"></i>
+                                    Por Combinación
+                                </span>
+                            </div>
+
+                            @if (Model.GradeId.HasValue && Model.GroupId.HasValue)
+                            {
+                                <div class="mb-3">
+                                    <strong>Combinación:</strong><br>
+                                    <span class="badge bg-primary">
+                                        <i class="bi bi-diagram-3 me-1"></i>
+                                        @(Model.GradeName ?? "Sin grado") - @(Model.GroupName ?? "Sin grupo")
+                                    </span>
+                                </div>
+                            }
+
+                            <div class="mb-3">
+                                <strong>Estado:</strong><br>
+                                @if (Model.IsActive)
+                                {
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Activo
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-x-circle me-1"></i>
+                                        Inactivo
+                                    </span>
+                                }
+                            </div>
+
+                            <div class="mb-3">
+                                <strong>Es Consejero:</strong><br>
+                                @if (Model.IsCounselor)
+                                {
+                                    <span class="badge bg-primary">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Sí
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-x-circle me-1"></i>
+                                        No
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Acciones rápidas -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-lightning me-2"></i>
+                                Acciones Rápidas
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="@Url.Action("Details", new { id = Model.Id })" class="btn btn-outline-info">
+                                    <i class="bi bi-eye me-1"></i>
+                                    Ver Detalles
+                                </a>
+                                
+                                <form method="post" action="@Url.Action("ToggleActive", new { id = Model.Id })" 
+                                      style="display: inline;" onsubmit="return confirmToggleActive('@Model.UserFullName', @Model.IsActive.ToString().ToLower())">
+                                    <button type="submit" class="btn @(Model.IsActive ? "btn-outline-warning" : "btn-outline-success") w-100">
+                                        <i class="bi @(Model.IsActive ? "bi-pause" : "bi-play") me-1"></i>
+                                        @(Model.IsActive ? "Desactivar" : "Activar")
+                                    </button>
+                                </form>
+                                
+                                <form method="post" action="@Url.Action("Delete", new { id = Model.Id })" 
+                                      style="display: inline;" onsubmit="return confirmDelete('@Model.UserFullName')">
+                                    <button type="submit" class="btn btn-outline-danger w-100">
+                                        <i class="bi bi-trash me-1"></i>
+                                        Eliminar
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Initial setup based on existing model data
+            var initialGradeId = '@Model.GradeId';
+            var initialGroupId = '@Model.GroupId';
+            
+            // Siempre mostrar la sección de combinación
+            $('#combinationSection').show();
+            $('#gradeGroupCombination').prop('required', true);
+
+            // Manejar selección de combinación grado-grupo
+            $('#gradeGroupCombination').on('change', function() {
+                var selectedValue = $(this).val();
+                if (selectedValue) {
+                    var parts = selectedValue.split('|');
+                    $('#hiddenGradeId').val(parts[0]);
+                    $('#hiddenGroupId').val(parts[1]);
+                } else {
+                    $('#hiddenGradeId, #hiddenGroupId').val('');
+                }
+            });
+
+            // Set initial selection for the combination dropdown if editing
+            if (initialGradeId && initialGroupId) {
+                $('#gradeGroupCombination').val(initialGradeId + '|' + initialGroupId);
+                $('#hiddenGradeId').val(initialGradeId);
+                $('#hiddenGroupId').val(initialGroupId);
+            }
+
+            // Validación del formulario
+            $('form').on('submit', function(e) {
+                if (!$('#gradeGroupCombination').val()) {
+                    e.preventDefault();
+                    alert('Por favor, seleccione una combinación grado-grupo válida.');
+                    return false;
+                }
+            });
+        });
+
+        function confirmDelete(userName) {
+            return confirm(`¿Está seguro de que desea eliminar la asignación de consejero para ${userName}?\n\nEsta acción no se puede deshacer.`);
+        }
+
+        function confirmToggleActive(userName, isActive) {
+            var action = isActive ? 'desactivar' : 'activar';
+            return confirm(`¿Está seguro de que desea ${action} la asignación de consejero para ${userName}?`);
+        }
+    </script>
+}
+
+<style>
+    .form-check-label {
+        cursor: pointer;
+    }
+    
+    .form-check-input:checked + .form-check-label {
+        font-weight: bold;
+    }
+    
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    .d-grid .btn {
+        margin-bottom: 0.5rem;
+    }
+    
+    .d-grid .btn:last-child {
+        margin-bottom: 0;
+    }
+</style>

@@ -1,0 +1,586 @@
+@model IEnumerable<SchoolManager.Dtos.CounselorAssignmentDto>
+
+@{
+    ViewData["Title"] = "Asignaciones de Consejeros";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="content-wrapper">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">
+                        <i class="bi bi-people-fill me-2"></i>
+                        Asignaciones de Consejeros
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Inicio</a></li>
+                        <li class="breadcrumb-item active">Asignaciones de Consejeros</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <!-- Mensajes de éxito y error -->
+            <div id="alertContainer"></div>
+
+            <div class="row">
+                <!-- Formulario de Asignación -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-plus-circle me-2"></i>
+                                <span id="formTitle">Nueva Asignación</span>
+                            </h3>
+                        </div>
+                        <form id="assignmentForm">
+                            @Html.AntiForgeryToken()
+                            <div class="card-body">
+                                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                                
+                                <!-- Usuario Consejero -->
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-person me-1"></i>
+                                        Consejero *
+                                    </label>
+                                    <select id="userId" class="form-select" required>
+                                        <option value="">Seleccione un consejero</option>
+                                        @if (ViewBag.Users != null)
+                                        {
+                                            @foreach (var user in ViewBag.Users)
+                                            {
+                                                <option value="@user.Id">@user.Name @user.LastName - @user.Email (@user.Role)</option>
+                                            }
+                                        }
+                                    </select>
+                                    <span class="text-danger" id="userIdError"></span>
+                                </div>
+
+                                <!-- Combinación Grado-Grupo -->
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-diagram-3 me-1"></i>
+                                        Combinación Grado - Grupo *
+                                    </label>
+                                    <select id="gradeGroupCombination" class="form-select" required>
+                                        <option value="">Seleccione una combinación válida</option>
+                                        @if (ViewBag.ValidCombinations != null)
+                                        {
+                                            @foreach (var combination in ViewBag.ValidCombinations)
+                                            {
+                                                <option value="@combination.GradeId|@combination.GroupId" 
+                                                        data-grade-id="@combination.GradeId" 
+                                                        data-group-id="@combination.GroupId">
+                                                    @combination.DisplayText
+                                                </option>
+                                            }
+                                        }
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Solo combinaciones con estudiantes activos. Tras el grado-grupo se indica la <strong>jornada</strong> (Mañana, Tarde, …) según la matrícula; si no hay jornada en datos, no aparece.
+                                    </small>
+                                    <span class="text-danger" id="combinationError"></span>
+                                </div>
+
+                                <!-- Estado -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <div class="form-check">
+                                                <input id="isCounselor" class="form-check-input" type="checkbox" checked>
+                                                <label class="form-check-label" for="isCounselor">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    Es Consejero
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <div class="form-check">
+                                                <input id="isActive" class="form-check-input" type="checkbox" checked>
+                                                <label class="form-check-label" for="isActive">
+                                                    <i class="bi bi-play-circle me-1"></i>
+                                                    Activo
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Campos ocultos -->
+                                <input type="hidden" id="assignmentId" />
+                                <input type="hidden" id="gradeId" />
+                                <input type="hidden" id="groupId" />
+                                <input type="hidden" id="schoolId" value="@ViewBag.SchoolId" />
+                            </div>
+                            <div class="card-footer">
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" id="cancelBtn" class="btn btn-secondary" style="display: none;">
+                                        <i class="bi bi-x-circle me-1"></i>
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" id="submitBtn" class="btn btn-primary">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        <span id="submitText">Crear Asignación</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Lista de Asignaciones -->
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-list-ul me-2"></i>
+                                Lista de Asignaciones
+                            </h3>
+                            <p class="card-text small text-muted mb-0 mt-1">
+                                Muestra todas las asignaciones registradas en esta escuela (activas e inactivas).
+                            </p>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover" id="assignmentsTable">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>
+                                                <i class="bi bi-person me-1"></i>
+                                                Consejero
+                                            </th>
+                                            <th>
+                                                <i class="bi bi-diagram-3 me-1"></i>
+                                                Combinación
+                                            </th>
+                                            <th>
+                                                <i class="bi bi-check-circle me-1"></i>
+                                                Es Consejero
+                                            </th>
+                                            <th>
+                                                <i class="bi bi-play-circle me-1"></i>
+                                                Estado
+                                            </th>
+                                            <th>
+                                                <i class="bi bi-calendar me-1"></i>
+                                                Fecha Creación
+                                            </th>
+                                            <th class="text-center">
+                                                <i class="bi bi-gear me-1"></i>
+                                                Acciones
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="assignmentsTableBody">
+                                        @if (Model != null && Model.Any())
+                                        {
+                                            @foreach (var assignment in Model)
+                                            {
+                                                <tr data-assignment-id="@assignment.Id">
+                                                    <td>
+                                                        <div>
+                                                            <strong>@assignment.UserFullName</strong><br>
+                                                            <small class="text-muted">@assignment.UserEmail</small>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        @if (assignment.GradeId.HasValue && assignment.GroupId.HasValue)
+                                                        {
+                                                            <span class="badge bg-primary">
+                                                                <i class="bi bi-diagram-3 me-1"></i>
+                                                                @(assignment.GradeName ?? "Sin grado") - @(assignment.GroupName ?? "Sin grupo")
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-secondary">Sin asignación específica</span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        @if (assignment.IsCounselor)
+                                                        {
+                                                            <span class="badge bg-success">
+                                                                <i class="bi bi-check-circle me-1"></i>
+                                                                Sí
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-secondary">
+                                                                <i class="bi bi-x-circle me-1"></i>
+                                                                No
+                                                            </span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        @if (assignment.IsActive)
+                                                        {
+                                                            <span class="badge bg-success">
+                                                                <i class="bi bi-play-circle me-1"></i>
+                                                                Activo
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-warning">
+                                                                <i class="bi bi-pause-circle me-1"></i>
+                                                                Inactivo
+                                                            </span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <small>@TimeZoneService.ToLocalDisplayString(assignment.CreatedAt, "dd/MM/yyyy HH:mm")</small>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <div class="btn-group" role="group">
+                                                            <button type="button" class="btn btn-sm btn-outline-primary edit-btn" 
+                                                                    data-assignment-id="@assignment.Id" title="Editar">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-outline-danger delete-btn" 
+                                                                    data-assignment-id="@assignment.Id" title="Eliminar">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted">
+                                                    <i class="bi bi-inbox me-2"></i>
+                                                    No hay asignaciones de consejeros registradas
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            let isEditMode = false;
+            let currentAssignmentId = null;
+            const tempEditOptionClass = 'temp-edit-option';
+
+            // Manejar selección de combinación grado-grupo
+            $('#gradeGroupCombination').on('change', function() {
+                var selectedValue = $(this).val();
+                if (selectedValue) {
+                    var parts = selectedValue.split('|');
+                    $('#gradeId').val(parts[0]);
+                    $('#groupId').val(parts[1]);
+                } else {
+                    $('#gradeId, #groupId').val('');
+                }
+            });
+
+            // Manejar envío del formulario
+            $('#assignmentForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                if (isEditMode) {
+                    updateAssignment();
+                } else {
+                    createAssignment();
+                }
+            });
+
+            // Función para crear asignación
+            function createAssignment() {
+                var formData = {
+                    UserId: $('#userId').val(),
+                    GradeId: $('#gradeId').val(),
+                    GroupId: $('#groupId').val(),
+                    SchoolId: $('#schoolId').val(),
+                    IsCounselor: $('#isCounselor').is(':checked'),
+                    IsActive: $('#isActive').is(':checked')
+                };
+
+                $.ajax({
+                    url: '@Url.Action("CreateAjax", "CounselorAssignment")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showAlert('success', response.message);
+                            resetForm();
+                            loadAssignments();
+                        } else {
+                            showAlert('danger', response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error:', error);
+                        showAlert('danger', 'Error al crear la asignación');
+                    }
+                });
+            }
+
+            // Función para actualizar asignación
+            function updateAssignment() {
+                var formData = {
+                    Id: currentAssignmentId,
+                    UserId: $('#userId').val(),
+                    GradeId: $('#gradeId').val(),
+                    GroupId: $('#groupId').val(),
+                    SchoolId: $('#schoolId').val(),
+                    IsCounselor: $('#isCounselor').is(':checked'),
+                    IsActive: $('#isActive').is(':checked')
+                };
+
+                $.ajax({
+                    url: '@Url.Action("UpdateAjax", "CounselorAssignment")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showAlert('success', response.message);
+                            resetForm();
+                            loadAssignments();
+                        } else {
+                            showAlert('danger', response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error:', error);
+                        showAlert('danger', 'Error al actualizar la asignación');
+                    }
+                });
+            }
+
+            // Función para cargar asignaciones
+            function loadAssignments() {
+                $.ajax({
+                    url: '@Url.Action("Index", "CounselorAssignment")',
+                    type: 'GET',
+                    success: function(data) {
+                        // Recargar la página para mostrar los datos actualizados
+                        location.reload();
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error:', error);
+                        showAlert('danger', 'Error al cargar las asignaciones');
+                    }
+                });
+            }
+
+            // Manejar clic en botón editar
+            $(document).on('click', '.edit-btn', function() {
+                var assignmentId = $(this).data('assignment-id');
+                editAssignment(assignmentId);
+            });
+
+            // Función para editar asignación
+            function editAssignment(assignmentId) {
+                $.ajax({
+                    url: '@Url.Action("GetByIdAjax", "CounselorAssignment")',
+                    type: 'GET',
+                    data: { id: assignmentId },
+                    success: function(response) {
+                        if (response.success) {
+                            var assignment = response.data;
+                            currentAssignmentId = assignment.id;
+                            isEditMode = true;
+
+                            // Asegurar que el usuario actual de la asignación exista en el select
+                            // (el dropdown de creación excluye consejeros ya asignados).
+                            if (assignment.userId && $('#userId option[value="' + assignment.userId + '"]').length === 0) {
+                                var userText = (assignment.userFullName || 'Usuario') + (assignment.userEmail ? ' - ' + assignment.userEmail : '');
+                                $('#userId').append(
+                                    $('<option>', {
+                                        value: assignment.userId,
+                                        text: userText
+                                    }).addClass(tempEditOptionClass)
+                                );
+                            }
+
+                            // Llenar el formulario
+                            $('#userId').val(assignment.userId);
+                            $('#isCounselor').prop('checked', assignment.isCounselor);
+                            $('#isActive').prop('checked', assignment.isActive);
+
+                            // Establecer la combinación
+                            if (assignment.gradeId && assignment.groupId) {
+                                var combinationValue = assignment.gradeId + '|' + assignment.groupId;
+
+                                // Asegurar que la combinación actual exista en el select
+                                // (el dropdown de creación excluye combinaciones ocupadas).
+                                if ($('#gradeGroupCombination option[value="' + combinationValue + '"]').length === 0) {
+                                    var comboText = (assignment.gradeName || 'Sin grado') + ' - ' + (assignment.groupName || 'Sin grupo') + ' (asignación actual)';
+                                    $('#gradeGroupCombination').append(
+                                        $('<option>', {
+                                            value: combinationValue,
+                                            text: comboText
+                                        })
+                                        .attr('data-grade-id', assignment.gradeId)
+                                        .attr('data-group-id', assignment.groupId)
+                                        .addClass(tempEditOptionClass)
+                                    );
+                                }
+
+                                $('#gradeGroupCombination').val(combinationValue);
+                                $('#gradeId').val(assignment.gradeId);
+                                $('#groupId').val(assignment.groupId);
+                            }
+
+                            // Cambiar el formulario a modo edición
+                            $('#formTitle').text('Editar Asignación');
+                            $('#submitText').text('Actualizar Asignación');
+                            $('#cancelBtn').show();
+
+                            // Scroll al formulario
+                            $('html, body').animate({
+                                scrollTop: $('#assignmentForm').offset().top - 100
+                            }, 500);
+                        } else {
+                            showAlert('danger', response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error:', error);
+                        showAlert('danger', 'Error al cargar los datos de la asignación');
+                    }
+                });
+            }
+
+            // Manejar clic en botón eliminar
+            $(document).on('click', '.delete-btn', function() {
+                var assignmentId = $(this).data('assignment-id');
+                var row = $(this).closest('tr');
+                var userName = row.find('td:first strong').text();
+
+                if (confirm(`¿Está seguro de que desea eliminar la asignación de consejero para ${userName}?\n\nEsta acción no se puede deshacer.`)) {
+                    deleteAssignment(assignmentId);
+                }
+            });
+
+            // Función para eliminar asignación
+            function deleteAssignment(assignmentId) {
+                $.ajax({
+                    url: '@Url.Action("DeleteAjax", "CounselorAssignment")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(assignmentId),
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showAlert('success', response.message);
+                            loadAssignments();
+                        } else {
+                            showAlert('danger', response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error:', error);
+                        showAlert('danger', 'Error al eliminar la asignación');
+                    }
+                });
+            }
+
+            // Manejar clic en botón cancelar
+            $('#cancelBtn').on('click', function() {
+                resetForm();
+            });
+
+            // Función para resetear el formulario
+            function resetForm() {
+                isEditMode = false;
+                currentAssignmentId = null;
+                $('#assignmentForm')[0].reset();
+                $('.' + tempEditOptionClass).remove();
+                $('#gradeId, #groupId').val('');
+                $('#formTitle').text('Nueva Asignación');
+                $('#submitText').text('Crear Asignación');
+                $('#cancelBtn').hide();
+                clearErrors();
+            }
+
+            // Función para limpiar errores
+            function clearErrors() {
+                $('.text-danger').text('');
+            }
+
+            // Función para mostrar alertas
+            function showAlert(type, message) {
+                var alertHtml = `
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                $('#alertContainer').html(alertHtml);
+                
+                // Auto-hide después de 5 segundos
+                setTimeout(function() {
+                    $('#alertContainer .alert').fadeOut();
+                }, 5000);
+            }
+        });
+    </script>
+}
+
+<style>
+    .form-check-label {
+        cursor: pointer;
+    }
+    
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    .table th {
+        border-top: none;
+        font-weight: 600;
+    }
+    
+    .btn-group .btn {
+        margin-right: 2px;
+    }
+    
+    .btn-group .btn:last-child {
+        margin-right: 0;
+    }
+    
+    .badge {
+        font-size: 0.75em;
+    }
+</style>

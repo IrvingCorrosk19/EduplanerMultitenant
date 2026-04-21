@@ -1,0 +1,47 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Buscar Prematrícula para Pago";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-search mr-2"></i>Buscar Prematrícula para Pago</h3>
+                <small>Ingrese el código de prematrícula para registrar el pago</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-barcode mr-2"></i>Búsqueda de Prematrícula</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Search" method="post">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                        <div class="mb-3">
+                            <label for="searchTerm" class="form-label">Código de Prematrícula o Nombre del Estudiante *</label>
+                            <input type="text" name="searchTerm" id="searchTerm" class="form-control" 
+                                   placeholder="PRE-20241102-100550-1234" required />
+                            <small class="form-text text-muted">Ingrese el código de prematrícula que comienza con "PRE-"</small>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="@Url.Action("Index")" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left mr-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search mr-2"></i>Buscar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

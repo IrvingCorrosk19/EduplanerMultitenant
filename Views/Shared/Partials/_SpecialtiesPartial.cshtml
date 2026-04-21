@@ -1,0 +1,68 @@
+﻿@model IEnumerable<SchoolManager.Models.Specialty>
+
+<div class="card card-outline card-primary">
+    <div class="card-header">
+        <h5 class="card-title fw-bold fs-3">
+            <i class="bi bi-award text-primary me-2"></i>Gestión de Especialidades
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="search-bar">
+            <input type="text" id="searchSpecialties" placeholder="Buscar especialidad por nombre o descripción..." autocomplete="off">
+        </div>
+        <div class="table-responsive">
+            <table id="specialtyTable" class="table table-hover table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th class="text-center">Nombre</th>
+                        <th class="text-center">Descripción</th>
+                        <th class="text-center" style="width: 150px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var specialty in Model ?? Enumerable.Empty<SchoolManager.Models.Specialty>())
+                    {
+                        <tr data-id="@specialty.Id">
+                            <td class="align-middle text-center">
+                                <span class="specialty-name-text">@specialty.Name</span>
+                                <input type="text" class="form-control d-none specialty-name-input" value="@specialty.Name" autocomplete="off" />
+                            </td>
+                            <td class="align-middle text-center">
+                                <span class="specialty-description-text">@specialty.Description</span>
+                                <textarea class="form-control d-none specialty-description-input">@specialty.Description</textarea>
+                            </td>
+                            <td class="align-middle text-center">
+                                <button class="btn btn-action btn-edit me-1 btn-edit-specialty" title="Editar">
+                                    <i class="bi bi-pencil me-1"></i> Editar
+                                </button>
+                                <button class="btn btn-action btn-save d-none me-1 btn-save-specialty" title="Guardar">
+                                    <i class="bi bi-check me-1"></i> Guardar
+                                </button>
+                                <button class="btn btn-action btn-delete btn-delete-specialty" title="Eliminar">
+                                    <i class="bi bi-trash me-1"></i> Eliminar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-3">
+            <h6 class="mb-3">Agregar Nueva Especialidad</h6>
+            <div class="row">
+                <div class="col-md-5">
+                    <input type="text" id="newSpecialtyName" class="form-control mb-2" placeholder="Nombre de la especialidad" autocomplete="off" />
+                </div>
+                <div class="col-md-5">
+                    <input type="text" id="newSpecialtyDescription" class="form-control mb-2" placeholder="Descripción (opcional)" autocomplete="off" />
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" onclick="createSpecialty()">
+                        <i class="bi bi-plus-circle me-1"></i> Agregar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

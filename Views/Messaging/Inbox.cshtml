@@ -1,0 +1,277 @@
+@model List<SchoolManager.ViewModels.MessageListViewModel>
+@{
+    ViewData["Title"] = "Mensajes Recibidos";
+    Layout = "_AdminLayout";
+    var stats = ViewBag.Stats as SchoolManager.ViewModels.MessageStatsViewModel;
+    var unreadOnly = ViewBag.UnreadOnly as bool? ?? false;
+}
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="bi bi-inbox-fill"></i> Bandeja de Entrada
+            </h2>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Estadísticas -->
+    @if (stats != null)
+    {
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center border-primary">
+                    <div class="card-body">
+                        <h3 class="text-primary mb-0">@stats.TotalReceived</h3>
+                        <p class="text-muted mb-0">Total Recibidos</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-warning">
+                    <div class="card-body">
+                        <h3 class="text-warning mb-0">@stats.Unread</h3>
+                        <p class="text-muted mb-0">No Leídos</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-success">
+                    <div class="card-body">
+                        <h3 class="text-success mb-0">@stats.TotalSent</h3>
+                        <p class="text-muted mb-0">Enviados</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-info">
+                    <div class="card-body">
+                        <h3 class="text-info mb-0">@stats.RepliesReceived</h3>
+                        <p class="text-muted mb-0">Respuestas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Barra de acciones -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <a href="@Url.Action("Compose", "Messaging")" class="btn btn-primary">
+                        <i class="bi bi-pencil-square"></i> Nuevo Mensaje
+                    </a>
+                    <a href="@Url.Action("Sent", "Messaging")" class="btn btn-outline-secondary">
+                        <i class="bi bi-send"></i> Enviados
+                    </a>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="btn-group" role="group">
+                        <a href="@Url.Action("Inbox", "Messaging", new { unreadOnly = false })" 
+                           class="btn btn-sm @(!unreadOnly ? "btn-primary" : "btn-outline-primary")">
+                            Todos
+                        </a>
+                        <a href="@Url.Action("Inbox", "Messaging", new { unreadOnly = true })" 
+                           class="btn btn-sm @(unreadOnly ? "btn-warning" : "btn-outline-warning")">
+                            No Leídos
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <form asp-action="Search" method="get" class="d-flex">
+                        <input type="text" name="q" class="form-control form-control-sm me-2" 
+                               placeholder="Buscar mensajes..." />
+                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de mensajes -->
+    <div class="card">
+        <div class="card-body">
+            @if (Model == null || !Model.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox" style="font-size: 4rem; color: #ccc;"></i>
+                    <h4 class="text-muted mt-3">No hay mensajes</h4>
+                    <p class="text-muted">Tu bandeja de entrada está vacía</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%"></th>
+                                <th style="width: 20%">De</th>
+                                <th style="width: 35%">Asunto</th>
+                                <th style="width: 10%">Tipo</th>
+                                <th style="width: 5%">Prioridad</th>
+                                <th style="width: 15%">Fecha</th>
+                                <th style="width: 10%" class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var message in Model)
+                            {
+                                <tr class="@(message.IsRead ? "" : "table-warning")">
+                                    <td class="text-center">
+                                        @if (message.IsRead)
+                                        {
+                                            <i class="bi bi-envelope-open text-secondary"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-envelope-fill text-warning"></i>
+                                        }
+                                    </td>
+                                    <td>
+                                        <strong>@message.SenderName</strong>
+                                        <br />
+                                        <small class="text-muted">@message.SenderRole</small>
+                                    </td>
+                                    <td>
+                                        <a href="@Url.Action("Detail", "Messaging", new { id = message.Id })" 
+                                           class="text-decoration-none text-dark">
+                                            <strong>@message.Subject</strong>
+                                            @if (message.RepliesCount > 0)
+                                            {
+                                                <span class="badge bg-info ms-2">@message.RepliesCount respuestas</span>
+                                            }
+                                        </a>
+                                    </td>
+                                    <td>
+                                        @switch (message.MessageType)
+                                        {
+                                            case "Individual":
+                                                <span class="badge bg-primary">Individual</span>
+                                                break;
+                                            case "Group":
+                                                <span class="badge bg-info">Grupo</span>
+                                                break;
+                                            case "AllTeachers":
+                                                <span class="badge bg-success">Todos Profes</span>
+                                                break;
+                                            case "AllStudents":
+                                                <span class="badge bg-warning">Todos Estudiantes</span>
+                                                break;
+                                            case "Broadcast":
+                                                <span class="badge bg-danger">Difusión</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @switch (message.Priority)
+                                        {
+                                            case "Urgent":
+                                                <i class="bi bi-exclamation-triangle-fill text-danger" title="Urgente"></i>
+                                                break;
+                                            case "High":
+                                                <i class="bi bi-exclamation-circle-fill text-warning" title="Alta"></i>
+                                                break;
+                                            case "Normal":
+                                                <i class="bi bi-dash-circle text-secondary" title="Normal"></i>
+                                                break;
+                                            case "Low":
+                                                <i class="bi bi-arrow-down-circle text-muted" title="Baja"></i>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>@TimeZoneService.ToLocalDisplayString(message.SentAt, "dd/MM/yyyy HH:mm")</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="@Url.Action("Detail", "Messaging", new { id = message.Id })" 
+                                           class="btn btn-sm btn-outline-primary" title="Ver">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger delete-message" 
+                                                data-message-id="@message.Id" title="Eliminar">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Eliminar mensaje
+            $('.delete-message').click(function () {
+                const messageId = $(this).data('message-id');
+                
+                Swal.fire({
+                    title: '¿Eliminar mensaje?',
+                    text: 'Esta acción no se puede deshacer',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("Delete", "Messaging")',
+                            type: 'POST',
+                            data: { id: messageId },
+                            success: function (response) {
+                                if (response.success) {
+                                    Swal.fire('Eliminado', response.message, 'success').then(() => {
+                                        location.reload();
+                                    });
+                                } else {
+                                    Swal.fire('Error', response.message, 'error');
+                                }
+                            },
+                            error: function () {
+                                Swal.fire('Error', 'No se pudo eliminar el mensaje', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Actualizar contador de no leídos cada 30 segundos
+            setInterval(function () {
+                $.get('@Url.Action("GetUnreadCount", "Messaging")', function (data) {
+                    if (data.count > 0) {
+                        $('.unread-badge').text(data.count).show();
+                    } else {
+                        $('.unread-badge').hide();
+                    }
+                });
+            }, 30000);
+        });
+    </script>
+}
+

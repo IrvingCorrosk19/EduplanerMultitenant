@@ -1,0 +1,15 @@
+ column_name |        data_type         | is_nullable |   column_default   
+-------------+--------------------------+-------------+--------------------
+ id          | uuid                     | NO          | uuid_generate_v4()
+ school_id   | uuid                     | NO          | 
+ name        | character varying        | NO          | 
+ description | text                     | YES         | 
+ amount      | numeric                  | NO          | 
+ periodicity | character varying        | YES         | 
+ is_active   | boolean                  | NO          | true
+ created_at  | timestamp with time zone | NO          | CURRENT_TIMESTAMP
+ updated_at  | timestamp with time zone | YES         | 
+ created_by  | uuid                     | YES         | 
+ updated_by  | uuid                     | YES         | 
+(11 filas)
+

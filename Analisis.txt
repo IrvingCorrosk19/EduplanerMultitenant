@@ -1,0 +1,198 @@
+Perfecto, aquí está la solución completa con el nombre correcto de tu tabla:
+
+## 1. Crear Tabla de Dimensión de Años (Dinámica)
+
+```dax
+TablaAnios = 
+VAR MinAnio = YEAR(MIN(TBL_SegmentacionCanales_Materializada[Fecha]))
+VAR MaxAnio = YEAR(MAX(TBL_SegmentacionCanales_Materializada[Fecha]))
+VAR AnioActual = YEAR(TODAY())
+VAR MesActual = MONTH(TODAY())
+RETURN
+UNION(
+    // Años históricos completos
+    ADDCOLUMNS(
+        FILTER(
+            GENERATESERIES(MinAnio, MaxAnio, 1),
+            [Value] < AnioActual
+        ),
+        "Año Label", FORMAT([Value], "0"),
+        "Año Value", [Value],
+        "Orden", [Value],
+        "EsSemestre", FALSE
+    ),
+    // Año actual - si estamos en primera mitad, mostrar como semestre
+    IF(
+        MesActual <= 6,
+        ROW(
+            "Año Label", FORMAT(AnioActual, "0") & "/1S",
+            "Año Value", AnioActual,
+            "Orden", AnioActual,
+            "EsSemestre", TRUE
+        ),
+        ROW(
+            "Año Label", FORMAT(AnioActual, "0"),
+            "Año Value", AnioActual,
+            "Orden", AnioActual,
+            "EsSemestre", FALSE
+        )
+    ),
+    // Total
+    ROW(
+        "Año Label", "TOTAL",
+        "Año Value", 9999,
+        "Orden", 9999,
+        "EsSemestre", FALSE
+    )
+)
+```
+
+## 2. Medidas Dinámicas Principales
+
+```dax
+// Dólares Dinámico
+Dolares Dinámico = 
+VAR AnioSeleccionado = SELECTEDVALUE(TablaAnios[Año Value])
+VAR EsSemestre = SELECTEDVALUE(TablaAnios[EsSemestre])
+VAR EsTotal = SELECTEDVALUE(TablaAnios[Año Label]) = "TOTAL"
+RETURN
+SWITCH(
+    TRUE(),
+    EsTotal, 
+        CALCULATE(
+            SUM(TBL_SegmentacionCanales_Materializada[Dolares]),
+            ALL(TBL_SegmentacionCanales_Materializada[Año])
+        ),
+    EsSemestre,
+        CALCULATE(
+            SUM(TBL_SegmentacionCanales_Materializada[Dolares]),
+            TBL_SegmentacionCanales_Materializada[Año] = AnioSeleccionado,
+            TBL_SegmentacionCanales_Materializada[MES] <= 6
+        ),
+    CALCULATE(
+        SUM(TBL_SegmentacionCanales_Materializada[Dolares]),
+        TBL_SegmentacionCanales_Materializada[Año] = AnioSeleccionado
+    )
+)
+
+// % Ganancia Dinámico
+% Ganancia Dinámico = 
+VAR AnioSeleccionado = SELECTEDVALUE(TablaAnios[Año Value])
+VAR EsSemestre = SELECTEDVALUE(TablaAnios[EsSemestre])
+VAR EsTotal = SELECTEDVALUE(TablaAnios[Año Label]) = "TOTAL"
+VAR TotalVentas = 
+    SWITCH(
+        TRUE(),
+        EsTotal, 
+            CALCULATE(
+                SUM(TBL_SegmentacionCanales_Materializada[PriceBefDi]),
+                ALL(TBL_SegmentacionCanales_Materializada[Año])
+            ),
+        EsSemestre,
+            CALCULATE(
+                SUM(TBL_SegmentacionCanales_Materializada[PriceBefDi]),
+                TBL_SegmentacionCanales_Materializada[Año] = AnioSeleccionado,
+                TBL_SegmentacionCanales_Materializada[MES] <= 6
+            ),
+        CALCULATE(
+            SUM(TBL_SegmentacionCanales_Materializada[PriceBefDi]),
+            TBL_SegmentacionCanales_Materializada[Año] = AnioSeleccionado
+        )
+    )
+VAR TotalGanancia = 
+    SWITCH(
+        TRUE(),
+        EsTotal, 
+            CALCULATE(
+                SUM(TBL_SegmentacionCanales_Materializada[Ganancia]),
+                ALL(TBL_SegmentacionCanales_Materializada[Año])
+            ),
+        EsSemestre,
+            CALCULATE(
+                SUM(TBL_SegmentacionCanales_Materializada[Ganancia]),
+                TBL_SegmentacionCanales_Materializada[Año] = AnioSeleccionado,
+                TBL_SegmentacionCanales_Materializada[MES] <= 6
+            ),
+        CALCULATE(
+            SUM(TBL_SegmentacionCanales_Materializada[Ganancia]),
+            TBL_SegmentacionCanales_Materializada[Año] = AnioSeleccionado
+        )
+    )
+RETURN
+DIVIDE(TotalGanancia, TotalVentas, 0) * 100
+```
+
+## 3. Medidas Adicionales
+
+```dax
+// N° Cliente
+N° Cliente = DISTINCTCOUNT(TBL_SegmentacionCanales_Materializada[N° Cliente])
+
+// N° Tienda
+N° Tienda = DISTINCTCOUNT(TBL_SegmentacionCanales_Materializada[N° Tienda])
+
+// Precio Promedio (P.P)
+P.P = 
+DIVIDE(
+    SUM(TBL_SegmentacionCanales_Materializada[Dolares]),
+    SUM(TBL_SegmentacionCanales_Materializada[Bultos]),
+    0
+)
+```
+
+## 4. Configuración del Visual Matrix
+
+**Paso 1:** Inserta un visual **Matrix**
+
+**Paso 2:** Configura las Filas (en este orden):
+- Pais
+- Canal
+- N° Cliente (medida)
+- N° Tienda (medida)
+
+**Paso 3:** Configura las Columnas:
+- Año Label (de TablaAnios)
+
+**Paso 4:** Configura los Valores:
+- P.P (solo visible en la primera sección)
+- Dolares Dinámico
+- % Ganancia Dinámico
+
+**Paso 5:** Ordena la tabla por:
+- TablaAnios[Orden] (ascendente)
+
+## 5. Medida para P.P (mostrar solo en primera columna)
+
+Si quieres que P.P solo aparezca en la primera columna de datos:
+
+```dax
+P.P Condicional = 
+VAR PrimerAnio = 
+    CALCULATE(
+        MIN(TablaAnios[Orden]),
+        ALLSELECTED(TablaAnios)
+    )
+VAR AnioActual = SELECTEDVALUE(TablaAnios[Orden])
+RETURN
+IF(
+    AnioActual = PrimerAnio,
+    [P.P],
+    BLANK()
+)
+```
+
+## 6. Formato Sugerido
+
+- **Dolares Dinámico**: Formato moneda con separador de miles
+- **% Ganancia Dinámico**: Formato porcentaje con 0 decimales
+- **P.P**: Formato número con 2 decimales
+
+## 7. Validación
+
+Para verificar que funciona correctamente:
+1. Los años deben aparecer automáticamente según los datos
+2. El año actual debe mostrarse como "2025/1S" si estamos en los primeros 6 meses
+3. La columna TOTAL debe sumar todos los años
+4. Los porcentajes deben calcularse correctamente por período
+
+¿Necesitas ayuda con alguna parte específica de la implementación?

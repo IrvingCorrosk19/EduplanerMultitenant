@@ -1,0 +1,21 @@
+ESTUDIANTE (EMAIL),NOMBRE,APELLIDO,DOCUMENTO ID,FECHA NACIMIENTO,GRADO,GRUPO,JORNADA,INCLUSIÓN
+juan.garcia1@estudiante.com,Juan,García,EST00011001,15/03/2008,6°,A,Mañana,no
+maria.rodriguez2@estudiante.com,María,Rodríguez,EST00022002,22/07/2007,7°,B,Tarde,si
+carlos.lopez3@estudiante.com,Carlos,López,EST00033003,10/11/2009,8°,C,Noche,no
+ana.martinez4@estudiante.com,Ana,Martínez,EST00044004,05/01/2006,9°,D,Mañana,si
+luis.gonzalez5@estudiante.com,Luis,González,EST00055005,18/05/2008,10°,A,Tarde,no
+laura.perez6@estudiante.com,Laura,Pérez,EST00066006,30/09/2007,11°,B,Noche,si
+pedro.sanchez7@estudiante.com,Pedro,Sánchez,EST00077007,12/04/2009,6°,C,Mañana,no
+sofia.ramirez8@estudiante.com,Sofía,Ramírez,EST00088008,25/08/2008,7°,D,Tarde,no
+diego.torres9@estudiante.com,Diego,Torres,EST00099009,14/12/2007,8°,E,Noche,si
+carmen.flores10@estudiante.com,Carmen,Flores,EST00101010,08/02/2006,9°,A,Mañana,no
+juan.garcia11@estudiante.com,Juan,García,EST00112011,20/06/2008,10°,B,Tarde,no
+maria.rodriguez12@estudiante.com,María,Rodríguez,EST00123012,03/10/2007,11°,C,Noche,si
+carlos.lopez13@estudiante.com,Carlos,López,EST00134013,17/03/2009,6°,D,Mañana,no
+ana.martinez14@estudiante.com,Ana,Martínez,EST00145014,29/07/2008,7°,E,Tarde,no
+luis.gonzalez15@estudiante.com,Luis,González,EST00156015,11/11/2007,8°,A,Noche,si
+laura.perez16@estudiante.com,Laura,Pérez,EST00167016,26/01/2006,9°,B,Mañana,no
+pedro.sanchez17@estudiante.com,Pedro,Sánchez,EST00178017,09/05/2008,10°,C,Tarde,no
+sofia.ramirez18@estudiante.com,Sofía,Ramírez,EST00189018,22/09/2007,11°,D,Noche,si
+diego.torres19@estudiante.com,Diego,Torres,EST00199019,15/04/2009,6°,E,Mañana,no
+carmen.flores20@estudiante.com,Carmen,Flores,EST00201020,07/08/2008,7°,A,Tarde,no

@@ -1,0 +1,20 @@
+        column_name         |        data_type         | is_nullable |         column_default         
+----------------------------+--------------------------+-------------+--------------------------------
+ id                         | uuid                     | NO          | uuid_generate_v4()
+ school_id                  | uuid                     | NO          | 
+ student_id                 | uuid                     | NO          | 
+ parent_id                  | uuid                     | YES         | 
+ grade_id                   | uuid                     | YES         | 
+ group_id                   | uuid                     | YES         | 
+ prematriculation_period_id | uuid                     | NO          | 
+ status                     | character varying        | NO          | 'Pendiente'::character varying
+ failed_subjects_count      | integer                  | YES         | 
+ academic_condition_valid   | boolean                  | YES         | 
+ rejection_reason           | text                     | YES         | 
+ prematriculation_code      | character varying        | YES         | 
+ created_at                 | timestamp with time zone | NO          | CURRENT_TIMESTAMP
+ updated_at                 | timestamp with time zone | YES         | 
+ payment_date               | timestamp with time zone | YES         | 
+ matriculation_date         | timestamp with time zone | YES         | 
+(16 filas)
+

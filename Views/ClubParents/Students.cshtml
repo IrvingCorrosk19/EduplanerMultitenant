@@ -1,0 +1,220 @@
+@{
+    ViewData["Title"] = "Club de Padres — Estudiantes";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+@Html.AntiForgeryToken()
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-users"></i> Club de Padres — Estudiantes
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Grado</label>
+                            <select id="filterGrade" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Grupo</label>
+                            <select id="filterGroup" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="button" id="btnFilter" class="btn btn-primary btn-sm">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="studentsTable" class="table table-bordered table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Grado</th>
+                                    <th>Grupo</th>
+                                    <th>Carnet</th>
+                                    <th>Plataforma</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .badge-carnet-pendiente { background-color: #ffc107; color: #000; }
+    .badge-carnet-pagado { background-color: #fd7e14; color: #fff; }
+    .badge-carnet-impreso { background-color: #0d6efd; color: #fff; }
+    .badge-carnet-entregado { background-color: #198754; color: #fff; }
+    .badge-platform-pendiente { background-color: #6c757d; color: #fff; }
+    .badge-platform-activo { background-color: #198754; color: #fff; }
+</style>
+
+@section Scripts {
+<script>
+(function() {
+    var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+    function carnetBadgeClass(status) {
+        switch ((status || '').toLowerCase()) {
+            case 'pendiente': return 'badge-carnet-pendiente';
+            case 'pagado': return 'badge-carnet-pagado';
+            case 'impreso': return 'badge-carnet-impreso';
+            case 'entregado': return 'badge-carnet-entregado';
+            default: return 'bg-secondary';
+        }
+    }
+    function platformBadgeClass(status) {
+        switch ((status || '').toLowerCase()) {
+            case 'pendiente': return 'badge-platform-pendiente';
+            case 'activo': return 'badge-platform-activo';
+            default: return 'bg-secondary';
+        }
+    }
+
+    function loadGradesAndGroups() {
+        fetch('/ClubParents/Api/GradesAndGroups', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var g = document.getElementById('filterGrade');
+                var gr = document.getElementById('filterGroup');
+                g.options.length = 1;
+                gr.options.length = 1;
+                (data.grades || []).forEach(function(x) {
+                    g.appendChild(new Option(x.name, x.id));
+                });
+                (data.groups || []).forEach(function(x) {
+                    gr.appendChild(new Option(x.name, x.id));
+                });
+            })
+            .catch(function(e) { console.error('Grades/Groups', e); });
+    }
+
+    function loadStudents() {
+        var gradeId = document.getElementById('filterGrade').value || '';
+        var groupId = document.getElementById('filterGroup').value || '';
+        var url = '/ClubParents/Api/Students?';
+        if (gradeId) url += 'gradeId=' + encodeURIComponent(gradeId) + '&';
+        if (groupId) url += 'groupId=' + encodeURIComponent(groupId) + '&';
+
+        fetch(url, { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(result) {
+                var tbody = document.querySelector('#studentsTable tbody');
+                tbody.innerHTML = '';
+                if (result.noSchool) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-warning"><i class="fas fa-exclamation-triangle me-1"></i>' + (result.message || 'Su usuario no tiene una escuela asignada. Asigne la escuela en el módulo Usuarios para ver los estudiantes.') + '</td></tr>';
+                    return;
+                }
+                var list = result.data || [];
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay estudiantes en su escuela con los filtros seleccionados.</td></tr>';
+                    return;
+                }
+                list.forEach(function(row) {
+                    var tr = document.createElement('tr');
+                    var carnetCls = carnetBadgeClass(row.carnetStatus);
+                    var platformCls = platformBadgeClass(row.platformAccessStatus);
+                    var actions = [];
+                    if ((row.carnetStatus || '').toLowerCase() === 'pendiente') {
+                        actions.push('<button type="button" class="btn btn-warning btn-sm btn-mark-paid" data-id="' + row.id + '" title="Marcar carnet pagado"><i class="fas fa-money-bill-wave"></i> Marcar carnet pagado</button>');
+                    }
+                    if ((row.platformAccessStatus || '').toLowerCase() === 'pendiente') {
+                        actions.push('<button type="button" class="btn btn-success btn-sm btn-activate-platform" data-id="' + row.id + '" title="Activar plataforma"><i class="fas fa-unlock"></i> Activar plataforma</button>');
+                    }
+                    tr.innerHTML =
+                        '<td>' + (row.fullName || '') + '</td>' +
+                        '<td>' + (row.grade || '') + '</td>' +
+                        '<td>' + (row.group || '') + '</td>' +
+                        '<td><span class="badge ' + carnetCls + '">' + (row.carnetStatus || 'Pendiente') + '</span></td>' +
+                        '<td><span class="badge ' + platformCls + '">' + (row.platformAccessStatus || 'Pendiente') + '</span></td>' +
+                        '<td>' + (actions.length ? actions.join(' ') : '—') + '</td>';
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(function(e) {
+                console.error('Students', e);
+                document.querySelector('#studentsTable tbody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error al cargar la lista.</td></tr>';
+            });
+    }
+
+    function postMarkPaid(studentId) {
+        fetch('/ClubParents/Carnet/MarkPaid', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+            body: JSON.stringify({ studentId: studentId })
+        })
+            .then(function(r) { return r.json().catch(function() { return {}; }); })
+            .then(function(data) {
+                if (data.success) {
+                    loadStudents();
+                    if (typeof Swal !== 'undefined') Swal.fire({ icon: 'success', title: 'Listo', text: data.message || 'Carnet marcado como pagado.' });
+                    else alert(data.message || 'Carnet marcado como pagado.');
+                } else {
+                    if (typeof Swal !== 'undefined') Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'No se pudo registrar.' });
+                    else alert(data.message || 'No se pudo registrar.');
+                }
+            })
+            .catch(function(e) {
+                if (typeof Swal !== 'undefined') Swal.fire({ icon: 'error', title: 'Error', text: 'Error de conexión.' });
+                else alert('Error de conexión.');
+            });
+    }
+
+    function postActivatePlatform(studentId) {
+        fetch('/ClubParents/Platform/Activate', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+            body: JSON.stringify({ studentId: studentId })
+        })
+            .then(function(r) { return r.json().catch(function() { return {}; }); })
+            .then(function(data) {
+                if (data.success) {
+                    loadStudents();
+                    if (typeof Swal !== 'undefined') Swal.fire({ icon: 'success', title: 'Listo', text: data.message || 'Plataforma activada.' });
+                    else alert(data.message || 'Plataforma activada.');
+                } else {
+                    if (typeof Swal !== 'undefined') Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'No se pudo activar.' });
+                    else alert(data.message || 'No se pudo activar.');
+                }
+            })
+            .catch(function(e) {
+                if (typeof Swal !== 'undefined') Swal.fire({ icon: 'error', title: 'Error', text: 'Error de conexión.' });
+                else alert('Error de conexión.');
+            });
+    }
+
+    document.getElementById('btnFilter').addEventListener('click', loadStudents);
+    document.getElementById('studentsTable').addEventListener('click', function(e) {
+        var btn = e.target.closest('.btn-mark-paid');
+        if (btn) {
+            e.preventDefault();
+            postMarkPaid(btn.getAttribute('data-id'));
+        }
+        btn = e.target.closest('.btn-activate-platform');
+        if (btn) {
+            e.preventDefault();
+            postActivatePlatform(btn.getAttribute('data-id'));
+        }
+    });
+
+    loadGradesAndGroups();
+    loadStudents();
+})();
+</script>
+}

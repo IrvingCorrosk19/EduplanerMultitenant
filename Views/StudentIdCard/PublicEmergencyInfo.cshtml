@@ -1,0 +1,114 @@
+@model SchoolManager.ViewModels.CarnetPublicEmergencyInfoVm
+@using SchoolManager.Helpers
+@{
+    Layout = null;
+    ViewData["Title"] = "Información de emergencia";
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"]</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 16px; background: #f1f5f9; color: #0f172a; }
+        .card { max-width: 420px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.08); overflow: hidden; }
+        .head { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: #fff; padding: 18px 16px; text-align: center; }
+        .head h1 { margin: 0; font-size: 1.15rem; font-weight: 700; }
+        .head p { margin: 6px 0 0; font-size: .8rem; opacity: .95; }
+        .body { padding: 16px; }
+        .photo { text-align: center; margin-bottom: 12px; }
+        .photo img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; }
+        dl { margin: 0; }
+        dt { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; color: #64748b; margin-top: 12px; }
+        dt:first-child { margin-top: 0; }
+        dd { margin: 4px 0 0; font-size: .95rem; font-weight: 600; color: #1e293b; }
+        .section { border-top: 1px solid #e2e8f0; margin-top: 14px; padding-top: 12px; }
+        .section h2 { margin: 0 0 8px; font-size: .85rem; color: #0d6efd; }
+        .muted { color: #64748b; font-weight: 500; }
+        .status-pill { display: inline-block; margin-top: 4px; padding: 4px 10px; border-radius: 999px; font-size: .8rem; font-weight: 700; }
+        .status-pill--active { background: #dcfce7; color: #166534; }
+        .status-pill--inactive { background: #fee2e2; color: #991b1b; }
+        .foot { padding: 12px 16px; font-size: .7rem; color: #94a3b8; text-align: center; background: #f8fafc; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="head">
+            <h1>Datos del estudiante</h1>
+            <p>Uso en caso de emergencia · Solo lectura</p>
+        </div>
+        <div class="body">
+            <div class="photo">
+                <img src="@UserPhotoLinks.Href(Model.PhotoUrl)" alt="Foto" />
+            </div>
+            <dl>
+                <dt>Nombre completo</dt>
+                <dd>@Model.FullName</dd>
+                <dt>Estado del estudiante (cuenta)</dt>
+                <dd>
+                    @if (Model.IsUserAccountActive)
+                    {
+                        <span class="status-pill status-pill--active">Activo</span>
+                    }
+                    else
+                    {
+                        <span class="status-pill status-pill--inactive">Inactivo</span>
+                        @if (!string.IsNullOrWhiteSpace(Model.UserAccountStatusRaw) && !string.Equals(Model.UserAccountStatusRaw, "inactive", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <span class="muted" style="display:block;font-size:.8rem;margin-top:4px;">Registro: @Model.UserAccountStatusRaw</span>
+                        }
+                        else if (string.IsNullOrWhiteSpace(Model.UserAccountStatusRaw))
+                        {
+                            <span class="muted" style="display:block;font-size:.8rem;margin-top:4px;">Sin estado definido en el sistema</span>
+                        }
+                    }
+                </dd>
+                @if (!string.IsNullOrWhiteSpace(Model.SchoolName))
+                {
+                    <dt>Institución</dt>
+                    <dd>@Model.SchoolName</dd>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Grade) || !string.IsNullOrWhiteSpace(Model.Group))
+                {
+                    <dt>Grado / Grupo</dt>
+                    <dd>@(Model.Grade ?? "—") — @(Model.Group ?? "—")</dd>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Shift) || !string.IsNullOrWhiteSpace(Model.UserShift))
+                {
+                    <dt>Jornada</dt>
+                    <dd>@(string.IsNullOrWhiteSpace(Model.Shift) ? Model.UserShift : Model.Shift)</dd>
+                }
+                <dt>Documento de identidad</dt>
+                <dd>@(string.IsNullOrWhiteSpace(Model.DocumentId) ? "—" : Model.DocumentId)</dd>
+                <dt>Correo</dt>
+                <dd class="muted" style="word-break:break-all;">@(string.IsNullOrWhiteSpace(Model.Email) ? "—" : Model.Email)</dd>
+                <dt>Fecha de nacimiento</dt>
+                <dd>@(Model.DateOfBirthDisplay ?? "—")</dd>
+                <dt>Tipo de sangre</dt>
+                <dd>@(string.IsNullOrWhiteSpace(Model.BloodType) ? "—" : Model.BloodType)</dd>
+                <dt>Teléfono principal</dt>
+                <dd>@(string.IsNullOrWhiteSpace(Model.CellphonePrimary) ? "—" : Model.CellphonePrimary)</dd>
+                <dt>Teléfono secundario</dt>
+                <dd>@(string.IsNullOrWhiteSpace(Model.CellphoneSecondary) ? "—" : Model.CellphoneSecondary)</dd>
+            </dl>
+
+            <div class="section">
+                <h2>Contacto de emergencia</h2>
+                <dl>
+                    <dt>Nombre</dt>
+                    <dd>@(string.IsNullOrWhiteSpace(Model.EmergencyContactName) ? "—" : Model.EmergencyContactName)</dd>
+                    <dt>Teléfono</dt>
+                    <dd>@(string.IsNullOrWhiteSpace(Model.EmergencyContactPhone) ? "—" : Model.EmergencyContactPhone)</dd>
+                    <dt>Relación</dt>
+                    <dd>@(string.IsNullOrWhiteSpace(Model.EmergencyRelationship) ? "—" : Model.EmergencyRelationship)</dd>
+                    <dt>Alergias u observaciones médicas</dt>
+                    <dd>@(string.IsNullOrWhiteSpace(Model.Allergies) ? "Ninguna registrada" : Model.Allergies)</dd>
+                </dl>
+            </div>
+        </div>
+        <div class="foot">Información proporcionada por la institución educativa. Si este enlace no corresponde, ignore la página.</div>
+    </div>
+</body>
+</html>

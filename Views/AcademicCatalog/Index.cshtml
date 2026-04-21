@@ -1,0 +1,825 @@
+@model SchoolManager.ViewModels.AcademicCatalogViewModel
+
+@{
+    ViewData["Title"] = "Catálogo Académico";
+    Layout = "_AdminLayout";
+}
+
+<style>
+    :root {
+        --primary-color: #2563eb;
+        --secondary-color: #475569;
+        --success-color: #22c55e;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+        --light-bg: #f8fafc;
+        --border-color: #e2e8f0;
+    }
+    body { background-color: var(--light-bg); }
+    .card { border: none; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 1.5rem; background: white; }
+    .card-header { background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: 1px solid var(--border-color); padding: 1.25rem; border-radius: 1rem 1rem 0 0 !important; }
+    .card-body { padding: 1.5rem; }
+    .form-control, .form-select { border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.75rem 1rem; transition: all 0.3s ease; }
+    .form-control:focus, .form-select:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .btn-primary { background: linear-gradient(135deg, var(--primary-color) 0%, #1e40af 100%); border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 500; transition: all 0.3s ease; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .btn-success { background: linear-gradient(135deg, var(--success-color) 0%, #16a34a 100%); border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 500; transition: all 0.3s ease; }
+    .btn-success:hover { transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .btn-danger { background: linear-gradient(135deg, var(--danger-color) 0%, #b91c1c 100%); border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 500; transition: all 0.3s ease; }
+    .btn-danger:hover { transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .table { border-radius: 0.5rem; overflow: hidden; margin-bottom: 0; }
+    .table thead th { background-color: var(--light-bg); border-bottom: 2px solid var(--border-color); padding: 1rem; font-weight: 600; color: var(--secondary-color); text-align: center; vertical-align: middle; white-space: nowrap; }
+    .table tbody td { padding: 1rem; vertical-align: middle; text-align: center; }
+    .btn-action {
+        padding: 0.3rem 0.7rem;
+        border-radius: 0.4rem;
+        font-weight: 500;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        transition: all 0.2s;
+        color: white;
+        margin: 0 0.2rem;
+    }
+    .btn-action:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        color: white;
+    }
+    .btn-action i {
+        font-size: 0.85rem;
+    }
+    .align-middle.text-center {
+        white-space: nowrap;
+    }
+    td.align-middle.text-center .btn-action {
+        display: inline-flex;
+    }
+    .btn-edit {
+        background-color: #2563eb;
+        border: none;
+    }
+    .btn-edit:hover {
+        background-color: #1e40af;
+    }
+    .btn-delete {
+        background-color: #ef4444;
+        border: none;
+    }
+    .btn-delete:hover {
+        background-color: #dc2626;
+    }
+    .btn-save {
+        background-color: #22c55e;
+        border: none;
+    }
+    .btn-save:hover {
+        background-color: #16a34a;
+    }
+    .btn-add {
+        background-color: #22c55e;
+        border: none;
+    }
+    .btn-add:hover {
+        background-color: #16a34a;
+    }
+    .search-bar {
+        margin-bottom: 1rem;
+        position: relative;
+    }
+    .search-bar input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+    .search-bar input:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        outline: none;
+    }
+    .search-bar::before {
+        content: "\F52A";
+        font-family: "bootstrap-icons";
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--secondary-color);
+        font-size: 1rem;
+    }
+    .dataTables_length, .dataTables_filter {
+        display: none !important;
+    }
+    
+    /* Estilos para la configuración de trimestres */
+    .trimestre-config {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .trimestre-row {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        border-left: 4px solid var(--primary-color);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .trimestre-row:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transform: translateY(-1px);
+        transition: all 0.3s ease;
+    }
+    
+    .validation-message {
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+    }
+    
+    .validation-success {
+        color: var(--success-color);
+        background-color: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+    }
+    
+    .validation-warning {
+        color: var(--warning-color);
+        background-color: rgba(245, 158, 11, 0.1);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+    }
+    
+    .validation-error {
+        color: var(--danger-color);
+        background-color: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+    }
+    
+    .table-secondary {
+        background-color: #f8f9fa !important;
+        font-weight: 600;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.65rem;
+    }
+</style>
+
+<div class="portal-header mb-4">
+    <div class="card card-outline card-primary mb-0">
+        <div class="card-header d-flex align-items-center gap-2" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white;">
+            <i class="bi bi-journal-bookmark text-white fs-3 me-2"></i>
+            <h4 class="mb-0 flex-grow-1">Catálogo Académico</h4>
+            <span class="opacity-75">@TimeZoneService.GetTodayLongString()</span>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <ul class="nav nav-tabs" id="catalogTabs" role="tablist">
+        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#grades"><i class="bi bi-mortarboard"></i> Grados</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#groups"><i class="bi bi-people"></i> Grupos</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#shifts"><i class="bi bi-clock"></i> Jornadas</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#subjects"><i class="bi bi-book"></i> Materias</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#areas"><i class="bi bi-diagram-3"></i> Áreas</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#specialties"><i class="bi bi-award"></i> Especialidades</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#trimesters"><i class="bi bi-calendar3"></i> Trimestres</a></li>
+    </ul>
+
+    <div class="tab-content mt-3">
+        <div class="tab-pane fade show active" id="grades">
+            @await Html.PartialAsync("~/Views/Shared/Partials/_GradesPartial.cshtml", Model.GradesLevel ?? new List<GradeLevel>())
+        </div>
+        <div class="tab-pane fade" id="groups">
+            @await Html.PartialAsync("~/Views/Shared/Partials/_GroupsPartial.cshtml", Model.Groups ?? new List<Group>())
+        </div>
+        <div class="tab-pane fade" id="shifts">
+            @await Html.PartialAsync("~/Views/Shared/Partials/_ShiftsPartial.cshtml", Model.Shifts ?? new List<Shift>())
+        </div>
+        <div class="tab-pane fade" id="subjects">
+            @await Html.PartialAsync("~/Views/Shared/Partials/_SubjectsPartial.cshtml", Model.Subjects ?? new List<Subject>())
+        </div>
+        <div class="tab-pane fade" id="areas">
+            @await Html.PartialAsync("~/Views/Shared/Partials/_AreasPartial.cshtml", Model.Areas ?? new List<Area>())
+        </div>
+        <div class="tab-pane fade" id="specialties">
+            @await Html.PartialAsync("~/Views/Shared/Partials/_SpecialtiesPartial.cshtml", Model.Specialties ?? new List<Specialty>())
+        </div>
+
+        <div class="tab-pane fade" id="trimesters">
+            <div class="card card-outline card-primary">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-calendar3 text-primary fs-4"></i>
+                    <h5 class="mb-0">Configuración del Año Escolar y Trimestres</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Información del año escolar actual -->
+                    <div class="alert alert-info mb-4">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <div>
+                                <strong>Año Escolar Actual:</strong> 
+                                <span id="anioEscolarActual">@DateTime.Now.Year</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario de configuración -->
+                    <form id="formTrimestres" autocomplete="off">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Año Escolar</label>
+                                <select class="form-select" id="anioEscolar" required>
+                                    <option value="">Selecciona el año escolar</option>
+                                    @{
+                                        int anioActual = DateTime.Now.Year;
+                                        for (int i = anioActual - 1; i <= anioActual + 2; i++)
+                                        {
+                                            <option value="@i">@i</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Cantidad de Trimestres</label>
+                                <select class="form-select" id="cantidadTrimestres" required>
+                                    <option value="3">3 Trimestres (Recomendado)</option>
+                                    <option value="4">4 Trimestres</option>
+                                    <option value="2">2 Semestres</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Configuración de trimestres dinámica -->
+                        <div id="configuracionTrimestres">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Trimestre 1 - Inicio</label>
+                                    <input type="date" class="form-control trimestre-date" id="inicio1T" data-trimestre="1" required autocomplete="off" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Trimestre 1 - Fin</label>
+                                    <input type="date" class="form-control trimestre-date" id="fin1T" data-trimestre="1" required autocomplete="off" />
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Trimestre 2 - Inicio</label>
+                                    <input type="date" class="form-control trimestre-date" id="inicio2T" data-trimestre="2" required autocomplete="off" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Trimestre 2 - Fin</label>
+                                    <input type="date" class="form-control trimestre-date" id="fin2T" data-trimestre="2" required autocomplete="off" />
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Trimestre 3 - Inicio</label>
+                                    <input type="date" class="form-control trimestre-date" id="inicio3T" data-trimestre="3" required autocomplete="off" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Trimestre 3 - Fin</label>
+                                    <input type="date" class="form-control trimestre-date" id="fin3T" data-trimestre="3" required autocomplete="off" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Validaciones en tiempo real -->
+                        <div id="validacionesTrimestres" class="alert alert-warning d-none">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <span id="mensajeValidacion"></span>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <button type="button" id="btnGuardarTrimestres" class="btn btn-success w-100">
+                                    <i class="bi bi-save me-2"></i> Guardar configuración
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <button type="button" id="btnValidarConfiguracion" class="btn btn-outline-primary w-100">
+                                    <i class="bi bi-check-circle me-2"></i> Validar configuración
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Tabla de trimestres existentes -->
+                    <div class="mt-4">
+                        <h6 class="mb-3">Configuraciones de Años Escolares</h6>
+                        <table class="table table-bordered" id="tablaTrimestres">
+                            <thead>
+                                <tr>
+                                    <th>Año Escolar</th>
+                                    <th>Trimestre</th>
+                                    <th>Fecha de Inicio</th>
+                                    <th>Fecha de Fin</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.Trimestres != null && Model.Trimestres.Count > 0)
+                                {
+                                    var trimestresPorAnio = Model.Trimestres.GroupBy(t => t.StartDate.Year).OrderByDescending(g => g.Key);
+                                    foreach (var grupo in trimestresPorAnio)
+                                    {
+                                        <tr class="table-secondary">
+                                            <td colspan="6" class="fw-bold">
+                                                <i class="bi bi-calendar-event me-2"></i>
+                                                Año Escolar @grupo.Key
+                                            </td>
+                                        </tr>
+                                        foreach (var t in grupo.OrderBy(t => t.Name))
+                                        {
+                                            <tr>
+                                                <td></td>
+                                                <td>@t.Name</td>
+                                                <td class="fecha-inicio">@TimeZoneService.ToLocalDisplayString(t.StartDate, "dd/MM/yyyy")</td>
+                                                <td class="fecha-fin">@TimeZoneService.ToLocalDisplayString(t.EndDate, "dd/MM/yyyy")</td>
+                                                <td>
+                                                    @if (t.IsActive)
+                                                    {
+                                                        <span class="badge bg-success">Activo</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Inactivo</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group" role="group">
+                                                        <button class="btn btn-sm btn-primary btnEditarTrimestre" data-id="@t.Id">
+                                                            <i class="bi bi-pencil"></i> Editar
+                                                        </button>
+                                                        @if (t.IsActive)
+                                                        {
+                                                            <button class="btn btn-sm btn-warning btnDesactivarTrimestre" data-id="@t.Id" data-name="@t.Name">
+                                                                <i class="bi bi-pause-circle"></i> Desactivar
+                                                            </button>
+                                                        }
+                                                        else
+                                                        {
+                                                            <button class="btn btn-sm btn-success btnActivarTrimestre" data-id="@t.Id" data-name="@t.Name">
+                                                                <i class="bi bi-play-circle"></i> Activar
+                                                            </button>
+                                                        }
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    <tr><td colspan="6" class="text-center">No hay trimestres configurados.</td></tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        @if (Model.Trimestres != null && Model.Trimestres.Count > 0)
+                        {
+                            <div class="d-flex justify-content-end mt-3">
+                                <button class="btn btn-danger" id="btnEliminarConfiguracion">
+                                    <i class="bi bi-trash"></i> Eliminar configuración de año escolar
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para edición de fechas de trimestre -->
+<div class="modal fade" id="modalEditarTrimestre" tabindex="-1" aria-labelledby="modalEditarTrimestreLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalEditarTrimestreLabel">Editar Fechas del Trimestre</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formEditarTrimestre">
+          <input type="hidden" id="editTrimestreId">
+          <input type="hidden" id="editTrimestreAnio">
+          <div class="mb-3">
+            <label for="editStartDate" class="form-label">Fecha de Inicio</label>
+            <input type="date" class="form-control" id="editStartDate" required>
+          </div>
+          <div class="mb-3">
+            <label for="editEndDate" class="form-label">Fecha de Fin</label>
+            <input type="date" class="form-control" id="editEndDate" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnGuardarEdicionTrimestre">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+                const target = $(e.target).attr('href');
+                console.log("Se abrió la pestaña:", target);
+            });
+
+            // Inicialización de la configuración de trimestres
+            inicializarConfiguracionTrimestres();
+            
+            // Event listeners para validaciones en tiempo real
+            $('.trimestre-date').on('change', validarFechasTrimestres);
+            $('#anioEscolar').on('change', actualizarFechasSugeridas);
+            $('#cantidadTrimestres').on('change', actualizarConfiguracionTrimestres);
+            
+            // Botón de validación
+            $('#btnValidarConfiguracion').on('click', validarConfiguracionCompleta);
+
+            // Botones de activar/desactivar trimestres
+            $(document).on('click', '.btnActivarTrimestre', function () {
+                const id = $(this).data('id');
+                const name = $(this).data('name');
+                
+                Swal.fire({
+                    title: '¿Activar trimestre?',
+                    text: `¿Seguro que deseas activar el trimestre ${name}?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, activar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '/AcademicCatalog/ActivarTrimestre',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ id: id }),
+                            success: function (resp) {
+                                if (resp && resp.success) {
+                                    Swal.fire('¡Éxito!', `Trimestre ${name} activado correctamente.`, 'success').then(() => location.reload());
+                                } else {
+                                    Swal.fire('Error', resp && resp.message ? resp.message : 'No se pudo activar el trimestre.', 'error');
+                                }
+                            },
+                            error: function (xhr) {
+                                let msg = 'No se pudo activar el trimestre.';
+                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                    msg = xhr.responseJSON.message;
+                                }
+                                Swal.fire('Error', msg, 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            $(document).on('click', '.btnDesactivarTrimestre', function () {
+                const id = $(this).data('id');
+                const name = $(this).data('name');
+                
+                Swal.fire({
+                    title: '¿Desactivar trimestre?',
+                    text: `¿Seguro que deseas desactivar el trimestre ${name}? No se podrán crear ni editar actividades ni notas en este trimestre.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, desactivar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '/AcademicCatalog/DesactivarTrimestre',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ id: id }),
+                            success: function (resp) {
+                                if (resp && resp.success) {
+                                    Swal.fire('¡Éxito!', `Trimestre ${name} desactivado correctamente.`, 'success').then(() => location.reload());
+                                } else {
+                                    Swal.fire('Error', resp && resp.message ? resp.message : 'No se pudo desactivar el trimestre.', 'error');
+                                }
+                            },
+                            error: function (xhr) {
+                                let msg = 'No se pudo desactivar el trimestre.';
+                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                    msg = xhr.responseJSON.message;
+                                }
+                                Swal.fire('Error', msg, 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Edición con modal
+            $(document).on('click', '.btnEditarTrimestre', function () {
+                const fila = $(this).closest('tr');
+                const id = $(this).data('id');
+                const inicio = fila.find('.fecha-inicio').text();
+                const fin = fila.find('.fecha-fin').text();
+                // Obtener el año de la fecha de inicio
+                const fechaISO = formatoISO(inicio);
+                const anio = fechaISO ? fechaISO.split('-')[0] : '';
+                $('#editTrimestreId').val(id);
+                $('#editTrimestreAnio').val(anio);
+                $('#editStartDate').val(formatoISO(inicio));
+                $('#editEndDate').val(formatoISO(fin));
+                $('#modalEditarTrimestre').modal('show');
+            });
+
+            $('#btnGuardarEdicionTrimestre').on('click', function () {
+                const id = $('#editTrimestreId').val();
+                const startDate = $('#editStartDate').val();
+                const endDate = $('#editEndDate').val();
+                const anioOriginal = $('#editTrimestreAnio').val();
+                if (!startDate || !endDate) {
+                    Swal.fire('Error', 'Completa ambas fechas.', 'error');
+                    return;
+                }
+                // Validar que el año no cambie
+                if (startDate.split('-')[0] !== anioOriginal || endDate.split('-')[0] !== anioOriginal) {
+                    Swal.fire('Error', 'Solo puedes cambiar el mes y día, no el año.', 'error');
+                    return;
+                }
+                $.ajax({
+                    url: '/AcademicCatalog/EditarTrimestre',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ id, startDate, endDate }),
+                    success: function (resp) {
+                        if (resp && resp.success) {
+                            Swal.fire('¡Listo!', 'Fechas actualizadas.', 'success').then(() => location.reload());
+                        } else {
+                            Swal.fire('Error', resp && resp.message ? resp.message : 'No se pudo actualizar.', 'error');
+                        }
+                    },
+                    error: function (xhr) {
+                        let msg = 'No se pudo actualizar.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+                        Swal.fire('Error', msg, 'error');
+                    }
+                });
+            });
+
+            // Eliminar toda la configuración de trimestres
+            $('#btnEliminarConfiguracion').on('click', function () {
+                Swal.fire({
+                    title: '¿Eliminar configuración?',
+                    text: '¿Seguro que deseas eliminar TODOS los trimestres?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '/AcademicCatalog/EliminarTodosLosTrimestres',
+                            method: 'POST',
+                            success: function (resp) {
+                                if (resp && resp.success) {
+                                    Swal.fire('¡Listo!', 'Todos los trimestres han sido eliminados.', 'success').then(() => location.reload());
+                                } else {
+                                    Swal.fire('Error', resp && resp.message ? resp.message : 'No se pudo eliminar.', 'error');
+                                }
+                            }
+                        });
+                    }
+                });
+            });
+
+            function formatoISO(fecha) {
+                // Convierte dd/MM/yyyy a yyyy-MM-dd
+                if (!fecha.includes('/')) return fecha;
+                const partes = fecha.split('/');
+                return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+            }
+
+            // Guardar configuración de trimestres
+            $('#btnGuardarTrimestres').on('click', function () {
+                const anioEscolar = $('#anioEscolar').val();
+                const cantidad = parseInt($('#cantidadTrimestres').val());
+                
+                if (!anioEscolar) {
+                    Swal.fire('Error', 'Debes seleccionar un año escolar.', 'error');
+                    return;
+                }
+
+                // Recopilar datos de trimestres
+                const trimestres = [];
+                for (let i = 1; i <= cantidad; i++) {
+                    const inicio = $(`#inicio${i}T`).val();
+                    const fin = $(`#fin${i}T`).val();
+                    
+                    if (!inicio || !fin) {
+                        Swal.fire('Error', `Completa todas las fechas del ${cantidad === 2 ? 'semestre' : 'trimestre'} ${i}.`, 'error');
+                        return;
+                    }
+
+                    const nombre = cantidad === 2 ? `${i}S` : `${i}T`;
+                    trimestres.push({
+                        name: nombre,
+                        startDate: inicio,
+                        endDate: fin,
+                        isActive: true, // Default to active for new configurations
+                        order: i
+                    });
+                }
+
+                // Validar configuración antes de enviar
+                validarFechasTrimestres();
+                if ($('#btnGuardarTrimestres').prop('disabled')) {
+                    Swal.fire('Error', 'La configuración tiene errores. Corrige los problemas antes de guardar.', 'error');
+                    return;
+                }
+
+                // Confirmar antes de guardar
+                Swal.fire({
+                    title: '¿Guardar configuración?',
+                    text: `Se guardará la configuración para el año escolar ${anioEscolar} con ${cantidad} ${cantidad === 2 ? 'semestres' : 'trimestres'}.`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '/AcademicCatalog/GuardarTrimestres',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(trimestres),
+                            success: function (resp) {
+                                if (resp && resp.success) {
+                                    Swal.fire('¡Éxito!', 'Configuración de trimestres guardada correctamente.', 'success').then(() => {
+                                        location.reload();
+                                    });
+                                } else {
+                                    Swal.fire('Error', resp && resp.message ? resp.message : 'No se pudo guardar la configuración.', 'error');
+                                }
+                            },
+                            error: function (xhr) {
+                                let msg = 'No se pudo guardar la configuración.';
+                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                    msg = xhr.responseJSON.message;
+                                }
+                                Swal.fire('Error', msg, 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Funciones de validación y configuración
+            function inicializarConfiguracionTrimestres() {
+                // Establecer año escolar actual por defecto
+                const anioActual = new Date().getFullYear();
+                $('#anioEscolar').val(anioActual);
+            }
+
+            function actualizarFechasSugeridas() {
+                // Ya no sugerimos fechas automáticamente - el usuario las configura manualmente
+                validarFechasTrimestres();
+            }
+
+            function actualizarConfiguracionTrimestres() {
+                const cantidad = parseInt($('#cantidadTrimestres').val());
+                const configuracionDiv = $('#configuracionTrimestres');
+                
+                // Limpiar configuración actual
+                configuracionDiv.empty();
+                
+                // Generar configuración dinámica
+                for (let i = 1; i <= cantidad; i++) {
+                    const nombreTrimestre = cantidad === 2 ? `Semestre ${i}` : `Trimestre ${i}`;
+                    const html = `
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">${nombreTrimestre} - Inicio</label>
+                                <input type="date" class="form-control trimestre-date" id="inicio${i}T" data-trimestre="${i}" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">${nombreTrimestre} - Fin</label>
+                                <input type="date" class="form-control trimestre-date" id="fin${i}T" data-trimestre="${i}" required />
+                            </div>
+                        </div>
+                    `;
+                    configuracionDiv.append(html);
+                }
+                
+                // Reasignar event listeners
+                $('.trimestre-date').off('change').on('change', validarFechasTrimestres);
+                actualizarFechasSugeridas();
+            }
+
+            function validarFechasTrimestres() {
+                const cantidad = parseInt($('#cantidadTrimestres').val());
+                const anioEscolar = parseInt($('#anioEscolar').val());
+                const errores = [];
+                const trimestres = [];
+
+                // Recopilar datos de trimestres
+                for (let i = 1; i <= cantidad; i++) {
+                    const inicio = $(`#inicio${i}T`).val();
+                    const fin = $(`#fin${i}T`).val();
+                    
+                    if (inicio && fin) {
+                        trimestres.push({
+                            numero: i,
+                            inicio: new Date(inicio),
+                            fin: new Date(fin),
+                            activo: true // Always true for new configurations
+                        });
+                    }
+                }
+
+                // Validaciones básicas
+                trimestres.forEach((trimestre, index) => {
+                    // Validar que inicio < fin
+                    if (trimestre.inicio >= trimestre.fin) {
+                        errores.push(`El ${cantidad === 2 ? 'semestre' : 'trimestre'} ${trimestre.numero} tiene fecha de inicio posterior o igual a la fecha de fin.`);
+                    }
+                });
+
+                // Validar que no haya solapamiento entre trimestres
+                for (let i = 0; i < trimestres.length - 1; i++) {
+                    const actual = trimestres[i];
+                    const siguiente = trimestres[i + 1];
+                    
+                    if (actual.fin >= siguiente.inicio) {
+                        errores.push(`El ${cantidad === 2 ? 'semestre' : 'trimestre'} ${actual.numero} se solapa con el ${cantidad === 2 ? 'semestre' : 'trimestre'} ${siguiente.numero}.`);
+                    }
+                }
+
+                // Validar que haya al menos un día entre trimestres
+                for (let i = 0; i < trimestres.length - 1; i++) {
+                    const actual = trimestres[i];
+                    const siguiente = trimestres[i + 1];
+                    
+                    const diasEntre = Math.ceil((siguiente.inicio - actual.fin) / (1000 * 60 * 60 * 24));
+                    if (diasEntre < 1) {
+                        errores.push(`Debe haber al menos un día entre el ${cantidad === 2 ? 'semestre' : 'trimestre'} ${actual.numero} y el ${cantidad === 2 ? 'semestre' : 'trimestre'} ${siguiente.numero}.`);
+                    }
+                }
+
+                // Mostrar errores o éxito
+                const validacionDiv = $('#validacionesTrimestres');
+                const mensajeSpan = $('#mensajeValidacion');
+                
+                if (errores.length > 0) {
+                    mensajeSpan.html(errores.join('<br>'));
+                    validacionDiv.removeClass('d-none alert-success').addClass('alert-warning');
+                    $('#btnGuardarTrimestres').prop('disabled', true);
+                } else if (trimestres.length === cantidad) {
+                    mensajeSpan.html('✅ Configuración válida. Las fechas están correctamente configuradas.');
+                    validacionDiv.removeClass('d-none alert-warning').addClass('alert-success');
+                    $('#btnGuardarTrimestres').prop('disabled', false);
+                } else {
+                    validacionDiv.addClass('d-none');
+                    $('#btnGuardarTrimestres').prop('disabled', true);
+                }
+            }
+
+            function validarConfiguracionCompleta() {
+                const anioEscolar = $('#anioEscolar').val();
+                const cantidad = $('#cantidadTrimestres').val();
+                
+                if (!anioEscolar) {
+                    Swal.fire('Error', 'Debes seleccionar un año escolar.', 'error');
+                    return;
+                }
+
+                validarFechasTrimestres();
+                
+                if (!$('#btnGuardarTrimestres').prop('disabled')) {
+                    Swal.fire('¡Configuración Válida!', 'La configuración de trimestres es correcta y puede ser guardada.', 'success');
+                }
+            }
+        });
+    </script>
+
+    @await Html.PartialAsync("~/Views/Shared/Partials/_GradesScripts.cshtml")
+    @await Html.PartialAsync("~/Views/Shared/Partials/_GroupsScripts.cshtml")
+    @await Html.PartialAsync("~/Views/Shared/Partials/_ShiftsScripts.cshtml")
+    @await Html.PartialAsync("~/Views/Shared/Partials/_SubjectsScripts.cshtml")
+    @await Html.PartialAsync("~/Views/Shared/Partials/_AreasScripts.cshtml")
+    @await Html.PartialAsync("~/Views/Shared/Partials/_SpecialtiesScripts.cshtml")
+}

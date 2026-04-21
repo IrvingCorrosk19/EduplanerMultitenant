@@ -1,0 +1,24 @@
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+*.vsidx
+*.dll
+*.pdb
+*.exe
+*.db
+appsettings.Development.json
+
+# Volcados completos de PostgreSQL (datos sensibles; no versionar)
+Backups/
+*.dump
+*.bak
+
+# Carpeta de salida de compilación auxiliar
+compile_verify_out/
+
+# Configuración local de Claude Code (puede contener datos sensibles)
+.claude/

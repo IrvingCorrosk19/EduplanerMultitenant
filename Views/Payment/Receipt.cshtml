@@ -1,0 +1,198 @@
+@model SchoolManager.Models.Payment
+@{
+    Layout = null; // No usar layout para una vista imprimible
+    ViewData["Title"] = "Recibo de Pago";
+    var payment = ViewBag.Payment as SchoolManager.Models.Payment ?? Model;
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - EduPlanner</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .receipt-container {
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 40px;
+            border-radius: 8px;
+            position: relative;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header h2 {
+            color: #333;
+            font-size: 1.5em;
+            margin-top: 0;
+        }
+        .info-section {
+            margin-bottom: 25px;
+        }
+        .info-section h3 {
+            color: #667eea;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .info-section p {
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+        .info-section p strong {
+            color: #555;
+            display: inline-block;
+            width: 180px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #777;
+            font-size: 0.9em;
+        }
+        .signature-line {
+            border-top: 1px dashed #ccc;
+            width: 60%;
+            margin: 50px auto 10px auto;
+        }
+        .signature-text {
+            text-align: center;
+            font-style: italic;
+            color: #555;
+        }
+        .print-button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .print-button {
+            background-color: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+        .print-button:hover {
+            background-color: #5568d3;
+        }
+        @@media print {
+            body {
+                background-color: white;
+                padding: 0;
+            }
+            .receipt-container {
+                box-shadow: none;
+                border: none;
+                margin: 0;
+                max-width: none;
+                padding: 0;
+            }
+            .print-button-container {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-container">
+        <div class="header">
+            <h1>Recibo de Pago</h1>
+            <h2>@(payment.School?.Name ?? "Institución Educativa")</h2>
+            <p><strong>Año Académico:</strong> @(payment.PaymentDate.Year)</p>
+        </div>
+
+        <div class="info-section">
+            <h3>Datos del Estudiante</h3>
+            <p><strong>Nombre Completo:</strong> @(payment.Student != null ? $"{payment.Student.Name} {payment.Student.LastName}" : "N/A")</p>
+            <p><strong>Documento de Identidad:</strong> @(payment.Student?.DocumentId ?? "N/A")</p>
+            @if (!string.IsNullOrEmpty(payment.Student?.Email))
+            {
+                <p><strong>Correo Electrónico:</strong> @payment.Student.Email</p>
+            }
+        </div>
+
+        <div class="info-section">
+            <h3>Detalles del Pago</h3>
+            <p><strong>Número de Recibo:</strong> <code>@payment.ReceiptNumber</code></p>
+            @if (payment.PaymentConcept != null)
+            {
+                <p><strong>Concepto de Pago:</strong> @payment.PaymentConcept.Name</p>
+            }
+            <p><strong>Monto Pagado:</strong> <strong style="color: #667eea; font-size: 1.2em;">@payment.Amount.ToString("C")</strong></p>
+            @if (!string.IsNullOrEmpty(payment.PaymentMethod))
+            {
+                <p><strong>Método de Pago:</strong> @payment.PaymentMethod</p>
+            }
+            <p><strong>Fecha de Pago:</strong> @TimeZoneService.ToLocalDisplayString(payment.PaymentDate, "dd/MM/yyyy HH:mm")</p>
+            <p><strong>Estado:</strong> <span class="badge bg-success">@payment.PaymentStatus</span></p>
+            @if (payment.ConfirmedAt.HasValue)
+            {
+                <p><strong>Fecha de Confirmación:</strong> @TimeZoneService.ToLocalDisplayString(payment.ConfirmedAt, "dd/MM/yyyy HH:mm")</p>
+            }
+        </div>
+
+        @if (payment.Prematriculation != null)
+        {
+            <div class="info-section">
+                <h3>Información de Prematrícula</h3>
+                <p><strong>Código de Prematrícula:</strong> <code>@payment.Prematriculation.PrematriculationCode</code></p>
+                <p><strong>Grado:</strong> @(payment.Prematriculation.Grade?.Name ?? "N/A")</p>
+                <p><strong>Grupo:</strong> @(payment.Prematriculation.Group?.Name ?? "N/A")</p>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(payment.Notes))
+        {
+            <div class="info-section">
+                <h3>Notas</h3>
+                <p>@payment.Notes</p>
+            </div>
+        }
+
+        <div class="footer">
+            <div class="signature-line"></div>
+            <p class="signature-text">Firma del Encargado de Contabilidad</p>
+            <p>Este recibo certifica el pago realizado para el período académico actual.</p>
+            <p>Generado el @TimeZoneService.GetTodayLongString()</p>
+        </div>
+    </div>
+
+    <div class="print-button-container">
+        <button class="print-button" onclick="window.print()">
+            <i class="fas fa-print mr-2"></i> Imprimir Recibo
+        </button>
+        <a href="@Url.Action("MyPayments")" class="btn btn-secondary" style="margin-left: 10px;">
+            <i class="fas fa-arrow-left mr-2"></i> Volver
+        </a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

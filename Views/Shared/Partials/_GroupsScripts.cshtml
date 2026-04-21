@@ -1,0 +1,202 @@
+﻿    <script>
+       let groupDataTable;
+
+    $(document).ready(function () {
+        groupDataTable = $('#groupTable').DataTable({
+            dom: 'rt<"row"<"col-sm-12"p>>',
+            language: {
+                zeroRecords: "No se encontraron grupos",
+                info: "",
+                infoEmpty: "",
+                infoFiltered: "",
+                paginate: {
+                    first: "«",
+                    last: "»",
+                    next: "›",
+                    previous: "‹"
+                }
+            },
+            pageLength: 10
+        });
+
+        // Conectar búsqueda personalizada
+        $('#searchGroups').on('keyup', function() {
+            groupDataTable.search(this.value).draw();
+        });
+    });
+
+    window.createGroup = function() {
+        const name = $('#newGroupName').val().trim();
+        const description = $('#newGroupDescription').val().trim();
+        const shift = $('#newGroupShift').val() || null;
+
+        if (!name) {
+            Swal.fire('Advertencia', 'El nombre no puede estar vacío.', 'warning');
+            return;
+        }
+
+        const group = { name, description, shift };
+
+        $.ajax({
+            url: '/Group/Create',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(group)
+        })
+        .done(function(response) {
+            if (response.success) {
+                const shiftBadge = response.shift ? 
+                    `<span class="badge ${response.shift.toLowerCase() === 'mañana' || response.shift.toLowerCase() === 'manana' ? 'bg-info' : 
+                        response.shift.toLowerCase() === 'tarde' ? 'bg-warning' : 
+                        response.shift.toLowerCase() === 'noche' ? 'bg-dark' : 'bg-secondary'}">${response.shift}</span>` : 
+                    '<span class="badge bg-secondary">Sin definir</span>';
+                
+                const shiftSelect = `
+                    <select class="form-control d-none group-shift-input">
+                        <option value="">Seleccione una jornada</option>
+                        <option value="Mañana" ${response.shift === 'Mañana' ? 'selected' : ''}>Mañana</option>
+                        <option value="Tarde" ${response.shift === 'Tarde' ? 'selected' : ''}>Tarde</option>
+                        <option value="Noche" ${response.shift === 'Noche' ? 'selected' : ''}>Noche</option>
+                    </select>`;
+
+                const newRow = groupDataTable.row.add([
+                    `<td class="align-middle text-center">
+                        <span class="group-name-text">${response.name}</span>
+                        <input type="text" class="form-control d-none group-name-input" value="${response.name}" />
+                    </td>`,
+                    `<td class="align-middle text-center">
+                        <span class="group-description-text">${response.description || ''}</span>
+                        <textarea class="form-control d-none group-description-input">${response.description || ''}</textarea>
+                    </td>`,
+                    `<td class="align-middle text-center">
+                        <span class="group-shift-text">${shiftBadge}</span>
+                        ${shiftSelect}
+                    </td>`,
+                    `<td class="align-middle text-center">
+                        <button class="btn btn-action btn-edit me-1 btn-edit-group" title="Editar">
+                            <i class="bi bi-pencil me-1"></i> Editar
+                        </button>
+                        <button class="btn btn-action btn-save d-none me-1 btn-save-group" title="Guardar">
+                            <i class="bi bi-check me-1"></i> Guardar
+                        </button>
+                        <button class="btn btn-action btn-delete btn-delete-group" title="Eliminar">
+                            <i class="bi bi-trash me-1"></i> Eliminar
+                        </button>
+                    </td>`
+                ]).draw().node();
+
+                $(newRow).attr('data-id', response.id);
+                $('#newGroupName').val('');
+                $('#newGroupDescription').val('');
+                $('#newGroupShift').val('');
+                Swal.fire('¡Éxito!', 'El grupo fue creado correctamente.', 'success');
+            } else {
+                Swal.fire('Error', response.message || 'Error al crear el grupo.', 'error');
+            }
+        })
+        .fail(function(error) {
+            Swal.fire('Error', 'Error al crear el grupo: ' + (error.responseText || 'Error desconocido'), 'error');
+        });
+    };
+
+    $('#groupTable').on('click', '.btn-edit-group', function() {
+        const row = $(this).closest('tr');
+        row.find('.group-name-text, .group-description-text, .group-shift-text').addClass('d-none');
+        row.find('.group-name-input, .group-description-input, .group-shift-input').removeClass('d-none');
+        row.find('.btn-edit-group').addClass('d-none');
+        row.find('.btn-save-group').removeClass('d-none');
+    });
+
+    $('#groupTable').on('click', '.btn-save-group', function() {
+        const row = $(this).closest('tr');
+        const shiftValue = row.find('.group-shift-input').val() || null;
+        const group = {
+            Id: row.data('id'),
+            Name: row.find('.group-name-input').val().trim(),
+            Description: row.find('.group-description-input').val().trim(),
+            Shift: shiftValue
+        };
+
+        if (!group.Name) {
+            Swal.fire('Advertencia', 'El nombre no puede estar vacío.', 'warning');
+            return;
+        }
+
+        $.ajax({
+            url: '/Group/Edit',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(group)
+        })
+        .done(function(response) {
+            if (response.success) {
+                row.find('.group-name-text').text(group.Name).removeClass('d-none');
+                row.find('.group-description-text').text(group.Description || '').removeClass('d-none');
+                
+                // Actualizar jornada
+                const shiftBadge = group.Shift ? 
+                    `<span class="badge ${group.Shift.toLowerCase() === 'mañana' || group.Shift.toLowerCase() === 'manana' ? 'bg-info' : 
+                        group.Shift.toLowerCase() === 'tarde' ? 'bg-warning' : 
+                        group.Shift.toLowerCase() === 'noche' ? 'bg-dark' : 'bg-secondary'}">${group.Shift}</span>` : 
+                    '<span class="badge bg-secondary">Sin definir</span>';
+                row.find('.group-shift-text').html(shiftBadge).removeClass('d-none');
+                
+                // Actualizar select de jornada
+                row.find('.group-shift-input').val(group.Shift || '');
+                
+                row.find('.group-name-input, .group-description-input, .group-shift-input').addClass('d-none');
+                row.find('.btn-edit-group').removeClass('d-none');
+                row.find('.btn-save-group').addClass('d-none');
+                Swal.fire('¡Actualizado!', 'El grupo fue actualizado correctamente.', 'success');
+            } else {
+                Swal.fire('Error', response.message || 'Error al actualizar el grupo.', 'error');
+            }
+        })
+        .fail(function(error) {
+            Swal.fire('Error', 'Error al actualizar el grupo: ' + (error.responseText || 'Error desconocido'), 'error');
+        });
+    });
+
+    $('#groupTable').on('click', '.btn-delete-group', function() {
+        const row = $(this).closest('tr');
+        const id = row.data('id');
+
+        if (!id) {
+            Swal.fire('Error', 'ID no válido para eliminar.', 'error');
+            return;
+        }
+
+        Swal.fire({
+            title: '¿Eliminar este grupo?',
+            text: "Esta acción no se puede deshacer.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '/Group/Delete',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ id })
+                })
+                .done(function(response) {
+                    if (response.success) {
+                        groupDataTable.row(row).remove().draw();
+                        Swal.fire('Eliminado', 'El grupo fue eliminado correctamente.', 'success');
+                    } else {
+                        Swal.fire('Error', response.message || 'Error al eliminar el grupo.', 'error');
+                    }
+                })
+                .fail(function(error) {
+                    Swal.fire('Error', 'Error al eliminar el grupo: ' + (error.responseText || 'Error desconocido'), 'error');
+                });
+            }
+        });
+    });
+
+</script>
+

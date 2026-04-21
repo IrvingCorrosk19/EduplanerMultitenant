@@ -1,0 +1,138 @@
+@model IEnumerable<SchoolManager.Dtos.PrematriculationDto>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Mis Prematrículas";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-user-graduate mr-2"></i>Prematrículas de mis Hijos</h3>
+                <small>Consulte y gestione las prematrículas de sus hijos</small>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle mr-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle mr-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <a href="@Url.Action("Create")" class="btn btn-primary">
+                <i class="fas fa-plus mr-2"></i>Nueva Prematrícula
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list mr-2"></i>Lista de Prematrículas</h5>
+                </div>
+                <div class="card-body">
+                    @if (!Model.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>No tiene prematrículas registradas.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="prematriculationsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Estudiante</th>
+                                        <th>Documento</th>
+                                        <th>Grado</th>
+                                        <th>Grupo</th>
+                                        <th>Estado</th>
+                                        <th>Código</th>
+                                        <th>Fecha</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model)
+                                    {
+                                        <tr>
+                                            <td>@item.StudentName</td>
+                                            <td>@item.StudentDocumentId</td>
+                                            <td>@(item.GradeName ?? "N/A")</td>
+                                            <td>@(item.GroupName ?? "Pendiente")</td>
+                                            <td>
+                                                @switch (item.Status)
+                                                {
+                                                    case "Pendiente":
+                                                        <span class="badge bg-warning">Pendiente</span>
+                                                        break;
+                                                    case "Prematriculado":
+                                                        <span class="badge bg-info">Prematriculado</span>
+                                                        break;
+                                                    case "Pagado":
+                                                        <span class="badge bg-primary">Pagado</span>
+                                                        break;
+                                                    case "Matriculado":
+                                                        <span class="badge bg-success">Matriculado</span>
+                                                        break;
+                                                    case "Rechazado":
+                                                        <span class="badge bg-danger">Rechazado</span>
+                                                        break;
+                                                    default:
+                                                        <span class="badge bg-secondary">@item.Status</span>
+                                                        break;
+                                                }
+                                            </td>
+                                            <td><code>@item.PrematriculationCode</code></td>
+                                            <td>@TimeZoneService.ToLocalDisplayString(item.CreatedAt, "dd/MM/yyyy")</td>
+                                            <td>
+                                                <a href="@Url.Action("Details", new { id = item.Id })" class="btn btn-sm btn-info" title="Ver detalles">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                @if (item.Status == "Matriculado")
+                                                {
+                                                    <a href="@Url.Action("Certificate", new { id = item.Id })" class="btn btn-sm btn-success" target="_blank" title="Ver comprobante">
+                                                        <i class="fas fa-file-pdf"></i>
+                                                    </a>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#prematriculationsTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json"
+                },
+                "order": [[6, "desc"]]
+            });
+        });
+    </script>
+}
+

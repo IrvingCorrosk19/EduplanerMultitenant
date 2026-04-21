@@ -1,0 +1,204 @@
+@model IEnumerable<SchoolManager.ViewModels.SchoolListViewModel>
+
+@{
+    ViewData["Title"] = "Lista de Escuelas";
+    Layout = "_SuperAdminLayout";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">@ViewData["Title"]</h2>
+
+    <!-- Barra de búsqueda -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <form asp-action="ListSchools" method="get" class="d-flex">
+                <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control me-2" placeholder="Buscar por nombre de escuela o administrador...">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </form>
+        </div>
+        <div class="col-md-6 text-end">
+            <a asp-action="CreateSchoolWithAdmin" class="btn btn-success">
+                <i class="fas fa-plus"></i> Nueva Escuela
+            </a>
+        </div>
+    </div>
+
+    <!-- Mensajes de alerta -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Lista de escuelas -->
+    <div class="row">
+        @if (!Model.Any())
+        {
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No se encontraron escuelas.
+                </div>
+            </div>
+        }
+        else
+        {
+            @foreach (var school in Model)
+            {
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="card-title mb-0">
+                                    @school.SchoolName
+                                    @if (school.IsActive)
+                                    {
+                                        <span class="badge bg-success ms-1">Activa</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary ms-1">Desactivada</span>
+                                    }
+                                </h5>
+                                <div class="dropdown">
+                                    <button class="btn btn-link text-dark p-0" type="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a asp-action="EditSchool" asp-route-id="@school.SchoolId" class="dropdown-item">
+                                                <i class="fas fa-edit"></i> Editar Escuela
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <form asp-action="DeleteSchool" method="post" class="d-inline" 
+                                                  onsubmit="return confirm('¿Desactivar esta institución? No se borrarán datos; dejará de aparecer en listados y sus usuarios no podrán acceder.');">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@school.SchoolId" />
+                                                <button type="submit" class="dropdown-item text-danger" @(school.IsActive ? "" : "disabled")>
+                                                    <i class="fas fa-ban"></i> @(school.IsActive ? "Desactivar institución" : "Desactivada")
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center mb-3">
+                                @if (!string.IsNullOrEmpty(school.SchoolLogoUrl))
+                                {
+                                    @if (school.SchoolLogoUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <!-- URL de Cloudinary - acceso directo -->
+                                        <img src="@school.SchoolLogoUrl" alt="Logo de @school.SchoolName" class="img-fluid rounded" style="max-height: 100px;">
+                                    }
+                                    else
+                                    {
+                                        <!-- URL local antigua -->
+                                        <img src="/File/GetSchoolLogo?logoUrl=@school.SchoolLogoUrl" alt="Logo de @school.SchoolName" class="img-fluid rounded" style="max-height: 100px;">
+                                    }
+                                }
+                                else
+                                {
+                                    <i class="fas fa-school fa-3x text-muted"></i>
+                                }
+                            </div>
+
+                            <div class="mb-3">
+                                <p class="card-text">
+                                    <i class="fas fa-map-marker-alt text-primary"></i> @school.SchoolAddress<br>
+                                    <i class="fas fa-phone text-primary"></i> @school.SchoolPhone
+                                </p>
+                            </div>
+
+                            <div class="border-top pt-3">
+                                <h6 class="text-muted mb-2">Administrador</h6>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <p class="mb-1">
+                                            <i class="fas fa-user text-primary"></i> @school.AdminName @school.AdminLastName<br>
+                                            <i class="fas fa-envelope text-primary"></i> @school.AdminEmail
+                                        </p>
+                                        <span class="badge bg-@(school.AdminStatus == "active" ? "success" : "warning")">
+                                            @(school.AdminStatus == "active" ? "Activo" : "Inactivo")
+                                        </span>
+                                    </div>
+                                    <div class="btn-group">
+                                        <a asp-action="EditUser" asp-route-id="@school.AdminId" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-user-edit"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer text-muted">
+                            <small>Creado: @TimeZoneService.ToLocalDisplayString(school.CreatedAt, "dd/MM/yyyy")</small>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-cerrar las alertas después de 5 segundos
+        window.setTimeout(function() {
+            $(".alert").fadeTo(500, 0).slideUp(500, function(){
+                $(this).remove(); 
+            });
+        }, 5000);
+
+
+
+        // Interceptar todos los formularios de eliminación
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log(`🔍 [Frontend] Inicializando listeners para formularios de eliminación`);
+            
+            // Interceptar formularios de eliminación de escuelas
+            const schoolDeleteForms = document.querySelectorAll('form[action*="DeleteSchool"]');
+            schoolDeleteForms.forEach((form, index) => {
+                console.log(`📋 [Frontend] Configurando formulario de eliminación de escuela #${index + 1}`);
+                
+                form.addEventListener('submit', function(e) {
+                    const schoolId = this.querySelector('input[name="id"]').value;
+                    const schoolName = this.closest('.card').querySelector('.card-title').textContent.trim();
+                    
+                    console.log(`🔍 [Frontend] Formulario de eliminación de escuela interceptado`);
+                    console.log(`📋 [Frontend] ID: ${schoolId}, Nombre: ${schoolName}`);
+                    
+                    // Permitir que continúe el envío normal
+                    console.log(`✅ [Frontend] Continuando con el envío del formulario`);
+                });
+            });
+
+            // Interceptar formularios de eliminación de usuarios
+            const userDeleteForms = document.querySelectorAll('form[action*="DeleteUser"]');
+            userDeleteForms.forEach((form, index) => {
+                console.log(`📋 [Frontend] Configurando formulario de eliminación de usuario #${index + 1}`);
+                
+                form.addEventListener('submit', function(e) {
+                    const userId = this.querySelector('input[name="id"]').value;
+                    const userName = this.closest('.card-body').querySelector('p').textContent.trim();
+                    
+                    console.log(`🔍 [Frontend] Formulario de eliminación de usuario interceptado`);
+                    console.log(`📋 [Frontend] ID: ${userId}, Nombre: ${userName}`);
+                    
+                    // Permitir que continúe el envío normal
+                    console.log(`✅ [Frontend] Continuando con el envío del formulario`);
+                });
+            });
+        });
+    </script>
+}

@@ -1,0 +1,71 @@
+@model SchoolManager.Models.User
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Detalles de Usuario";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-user mr-2"></i>Detalles de Usuario</h3>
+                <small>Información completa del usuario</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Información del Usuario</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Nombre Completo:</dt>
+                        <dd class="col-sm-8"><strong>@Model.Name @Model.LastName</strong></dd>
+
+                        <dt class="col-sm-4">Correo Electrónico:</dt>
+                        <dd class="col-sm-8">@Model.Email</dd>
+
+                        <dt class="col-sm-4">Documento:</dt>
+                        <dd class="col-sm-8">@(Model.DocumentId ?? "N/A")</dd>
+
+                        <dt class="col-sm-4">Rol:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-primary">@Model.Role</span>
+                        </dd>
+
+                        <dt class="col-sm-4">Estado:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge @(Model.Status?.ToLower() == "activo" ? "bg-success" : "bg-secondary")">
+                                @(Model.Status ?? "N/A")
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-4">Fecha de Nacimiento:</dt>
+                        <dd class="col-sm-8">@(Model.DateOfBirth?.ToString("dd/MM/yyyy") ?? "N/A")</dd>
+
+                        <dt class="col-sm-4">Teléfono Principal:</dt>
+                        <dd class="col-sm-8">@(Model.CellphonePrimary ?? "N/A")</dd>
+
+                        <dt class="col-sm-4">Último Login:</dt>
+                        <dd class="col-sm-8">@TimeZoneService.ToLocalDisplayString(Model.LastLogin, "dd/MM/yyyy HH:mm", "Nunca")</dd>
+
+                        <dt class="col-sm-4">Fecha de Creación:</dt>
+                        <dd class="col-sm-8">@TimeZoneService.ToLocalDisplayString(Model.CreatedAt, "dd/MM/yyyy HH:mm")</dd>
+                    </dl>
+
+                    <div class="mt-4">
+                        <a href="@Url.Action("Edit", new { id = Model.Id })" class="btn btn-warning">
+                            <i class="fas fa-edit mr-2"></i>Editar
+                        </a>
+                        <a href="@Url.Action("Index")" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left mr-2"></i>Volver
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

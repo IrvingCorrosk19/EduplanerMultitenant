@@ -1,0 +1,117 @@
+﻿@{
+    ViewData["Title"] = "Carga con Excel desde el navegador";
+    Layout = "_AdminLayout";
+}
+
+<h3>Cargar y previsualizar archivo Excel</h3>
+
+<input type="file" id="excelFile" class="form-control mb-3" accept=".xlsx,.xls" />
+
+<table id="excelTable" class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Materia</th>
+            <th>Grado</th>
+            <th>Grupo</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<div class="text-right mt-3">
+    <button id="btnGuardarAsignaciones" class="btn btn-success">Guardar Asignaciones</button>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).ready(function () {
+            $('#excelFile').on('change', function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                    const tbody = $('#excelTable tbody');
+                    tbody.empty();
+
+                    for (let i = 1; i < json.length; i++) {
+                        const row = json[i];
+                        if (row.length >= 3) {
+                            tbody.append(`
+                                <tr>
+                                    <td>${row[0]}</td>
+                                    <td>${row[1]}</td>
+                                    <td>${row[2]}</td>
+                                </tr>
+                            `);
+                        }
+                    }
+
+                    if ($.fn.DataTable.isDataTable('#excelTable')) {
+                        $('#excelTable').DataTable().destroy();
+                    }
+
+                    $('#excelTable').DataTable({
+                        language: {
+                            search: "Buscar:",
+                            lengthMenu: "Mostrar _MENU_ registros",
+                            info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                            paginate: {
+                                first: "Primero",
+                                last: "Último",
+                                next: "Siguiente",
+                                previous: "Anterior"
+                            },
+                            zeroRecords: "No se encontraron resultados",
+                            infoEmpty: "Sin registros disponibles",
+                            infoFiltered: "(filtrado de _MAX_ registros)"
+                        }
+                    });
+                };
+
+                reader.readAsArrayBuffer(file);
+            });
+
+            $('#btnGuardarAsignaciones').on('click', function () {
+                const asignaciones = [];
+
+                $('#excelTable tbody tr').each(function () {
+                    const materia = $(this).find('td').eq(0).text().trim();
+                    const grado = $(this).find('td').eq(1).text().trim();
+                    const grupo = $(this).find('td').eq(2).text().trim();
+
+                    if (materia && grado && grupo) {
+                        asignaciones.push({ materia, grado, grupo });
+                    }
+                });
+
+                if (asignaciones.length === 0) {
+                    Swal.fire("Sin datos", "No hay asignaciones válidas para guardar.", "warning");
+                    return;
+                }
+
+                $.ajax({
+                    url: '/SubjectAssignment/SaveAssignments',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(asignaciones),
+                    success: function (response) {
+                        Swal.fire("Éxito", response.message || "Asignaciones guardadas correctamente.", "success");
+                    },
+                    error: function () {
+                        Swal.fire("Error", "Hubo un problema al guardar las asignaciones.", "error");
+                    }
+                });
+            });
+        });
+    </script>
+}

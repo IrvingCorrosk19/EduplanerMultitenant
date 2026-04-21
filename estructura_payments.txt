@@ -1,0 +1,16 @@
+     column_name     |        data_type         | is_nullable |         column_default         
+---------------------+--------------------------+-------------+--------------------------------
+ id                  | uuid                     | NO          | uuid_generate_v4()
+ school_id           | uuid                     | NO          | 
+ prematriculation_id | uuid                     | NO          | 
+ registered_by       | uuid                     | YES         | 
+ amount              | numeric                  | NO          | 
+ payment_date        | timestamp with time zone | NO          | CURRENT_TIMESTAMP
+ receipt_number      | character varying        | NO          | 
+ payment_status      | character varying        | NO          | 'Pendiente'::character varying
+ notes               | text                     | YES         | 
+ created_at          | timestamp with time zone | NO          | CURRENT_TIMESTAMP
+ updated_at          | timestamp with time zone | YES         | 
+ confirmed_at        | timestamp with time zone | YES         | 
+(12 filas)
+

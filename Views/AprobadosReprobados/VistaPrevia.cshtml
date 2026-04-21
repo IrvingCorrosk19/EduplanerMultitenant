@@ -1,0 +1,279 @@
+@model SchoolManager.ViewModels.AprobadosReprobadosReportViewModel
+@{
+    ViewData["Title"] = "Reporte de Aprobados y Reprobados";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" />
+    <style>
+        @@media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                margin: 0;
+                padding: 15px;
+            }
+            .page-break {
+                page-break-after: always;
+            }
+            .header-logo {
+                max-height: 80px !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .reporte-titulo {
+                border-bottom: 2px solid #000 !important;
+            }
+            th {
+                background-color: #2c3e50 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .reporte-container {
+            max-width: 1400px;
+            margin: 20px auto;
+            background-color: white;
+            padding: 30px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .header-logo {
+            max-height: 100px;
+            max-width: 150px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto 15px auto;
+        }
+
+        .reporte-titulo {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #2c3e50;
+            padding-bottom: 20px;
+        }
+        
+        .reporte-header-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .reporte-header-logo {
+            flex: 0 0 auto;
+        }
+        
+        .reporte-header-text {
+            flex: 1 1 auto;
+            text-align: center;
+        }
+
+        .info-section {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            font-size: 11px;
+        }
+
+        th {
+            background-color: #2c3e50 !important;
+            color: white !important;
+            text-align: center;
+            vertical-align: middle;
+            padding: 8px 4px !important;
+        }
+
+        td {
+            padding: 6px 4px !important;
+            vertical-align: middle;
+        }
+
+        .table-totales {
+            background-color: #e3f2fd !important;
+            font-weight: bold;
+        }
+
+        .text-aprobado {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .text-reprobado {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .text-warning-custom {
+            color: #ffc107;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="bi bi-printer"></i> Imprimir
+        </button>
+        <button onclick="window.close()" class="btn btn-secondary">
+            <i class="bi bi-x-circle"></i> Cerrar
+        </button>
+    </div>
+
+    <div class="reporte-container">
+        <!-- Encabezado -->
+        <div class="reporte-titulo">
+            <div class="reporte-header-container">
+                @if (!string.IsNullOrEmpty(Model.LogoUrl))
+                {
+                    <div class="reporte-header-logo">
+                        <img src="@Model.LogoUrl" alt="Logo Escuela" class="header-logo" onerror="this.style.display='none'" />
+                    </div>
+                }
+                <div class="reporte-header-text">
+                    <h5 class="mb-2">Dirección Regional de San Miguelito</h5>
+                    <h3 class="mb-2"><strong>@Model.InstitutoNombre</strong></h3>
+                    <h5 class="text-primary mt-3"><strong>CUADRO DE APROBADOS Y REPROBADOS POR GRADO DEL TRIMESTRE</strong></h5>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información del reporte -->
+        <div class="info-section">
+            <div class="row">
+                <div class="col-md-4">
+                    <p class="mb-1"><strong>Profesor(a) Coordinador(a):</strong> @Model.ProfesorCoordinador</p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-1"><strong>Trimestre:</strong> @Model.Trimestre</p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-1"><strong>Año Lectivo:</strong> @Model.AnoLectivo</p>
+                </div>
+                <div class="col-md-2">
+                    <p class="mb-1"><strong>@Model.NivelEducativo</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de estadísticas -->
+        @if (Model.Estadisticas != null && Model.Estadisticas.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm">
+                    <thead>
+                        <tr class="text-center">
+                            <th rowspan="2" style="width: 8%;">Grado</th>
+                            <th rowspan="2" style="width: 8%;">Grupo</th>
+                            <th rowspan="2" style="width: 7%;">Total</th>
+                            <th colspan="2" class="bg-success" style="width: 14%;">Aprobados</th>
+                            <th colspan="2" class="bg-danger" style="width: 14%;">Reprobados</th>
+                            <th colspan="2" class="bg-warning" style="width: 16%;">Reprobados hasta<br>la fecha</th>
+                            <th colspan="2" class="bg-info" style="width: 16%;">Sin<br>Calificaciones</th>
+                            <th colspan="2" class="bg-secondary" style="width: 17%;">Retirados por<br>Matrícula</th>
+                        </tr>
+                        <tr class="text-center">
+                            <th style="width: 7%;">Total</th>
+                            <th style="width: 7%;">%</th>
+                            <th style="width: 7%;">Total</th>
+                            <th style="width: 7%;">%</th>
+                            <th style="width: 8%;">Total</th>
+                            <th style="width: 8%;">%</th>
+                            <th style="width: 8%;">Total</th>
+                            <th style="width: 8%;">%</th>
+                            <th style="width: 8%;">Total</th>
+                            <th style="width: 9%;">%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var stat in Model.Estadisticas)
+                        {
+                            <tr>
+                                <td class="text-center"><strong>@stat.Grado</strong></td>
+                                <td class="text-center">@stat.Grupo</td>
+                                <td class="text-center"><strong>@stat.TotalEstudiantes</strong></td>
+                                <td class="text-center text-aprobado">@stat.Aprobados</td>
+                                <td class="text-center">@stat.PorcentajeAprobados.ToString("F2")%</td>
+                                <td class="text-center text-reprobado">@stat.Reprobados</td>
+                                <td class="text-center">@stat.PorcentajeReprobados.ToString("F2")%</td>
+                                <td class="text-center text-warning-custom">@stat.ReprobadosHastaLaFecha</td>
+                                <td class="text-center">@stat.PorcentajeReprobadosHastaLaFecha.ToString("F2")%</td>
+                                <td class="text-center text-info">@stat.SinCalificaciones</td>
+                                <td class="text-center">@stat.PorcentajeSinCalificaciones.ToString("F2")%</td>
+                                <td class="text-center text-secondary">@stat.Retirados</td>
+                                <td class="text-center">@stat.PorcentajeRetirados.ToString("F2")%</td>
+                            </tr>
+                        }
+
+                        <!-- TOTALES -->
+                        <tr class="table-totales">
+                            <td colspan="2" class="text-center"><strong>TOTAL</strong></td>
+                            <td class="text-center"><strong>@Model.TotalesGenerales.TotalEstudiantes</strong></td>
+                            <td class="text-center text-aprobado">@Model.TotalesGenerales.TotalAprobados</td>
+                            <td class="text-center"><strong>@Model.TotalesGenerales.PorcentajeAprobados.ToString("F2")%</strong></td>
+                            <td class="text-center text-reprobado">@Model.TotalesGenerales.TotalReprobados</td>
+                            <td class="text-center"><strong>@Model.TotalesGenerales.PorcentajeReprobados.ToString("F2")%</strong></td>
+                            <td class="text-center text-warning-custom">@Model.TotalesGenerales.TotalReprobadosHastaLaFecha</td>
+                            <td class="text-center"><strong>@Model.TotalesGenerales.PorcentajeReprobadosHastaLaFecha.ToString("F2")%</strong></td>
+                            <td class="text-center text-info">@Model.TotalesGenerales.TotalSinCalificaciones</td>
+                            <td class="text-center"><strong>@Model.TotalesGenerales.PorcentajeSinCalificaciones.ToString("F2")%</strong></td>
+                            <td class="text-center text-secondary">@Model.TotalesGenerales.TotalRetirados</td>
+                            <td class="text-center"><strong>@Model.TotalesGenerales.PorcentajeRetirados.ToString("F2")%</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pie del reporte -->
+            <div class="row mt-5">
+                <div class="col-md-12">
+                    <p class="text-end"><strong>Fecha:</strong> @TimeZoneService.ToLocalDisplayString(Model.FechaGeneracion, "dd/MM/yyyy")</p>
+                </div>
+            </div>
+
+            <!-- Firmas -->
+            <div class="row mt-5 no-print">
+                <div class="col-md-6 text-center">
+                    <hr style="width: 80%; margin: 0 auto;">
+                    <p class="mt-2"><strong>Profesor(a) Coordinador(a)</strong></p>
+                </div>
+                <div class="col-md-6 text-center">
+                    <hr style="width: 80%; margin: 0 auto;">
+                    <p class="mt-2"><strong>Director(a)</strong></p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning text-center">
+                <i class="bi bi-exclamation-triangle" style="font-size: 3rem;"></i>
+                <h4 class="mt-3">No hay datos disponibles</h4>
+                <p>No se encontraron estadísticas para los filtros seleccionados.</p>
+            </div>
+        }
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

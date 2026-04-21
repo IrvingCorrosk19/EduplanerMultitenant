@@ -1,0 +1,693 @@
+@model SchoolManager.Models.LoginViewModel
+
+@{
+    ViewData["Title"] = "Iniciar Sesión";
+    Layout = "_LoginLayout";
+}
+
+<!-- Google Fonts: Poppins & Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background: #ffffff;
+        min-height: 100vh;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        position: relative;
+        overflow-x: hidden;
+    }
+    
+    /* Efecto de partículas en el fondo */
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: 
+            radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+            radial-gradient(circle at 40% 20%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    
+    .login-wrapper {
+        position: relative;
+        z-index: 1;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+    }
+    
+    .login-container {
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(30px) saturate(180%);
+        border-radius: 32px;
+        box-shadow: 
+            0 40px 80px rgba(0, 0, 0, 0.1),
+            0 0 0 1px rgba(0, 0, 0, 0.1) inset,
+            0 0 100px rgba(102, 126, 234, 0.1);
+        overflow: hidden;
+        position: relative;
+        max-width: 480px;
+        width: 100%;
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* Borde animado superior */
+    .login-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 200%;
+        height: 5px;
+        background: linear-gradient(90deg, 
+            transparent,
+            #d4af37,
+            #f4e4c1,
+            #d4af37,
+            transparent
+        );
+        animation: borderSlide 3s linear infinite;
+    }
+    
+    @@keyframes borderSlide {
+        0% { left: -100%; }
+        100% { left: 100%; }
+    }
+    
+    /* Header con logo */
+    .logo-header {
+        text-align: center;
+        padding: 4rem 2rem 3rem 2rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        position: relative;
+        border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+    }
+    
+    .logo-header::after {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80px;
+        height: 4px;
+        background: linear-gradient(90deg, #d4af37, #f4e4c1, #d4af37);
+        border-radius: 2px;
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+    }
+    
+    .logo-img {
+        max-height: 200px;
+        width: auto;
+        filter: drop-shadow(0 10px 25px rgba(212, 175, 55, 0.3));
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-bottom: 1.5rem;
+    }
+    
+    .logo-img:hover {
+        transform: scale(1.1);
+        filter: drop-shadow(0 15px 35px rgba(212, 175, 55, 0.5));
+    }
+    
+    .welcome-text {
+        font-family: 'Poppins', sans-serif;
+        color: #2d3748;
+        font-weight: 700;
+        font-size: 2.2rem;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+        line-height: 1.2;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .welcome-subtitle {
+        font-family: 'Inter', sans-serif;
+        color: #d4af37;
+        font-weight: 500;
+        font-size: 1.05rem;
+        letter-spacing: 0.5px;
+        text-shadow: 0 1px 5px rgba(212, 175, 55, 0.2);
+    }
+    
+    /* Cuerpo del formulario */
+    .login-body {
+        padding: 2.5rem 2.5rem 2rem 2.5rem;
+    }
+    
+    /* Inputs modernos */
+    .form-group-modern {
+        margin-bottom: 1.75rem;
+        position: relative;
+    }
+    
+    .form-group-modern label {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #334155;
+        margin-bottom: 0.6rem;
+        display: block;
+        letter-spacing: 0.3px;
+    }
+    
+    .form-control-modern {
+        width: 100%;
+        padding: 1rem 1.25rem;
+        font-family: 'Inter', sans-serif;
+        font-size: 1rem;
+        font-weight: 500;
+        color: #1e293b;
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 14px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        outline: none;
+    }
+    
+    .form-control-modern:focus {
+        background: #ffffff;
+        border-color: #667eea;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1),
+                    0 4px 12px rgba(102, 126, 234, 0.15);
+        transform: translateY(-1px);
+    }
+    
+    .form-control-modern::placeholder {
+        color: #94a3b8;
+        font-weight: 400;
+    }
+    
+    /* Input de contraseña con toggle */
+    .password-wrapper {
+        position: relative;
+    }
+    
+    .password-toggle-modern {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #94a3b8;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        padding: 0.5rem;
+        border-radius: 8px;
+        z-index: 10;
+    }
+    
+    .password-toggle-modern:hover {
+        color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+    }
+    
+    /* Checkbox personalizado */
+    .remember-me-section {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.75rem;
+    }
+    
+    .checkbox-modern {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #cbd5e1;
+        border-radius: 6px;
+        margin-right: 0.75rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        accent-color: #667eea;
+    }
+    
+    .checkbox-modern:checked {
+        background: #667eea;
+        border-color: #667eea;
+    }
+    
+    .checkbox-label {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #475569;
+        cursor: pointer;
+        user-select: none;
+    }
+    
+    /* Botón de login moderno */
+    .btn-login-modern {
+        width: 100%;
+        padding: 1.2rem 2rem;
+        font-family: 'Poppins', sans-serif;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #0a0a0a;
+        background: linear-gradient(135deg, #d4af37 0%, #f4e4c1 50%, #d4af37 100%);
+        border: none;
+        border-radius: 14px;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 8px 24px rgba(212, 175, 55, 0.4);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-login-modern::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.6s;
+    }
+    
+    .btn-login-modern:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 32px rgba(212, 175, 55, 0.6);
+        background: linear-gradient(135deg, #f4e4c1 0%, #d4af37 50%, #f4e4c1 100%);
+    }
+    
+    .btn-login-modern:hover::before {
+        left: 100%;
+    }
+    
+    .btn-login-modern:active {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(212, 175, 55, 0.5);
+    }
+    
+    /* Footer del login */
+    .login-footer {
+        padding: 1.5rem 2.5rem 2rem 2.5rem;
+        text-align: center;
+        background: linear-gradient(180deg, transparent, rgba(26, 26, 26, 0.5));
+        border-top: 1px solid rgba(212, 175, 55, 0.1);
+    }
+    
+    .footer-text {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.9rem;
+        color: #a0a0a0;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .footer-icon {
+        color: #d4af37;
+        font-size: 1rem;
+    }
+    
+    /* Animaciones de las partículas flotantes */
+    .floating-shapes {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+        overflow: hidden;
+    }
+    
+    .shape {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(212, 175, 55, 0.08);
+        backdrop-filter: blur(10px);
+        animation: float 8s ease-in-out infinite;
+        box-shadow: 0 0 30px rgba(212, 175, 55, 0.15);
+    }
+    
+    .shape:nth-child(1) {
+        width: 100px;
+        height: 100px;
+        top: 10%;
+        left: 15%;
+        animation-delay: 0s;
+        animation-duration: 10s;
+    }
+    
+    .shape:nth-child(2) {
+        width: 150px;
+        height: 150px;
+        top: 60%;
+        right: 10%;
+        animation-delay: 2s;
+        animation-duration: 12s;
+    }
+    
+    .shape:nth-child(3) {
+        width: 80px;
+        height: 80px;
+        bottom: 15%;
+        left: 25%;
+        animation-delay: 4s;
+        animation-duration: 9s;
+    }
+    
+    .shape:nth-child(4) {
+        width: 120px;
+        height: 120px;
+        top: 30%;
+        right: 25%;
+        animation-delay: 1s;
+        animation-duration: 11s;
+    }
+    
+    @@keyframes float {
+        0%, 100% {
+            transform: translate(0, 0) rotate(0deg) scale(1);
+            opacity: 0.3;
+        }
+        33% {
+            transform: translate(30px, -30px) rotate(120deg) scale(1.1);
+            opacity: 0.5;
+        }
+        66% {
+            transform: translate(-20px, 20px) rotate(240deg) scale(0.9);
+            opacity: 0.4;
+        }
+    }
+    
+    /* Mensajes de validación */
+    .text-danger {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #ef4444;
+        margin-top: 0.4rem;
+        display: block;
+    }
+    
+    /* Responsive */
+    @@media (max-width: 576px) {
+        .login-container {
+            border-radius: 24px;
+        }
+        
+        .logo-img {
+            max-height: 110px;
+        }
+        
+        .welcome-text {
+            font-size: 1.6rem;
+        }
+        
+        .login-body {
+            padding: 2rem 1.75rem 1.5rem 1.75rem;
+        }
+        
+        .logo-header {
+            padding: 2.5rem 1.5rem 2rem 1.5rem;
+        }
+    }
+</style>
+
+<!-- Partículas flotantes de fondo -->
+<div class="floating-shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+</div>
+
+<!-- Contenedor principal del login -->
+<div class="login-wrapper">
+    <div class="login-container">
+        
+        <!-- Header con Logo -->
+        <div class="logo-header">
+            <img src="~/images/Logo Eduplaner.png" alt="Eduplaner Logo" class="logo-img">
+            <h1 class="welcome-text">¡Bienvenido!</h1>
+            <p class="welcome-subtitle">Sistema de Gestión Educativa</p>
+        </div>
+        
+        <!-- Cuerpo del formulario -->
+        <div class="login-body">
+            <form asp-action="Login" method="post" id="loginForm">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                
+                <!-- Input de Email -->
+                <div class="form-group-modern">
+                    <label asp-for="Email">Correo Electrónico</label>
+                    <input asp-for="Email" 
+                           class="form-control-modern" 
+                           type="email"
+                           placeholder="tu.correo@ejemplo.com" 
+                           autocomplete="username" 
+                           required />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+                        
+                <!-- Input de Contraseña -->
+                <div class="form-group-modern">
+                            <label asp-for="Password">Contraseña</label>
+                    <div class="password-wrapper">
+                        <input asp-for="Password" 
+                               class="form-control-modern" 
+                               type="password"
+                               placeholder="Ingresa tu contraseña" 
+                               autocomplete="current-password" 
+                               id="passwordInput"
+                               style="padding-right: 3rem;"
+                               required />
+                        <button type="button" 
+                                class="password-toggle-modern" 
+                                id="togglePassword"
+                                aria-label="Mostrar/Ocultar contraseña">
+                                <i class="fas fa-eye" id="toggleIcon"></i>
+                            </button>
+                    </div>
+                            <span asp-validation-for="Password" class="text-danger"></span>
+                        </div>
+                        
+                <!-- Checkbox Recordarme -->
+                <div class="remember-me-section">
+                    <input asp-for="RememberMe" 
+                           type="checkbox" 
+                           class="checkbox-modern" 
+                           id="rememberMe" />
+                    <label for="rememberMe" class="checkbox-label">
+                        Mantener sesión iniciada
+                    </label>
+                        </div>
+                        
+                <!-- Botón de Login -->
+                <button type="submit" class="btn-login-modern" id="btnLogin">
+                    <i class="fas fa-sign-in-alt me-2"></i>
+                    <span id="btnLoginText">Iniciar Sesión</span>
+                </button>
+                    </form>
+                </div>
+        
+        <!-- Footer -->
+        <div class="login-footer">
+            <div class="footer-text">
+                <i class="fas fa-shield-alt footer-icon"></i>
+                <span>Plataforma segura y confiable</span>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // ===== Toggle para mostrar/ocultar contraseña =====
+            const togglePassword = document.getElementById('togglePassword');
+            const passwordInput = document.getElementById('passwordInput');
+            const toggleIcon = document.getElementById('toggleIcon');
+            
+            if (togglePassword && passwordInput && toggleIcon) {
+                togglePassword.addEventListener('click', function(e) {
+                    e.preventDefault();
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+                });
+            }
+            
+            // ===== Loading state para el botón de login =====
+            const loginForm = document.getElementById('loginForm');
+            const btnLogin = document.getElementById('btnLogin');
+            const btnLoginText = document.getElementById('btnLoginText');
+            
+            if (loginForm && btnLogin && btnLoginText) {
+                loginForm.addEventListener('submit', function(e) {
+                    // Validar que los campos no estén vacíos
+                    if (loginForm.checkValidity()) {
+                        btnLogin.disabled = true;
+                        btnLogin.style.cursor = 'not-allowed';
+                        btnLogin.style.opacity = '0.7';
+                        btnLoginText.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Iniciando sesión...';
+                    }
+                });
+            }
+            
+            // ===== Efectos en los inputs =====
+            const inputs = document.querySelectorAll('.form-control-modern');
+            
+            inputs.forEach(input => {
+                // Efecto de focus
+                input.addEventListener('focus', function() {
+                    this.style.transform = 'translateY(-1px)';
+                });
+                
+                // Efecto de blur
+                input.addEventListener('blur', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+                
+                // Validación en tiempo real
+                input.addEventListener('input', function() {
+                    if (this.validity.valid) {
+                        this.style.borderColor = '#10b981';
+                    } else if (this.value.length > 0) {
+                        this.style.borderColor = '#ef4444';
+                    } else {
+                        this.style.borderColor = '#e2e8f0';
+                    }
+                });
+            });
+            
+            // ===== Animación de entrada =====
+            const loginContainer = document.querySelector('.login-container');
+            if (loginContainer) {
+                setTimeout(() => {
+                    loginContainer.style.opacity = '1';
+                }, 100);
+            }
+            
+            // ===== Prevenir doble submit =====
+            let formSubmitted = false;
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    if (formSubmitted) {
+                        e.preventDefault();
+                        return false;
+                    }
+                    formSubmitted = true;
+                });
+            }
+            
+        });
+        
+        // ===== Mensajes de error con SweetAlert2 =====
+        @if (TempData["Error"] != null)
+        {
+            <text>
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Autenticación',
+                text: '@TempData["Error"]',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#667eea',
+                background: '#fff',
+                customClass: {
+                    popup: 'rounded-4 shadow-lg',
+                    title: 'fw-bold',
+                    confirmButton: 'btn-login-modern'
+                }
+            });
+            </text>
+        }
+
+        // ===== Mensajes de éxito con SweetAlert2 =====
+        @if (TempData["Success"] != null)
+        {
+            <text>
+            Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: '@TempData["Success"]',
+                confirmButtonText: 'Continuar',
+                confirmButtonColor: '#10b981',
+                background: '#fff',
+                customClass: {
+                    popup: 'rounded-4 shadow-lg',
+                    title: 'fw-bold',
+                    confirmButton: 'btn-login-modern'
+                }
+            });
+            </text>
+        }
+    </script>
+}
+
+<!-- Footer QL Services -->
+<footer style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 2rem 0; margin-top: 2rem; position: relative; z-index: 10;">
+    <div class="container-fluid">
+        <div class="row align-items-center">
+            <div class="col-md-8 mb-3 mb-md-0">
+                <div style="color: #ffffff;">
+                    <h6 style="font-weight: 600; margin-bottom: 0.75rem; color: #fbbf24; font-size: 1.1rem;">QL Services</h6>
+                    <p style="margin-bottom: 0.5rem; font-size: 0.95rem; line-height: 1.5;">
+                        <strong>© @DateTime.Now.Year QL Services.</strong> Todos los derechos reservados.
+                    </p>
+                    <p style="margin-bottom: 0.4rem; font-size: 0.9rem; line-height: 1.4; opacity: 0.95;">
+                        Sistema de Gestión Escolar desarrollado por <strong style="color: #fbbf24;">QL Services</strong>.
+                    </p>
+                    <p style="margin-bottom: 0; font-size: 0.85rem; font-style: italic; opacity: 0.9; line-height: 1.3;">
+                        Queda prohibida la reproducción total o parcial sin autorización expresa.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-4 text-center text-md-end">
+                <div class="d-flex align-items-center justify-content-center justify-content-md-end gap-3 mb-2">
+                    <img src="~/images/logo.jpeg" alt="QL Services Logo" class="footer-logo" style="max-height: 70px; filter: brightness(1.2) contrast(1.1); transition: transform 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                </div>
+                <small style="color: rgba(255, 255, 255, 0.85); font-size: 0.85rem;">Versión 1.0</small>
+            </div>
+        </div>
+        <div class="row mt-2 pt-2" style="border-top: 1px solid rgba(255, 255, 255, 0.2);">
+            <div class="col-12 text-center">
+                <small style="color: rgba(255, 255, 255, 0.8); font-size: 0.8rem;">
+                    Sistema de Gestión Escolar | Desarrollado con tecnología .NET
+                </small>
+            </div>
+        </div>
+    </div>
+</footer> 

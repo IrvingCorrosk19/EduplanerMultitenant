@@ -1,0 +1,176 @@
+<script>
+    $(function() {
+        // Cargar conteo de grupos por jornada
+        loadShiftGroupsCount();
+
+        // Búsqueda de jornadas
+        $('#searchShifts').on('keyup', function() {
+            const searchTerm = $(this).val().toLowerCase();
+            $('#shiftTable tbody tr').each(function() {
+                const shiftName = $(this).find('.shift-name-text').text().toLowerCase();
+                if (shiftName.includes(searchTerm)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+
+        // Editar jornada
+        $('#shiftTable').on('click', '.btn-edit-shift', function() {
+            const row = $(this).closest('tr');
+            row.find('.shift-name-text').addClass('d-none');
+            row.find('.shift-name-input, .shift-description-input').removeClass('d-none');
+            row.find('.btn-edit-shift').addClass('d-none');
+            row.find('.btn-save-shift').removeClass('d-none');
+        });
+
+        // Guardar cambios de jornada
+        $('#shiftTable').on('click', '.btn-save-shift', function() {
+            const row = $(this).closest('tr');
+            const shiftId = row.data('shift-id');
+            const newName = row.find('.shift-name-input').val().trim();
+            const newDescription = row.find('.shift-description-input').val().trim();
+
+            if (!newName) {
+                Swal.fire('Advertencia', 'El nombre de la jornada no puede estar vacío.', 'warning');
+                return;
+            }
+
+            $.ajax({
+                url: '/AcademicCatalog/UpdateShift',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ 
+                    id: shiftId, 
+                    name: newName,
+                    description: newDescription || null
+                })
+            })
+            .done(function(response) {
+                if (response.success) {
+                    row.data('shift-name', newName);
+                    row.find('.shift-name-text').html(getShiftBadgeWithDescription(newName, newDescription)).removeClass('d-none');
+                    row.find('.shift-name-input, .shift-description-input').addClass('d-none');
+                    row.find('.btn-edit-shift').removeClass('d-none');
+                    row.find('.btn-save-shift').addClass('d-none');
+                    loadShiftGroupsCount();
+                    Swal.fire('¡Actualizado!', response.message || 'La jornada fue actualizada correctamente.', 'success');
+                } else {
+                    Swal.fire('Error', response.message || 'Error al actualizar la jornada.', 'error');
+                }
+            })
+            .fail(function(error) {
+                Swal.fire('Error', 'Error al actualizar la jornada: ' + (error.responseText || 'Error desconocido'), 'error');
+            });
+        });
+
+        // Eliminar jornada
+        $('#shiftTable').on('click', '.btn-delete-shift', function() {
+            const row = $(this).closest('tr');
+            const shiftId = row.data('shift-id');
+            const shiftName = row.data('shift-name');
+
+            if (!shiftId) {
+                Swal.fire('Error', 'No se pudo identificar la jornada.', 'error');
+                return;
+            }
+
+            Swal.fire({
+                title: '¿Eliminar jornada?',
+                text: `¿Está seguro de eliminar la jornada "${shiftName}"? Los grupos con esta jornada quedarán sin jornada asignada.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/AcademicCatalog/DeleteShift',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ id: shiftId })
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            row.fadeOut(300, function() {
+                                $(this).remove();
+                                loadShiftGroupsCount();
+                            });
+                            Swal.fire('¡Eliminado!', response.message || 'La jornada fue eliminada correctamente.', 'success');
+                        } else {
+                            Swal.fire('Error', response.message || 'Error al eliminar la jornada.', 'error');
+                        }
+                    })
+                    .fail(function(error) {
+                        Swal.fire('Error', 'Error al eliminar la jornada: ' + (error.responseText || 'Error desconocido'), 'error');
+                    });
+                }
+            });
+        });
+    });
+
+    function createShift() {
+        const name = $('#newShiftName').val().trim();
+
+        if (!name) {
+            Swal.fire('Advertencia', 'Debe ingresar un nombre para la jornada.', 'warning');
+            return;
+        }
+
+        $.ajax({
+            url: '/AcademicCatalog/CreateShift',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ name: name, description: null, displayOrder: 0 })
+        })
+        .done(function(response) {
+            if (response.success) {
+                $('#newShiftName').val('');
+                location.reload(); // Recargar para mostrar la nueva jornada
+                Swal.fire('¡Éxito!', response.message || 'La jornada fue creada correctamente.', 'success');
+            } else {
+                Swal.fire('Error', response.message || 'Error al crear la jornada.', 'error');
+            }
+        })
+        .fail(function(error) {
+            Swal.fire('Error', 'Error al crear la jornada: ' + (error.responseText || 'Error desconocido'), 'error');
+        });
+    }
+
+    function loadShiftGroupsCount() {
+        $.get('/AcademicCatalog/GetShiftGroupsCount')
+            .done(function(response) {
+                if (response.success && response.data) {
+                    response.data.forEach(function(item) {
+                        const count = item.count || 0;
+                        $(`.shift-groups-count[data-shift-id="${item.shiftId}"]`).text(count);
+                    });
+                }
+            })
+            .fail(function() {
+                console.error('Error al cargar conteo de grupos por jornada');
+            });
+    }
+
+    function getShiftBadgeWithDescription(shift, description) {
+        if (!shift) {
+            return '<span class="badge bg-secondary text-white px-3 py-2">Sin definir</span>';
+        }
+
+        const shiftLower = shift.toLowerCase();
+        let badgeClass = 'bg-secondary';
+        if (shiftLower === 'mañana' || shiftLower === 'manana') badgeClass = 'bg-info';
+        else if (shiftLower === 'tarde') badgeClass = 'bg-warning';
+        else if (shiftLower === 'noche') badgeClass = 'bg-dark';
+
+        let html = `<span class="badge ${badgeClass} text-white px-3 py-2 fw-bold">${shift}</span>`;
+        if (description && description.trim()) {
+            html += `<br /><small class="text-muted">${description}</small>`;
+        }
+        return html;
+    }
+</script>
+

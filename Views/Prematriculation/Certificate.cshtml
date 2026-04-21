@@ -1,0 +1,307 @@
+@model SchoolManager.Models.Prematriculation
+@{
+    Layout = null;
+    ViewData["Title"] = "Comprobante de Matrícula";
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Comprobante de Matrícula</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .certificate-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .certificate-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .certificate-header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .certificate-header h2 {
+            font-size: 24px;
+            font-weight: normal;
+            opacity: 0.9;
+        }
+        
+        .certificate-body {
+            padding: 40px;
+        }
+        
+        .certificate-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .certificate-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #555;
+            width: 200px;
+        }
+        
+        .info-value {
+            color: #333;
+            flex: 1;
+            text-align: right;
+        }
+        
+        .highlight {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .certificate-footer {
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 2px solid #e0e0e0;
+        }
+        
+        .certificate-footer .signature {
+            margin-top: 40px;
+        }
+        
+        .certificate-footer .signature-line {
+            border-top: 2px solid #333;
+            width: 300px;
+            margin: 0 auto;
+            padding-top: 5px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #28a745;
+            color: white;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .print-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 15px 30px;
+            background-color: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background-color 0.3s;
+        }
+        
+        .print-button:hover {
+            background-color: #5568d3;
+        }
+        
+        @@media print {
+            body {
+                background-color: white;
+                padding: 0;
+            }
+            
+            .print-button {
+                display: none;
+            }
+            
+            .certificate-container {
+                box-shadow: none;
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate-container">
+        <div class="certificate-header">
+            <h1>🎓 COMPROBANTE DE MATRÍCULA</h1>
+            <h2>@(Model.School?.Name ?? "Institución Educativa")</h2>
+        </div>
+        
+        <div class="certificate-body">
+            <div class="certificate-section">
+                <h3>📋 Información de la Matrícula</h3>
+                <div class="info-row">
+                    <span class="info-label">Código de Prematrícula:</span>
+                    <span class="info-value highlight">@Model.PrematriculationCode</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Estado:</span>
+                    <span class="info-value">
+                        <span class="status-badge">@Model.Status</span>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Fecha de Matrícula:</span>
+                    <span class="info-value">@TimeZoneService.ToLocalDisplayString(Model.MatriculationDate, "dd/MM/yyyy HH:mm")</span>
+                </div>
+            </div>
+            
+            <div class="certificate-section">
+                <h3>👤 Información del Estudiante</h3>
+                <div class="info-row">
+                    <span class="info-label">Nombre Completo:</span>
+                    <span class="info-value">@Model.Student.Name @Model.Student.LastName</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Documento de Identidad:</span>
+                    <span class="info-value">@(Model.Student.DocumentId ?? "N/A")</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value">@Model.Student.Email</span>
+                </div>
+            </div>
+            
+            @if (Model.Parent != null)
+            {
+                <div class="certificate-section">
+                    <h3>👨‍👩‍👧 Información del Acudiente</h3>
+                    <div class="info-row">
+                        <span class="info-label">Nombre Completo:</span>
+                        <span class="info-value">@Model.Parent.Name @Model.Parent.LastName</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Email:</span>
+                        <span class="info-value">@Model.Parent.Email</span>
+                    </div>
+                </div>
+            }
+            
+            <div class="certificate-section">
+                <h3>📚 Información Académica</h3>
+                <div class="info-row">
+                    <span class="info-label">Grado:</span>
+                    <span class="info-value highlight">@(Model.Grade?.Name ?? "No asignado")</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Grupo:</span>
+                    <span class="info-value highlight">@(Model.Group?.Name ?? "No asignado")</span>
+                </div>
+                @if (Model.Group?.Shift != null)
+                {
+                    <div class="info-row">
+                        <span class="info-label">Jornada:</span>
+                        <span class="info-value">@Model.Group.Shift</span>
+                    </div>
+                }
+                @if (Model.FailedSubjectsCount.HasValue)
+                {
+                    <div class="info-row">
+                        <span class="info-label">Materias Fracasadas:</span>
+                        <span class="info-value">@Model.FailedSubjectsCount</span>
+                    </div>
+                }
+            </div>
+            
+            @if (Model.Payments != null && Model.Payments.Any(p => p.PaymentStatus == "Confirmado"))
+            {
+                var confirmedPayment = Model.Payments.FirstOrDefault(p => p.PaymentStatus == "Confirmado");
+                <div class="certificate-section">
+                    <h3>💳 Información de Pago</h3>
+                    <div class="info-row">
+                        <span class="info-label">Número de Recibo:</span>
+                        <span class="info-value highlight">@(confirmedPayment?.ReceiptNumber ?? "N/A")</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Monto Pagado:</span>
+                        <span class="info-value highlight">@(confirmedPayment?.Amount.ToString("C") ?? "N/A")</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Fecha de Pago:</span>
+                        <span class="info-value">@TimeZoneService.ToLocalDisplayString(confirmedPayment?.PaymentDate, "dd/MM/yyyy")</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Estado del Pago:</span>
+                        <span class="info-value">
+                            <span class="status-badge">@(confirmedPayment?.PaymentStatus ?? "N/A")</span>
+                        </span>
+                    </div>
+                </div>
+            }
+        </div>
+        
+        <div class="certificate-footer">
+            <p style="margin-bottom: 20px;">
+                <strong>@(Model.School?.Name ?? "Institución Educativa")</strong><br>
+                Sistema de Gestión Educativa EduPlanner
+            </p>
+            <p style="color: #666; font-size: 14px;">
+                Este documento es un comprobante oficial de matrícula.<br>
+                Generado el @TimeZoneService.GetTodayLongString()
+            </p>
+            <div class="signature">
+                <div class="signature-line">
+                    <p style="margin-top: 10px;">Firma y Sello de la Institución</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <button class="print-button" onclick="window.print()">🖨️ Imprimir Comprobante</button>
+    
+    <script>
+        // Auto-imprimir opcional (comentado por defecto)
+        // window.onload = function() {
+        //     setTimeout(function() {
+        //         window.print();
+        //     }, 500);
+        // };
+    </script>
+</body>
+</html>
+

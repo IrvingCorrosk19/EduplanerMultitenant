@@ -1,0 +1,239 @@
+Hash generado: $2a$11$6bZRwj2mhwkFi7hC2gx.8eQc.1YJovuMg9MAquJ3pDqQkXbmnrcOC
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5172
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Proyectos\Proyectos\EduPlanner\EduPlanner\SchoolManager
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (45ms) [Parameters=[@__Trim_0='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u.id, u.cellphone_primary, u.cellphone_secondary, u.created_at, u.created_by, u.date_of_birth, u.disciplina, u.document_id, u.email, u.inclusion, u.inclusivo, u.last_login, u.last_name, u.name, u.orientacion, u.password_hash, u.role, u.school_id, u.status, u.two_factor_enabled, u.updated_at, u.updated_by
+      FROM users AS u
+      WHERE btrim(lower(u.email), E' \t\n\r') = @__Trim_0
+      LIMIT 1
+fail: Microsoft.EntityFrameworkCore.Query[10100]
+      An exception occurred while iterating over the results of a query for context type 'SchoolManager.Models.SchoolDbContext'.
+      Npgsql.PostgresException (0x80004005): 42703: no existe la columna u.updated_at
+
+      POSITION: 287
+         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+         at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+        Exception data:
+          Severity: ERROR
+          SqlState: 42703
+          MessageText: no existe la columna u.updated_at
+          Hint: Probablemente quiera hacer referencia a la columna «u.updated_by».
+          Position: 287
+          File: parse_relation.c
+          Line: 3838
+          Routine: errorMissingColumn
+      Npgsql.PostgresException (0x80004005): 42703: no existe la columna u.updated_at
+
+      POSITION: 287
+         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+         at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+        Exception data:
+          Severity: ERROR
+          SqlState: 42703
+          MessageText: no existe la columna u.updated_at
+          Hint: Probablemente quiera hacer referencia a la columna «u.updated_by».
+          Position: 287
+          File: parse_relation.c
+          Line: 3838
+          Routine: errorMissingColumn
+fail: Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddleware[1]
+      An unhandled exception has occurred while executing the request.
+      Npgsql.PostgresException (0x80004005): 42703: no existe la columna u.updated_at
+
+      POSITION: 287
+         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+         at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+         at Microsoft.EntityFrameworkCore.Query.ShapedQueryCompilingExpressionVisitor.SingleOrDefaultAsync[TSource](IAsyncEnumerable`1 asyncEnumerable, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Query.ShapedQueryCompilingExpressionVisitor.SingleOrDefaultAsync[TSource](IAsyncEnumerable`1 asyncEnumerable, CancellationToken cancellationToken)
+         at SchoolManager.Services.Implementations.UserService.GetByEmailAsync(String email) in C:\Proyectos\Proyectos\EduPlanner\EduPlanner\SchoolManager\Services\Implementations\UserService.cs:line 458
+         at SchoolManager.Services.Implementations.AuthService.LoginAsync(String email, String password) in C:\Proyectos\Proyectos\EduPlanner\EduPlanner\SchoolManager\Services\Implementations\AuthService.cs:line 24
+         at SchoolManager.Controllers.AuthController.Login(LoginViewModel model, String returnUrl) in C:\Proyectos\Proyectos\EduPlanner\EduPlanner\SchoolManager\Controllers\AuthController.cs:line 38
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeNextResourceFilter>g__Awaited|25_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+         at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+         at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+         at SchoolManager.Middleware.DateTimeMiddleware.InvokeAsync(HttpContext context) in C:\Proyectos\Proyectos\EduPlanner\EduPlanner\SchoolManager\Middleware\DateTimeMiddleware.cs:line 30
+         at Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context)
+        Exception data:
+          Severity: ERROR
+          SqlState: 42703
+          MessageText: no existe la columna u.updated_at
+          Hint: Probablemente quiera hacer referencia a la columna «u.updated_by».
+          Position: 287
+          File: parse_relation.c
+          Line: 3838
+		  
+		  
+		  quenna.lopez@qlservice.net
+
+admin123
+
+
+quenna.lopez@qlservice.net
+
+1. Admin:
+Email: quenna.lopez@qlservice.net
+Contraseña: admin123
+
+2. SuperAdmin:
+Email: admin@qlservice.net
+Contraseña: admin123
+
+
+iptsanmiguelito85@gmail.com
+Celular: 6793-6212 / 6652-2823
+
+1,a2bFn852933
+
+host name dpg-d3jfdcb3fgac73cblbag-a
+
+db schoolmanagement_xqks
+
+user admin
+
+password 2c2GygJl2ArUP5fKuFDsRtWFYC4NJdtk
+
+internal postgresql://admin:2c2GygJl2ArUP5fKuFDsRtWFYC4NJdtk@dpg-d3jfdcb3fgac73cblbag-a/schoolmanagement_xqks
+
+external  postgresql://admin:2c2GygJl2ArUP5fKuFDsRtWFYC4NJdtk@dpg-d3jfdcb3fgac73cblbag-a.oregon-postgres.render.com/schoolmanagement_xqks
+
+
+https://eduplaneriic-22ol.onrender.com/Home/Index
+
+https://dashboard.render.com/web/srv-d3jfsab3fgac73cbu6ug/deploys/dep-d3jfsaj3fgac73cbu760
+
+https://github.com/IrvingCorrosk19/EduplanerIIC
+
+
+https://eduplaneriic-22ol.onrender.com/Home/Index
+
+
+https://dashboard.render.com/d/dpg-d3jfdcb3fgac73cblbag-a
+
+https://dashboard.render.com/web/srv-d3jfsab3fgac73cbu6ug/deploys/dep-d3jfsaj3fgac73cbu760
+
+
+https://dashboard.render.com/billing/update-plan?plan=professional
+
+
+https://eduplaneriic-22ol.onrender.com/
+
+https://eduplaneriic-22ol.onrender.com.
+
+https://eduplaner.com/
+https://eduplaner.net
+
+https://account.squarespace.com/domains/managed/eduplaner.net
+jaime.ramos@meduca.edu.com
+jaime.ramos20@meduca.edu.pa
+
+administrador original 
+
+123456789
+
+ quenna.lopez@qlservice.net
+
+ https://eduplaner.net
+ 
+ quenna.lopez@qlservice.net
+ Panama2020$
+ 
+ admin@correo.com
+ Panama2020$
+ 
+ https://www.eduplaner.net
+ 
+adrinis.alvarado@meduca.edu.pa  consejero consejero puede ver todo los temas del grupo de su consejeria
+cecimosqueea03@gmail.com orientacion lo marca como disciplina
+crijogar@gmail.com  disciplina lo marca como orientador
+
+
+| Periodo                   | Fecha de inicio | Fecha de fin | Duración / notas                  |
+| ------------------------- | --------------- | ------------ | --------------------------------- |
+| **Primer trimestre**      | 03/10/2025      | 06/13/2025   | 14 semanas                        |
+                     |
+| **Segundo trimestre**     | 06/23/2025      | 09/12/2025   | 12 semanas                        |
+                       |
+| **Tercer trimestre**      | 09/22/2025      | 12/19/2025   | 13 semanas                        |
+| **Evaluaciones / cierre** | 12/22/2025      | 12/30/2025   | Balance final, graduaciones, etc. |
+
+
+En usarios inde 
+
+
+Notas de apreciacion
+
+Ejecicios diarios
+
+Examen Final
+
+
+alejandro.moreno@estudiante.edu.pa
+alejandro.moreno@estudiante.edu.pa	
+
+la materia de tecnologia esta compuesta poor tecnoclogia y familia y desarrollo 
+
+Notas de apreciacion
+
+Ejecicios diarios
+
+Examen Final   esto se calcula de la siguiente forma  se saca un promedios los ejecidiario se saca un promedio examen final se caca un promedio  luego el promedipo de las tres es la nota final 
+
+Jeu#tdd@ne!8nif
+
+alejandro.moreno@estudiante.edu.pa	
+
+adrinis.alvarado@meduca.edu.pa
+%@a2RDp1!##6
+
+quitale el scrool que se depliegue a lo largo  TeacherGradebook/Index
+
+
+Para directo, consejero y estudiante  crea un modulo 

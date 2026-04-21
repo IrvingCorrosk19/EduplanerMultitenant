@@ -1,0 +1,443 @@
+@{
+    ViewData["Title"] = "Dirección Académica - Planes de Trabajo";
+    Layout = "_AdminLayout";
+}
+
+@Html.AntiForgeryToken()
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4" style="background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%); color: white; padding: 1.5rem 2rem; border-radius: 1rem;">
+        <div class="d-flex align-items-center gap-2">
+            <i class="fas fa-clipboard-check fa-2x"></i>
+            <div>
+                <h3 class="mb-0">Dirección Académica</h3>
+                <small class="opacity-90">Revisión y gobernanza de planes de trabajo trimestrales</small>
+            </div>
+        </div>
+        <a href="@Url.Action("Index", "Director")" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i> Portal Director</a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-times-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <p class="text-muted small mb-1">Total planes</p>
+                    <h3 class="mb-0" id="kpiTotal">-</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-warning bg-opacity-10">
+                <div class="card-body text-center">
+                    <p class="text-muted small mb-1">Pendientes revisión</p>
+                    <h3 class="mb-0 text-warning" id="kpiSubmitted">-</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-success bg-opacity-10">
+                <div class="card-body text-center">
+                    <p class="text-muted small mb-1">Aprobados</p>
+                    <h3 class="mb-0 text-success" id="kpiApproved">-</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-danger bg-opacity-10">
+                <div class="card-body text-center">
+                    <p class="text-muted small mb-1">Rechazados</p>
+                    <h3 class="mb-0 text-danger" id="kpiRejected">-</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros premium -->
+    <div class="card shadow-sm mb-4 border-0" style="background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 1rem; overflow: hidden;">
+        <div class="card-header border-0 py-3" style="background: transparent;">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <h5 class="mb-0"><i class="fas fa-sliders-h me-2 text-teal"></i>Filtros de búsqueda</h5>
+                <div class="d-flex gap-2">
+                    <button type="button" id="btnSearch" class="btn btn-primary btn-sm"><i class="fas fa-search me-1"></i>Buscar</button>
+                    <button type="button" id="btnClear" class="btn btn-outline-secondary btn-sm">Limpiar</button>
+                    <a href="#" id="btnExportConsolidated" class="btn btn-success btn-sm"><i class="fas fa-file-pdf me-1"></i>PDF Consolidado</a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body pt-0">
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label small fw-semibold text-muted">Año lectivo</label>
+                    <select id="filterAcademicYear" class="form-select form-select-sm border-secondary border-opacity-25">
+                        <option value="">Todos</option>
+                        @if (ViewBag.AcademicYears != null)
+                        {
+                            @foreach (var ay in ViewBag.AcademicYears as IEnumerable<dynamic>)
+                            {
+                                <option value="@ay.Id">@ay.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label small fw-semibold text-muted">Trimestre</label>
+                    <select id="filterTrimester" class="form-select form-select-sm border-secondary border-opacity-25">
+                        <option value="">Todos</option>
+                        <option value="1">I</option>
+                        <option value="2">II</option>
+                        <option value="3">III</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label small fw-semibold text-muted">Estado</label>
+                    <select id="filterStatus" class="form-select form-select-sm border-secondary border-opacity-25">
+                        <option value="">Todos</option>
+                        <option value="Draft">Borrador</option>
+                        <option value="Submitted">Enviado</option>
+                        <option value="Approved">Aprobado</option>
+                        <option value="Rejected">Rechazado</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label small fw-semibold text-muted">Docente</label>
+                    <select id="filterTeacher" class="form-select form-select-sm border-secondary border-opacity-25">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label small fw-semibold text-muted">Materia</label>
+                    <select id="filterSubject" class="form-select form-select-sm border-secondary border-opacity-25">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label small fw-semibold text-muted">Grado</label>
+                    <select id="filterGradeLevel" class="form-select form-select-sm border-secondary border-opacity-25">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label small fw-semibold text-muted">Grupo</label>
+                    <select id="filterGroup" class="form-select form-select-sm border-secondary border-opacity-25">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+            </div>
+            <div id="filterChips" class="d-flex flex-wrap gap-2" style="min-height: 24px;"></div>
+        </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="plansTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Docente</th>
+                            <th>Materia</th>
+                            <th>Grado / Grupo</th>
+                            <th>Trim. / Año</th>
+                            <th>Estado</th>
+                            <th>Última actualización</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="plansBody"></tbody>
+                </table>
+            </div>
+            <div id="plansPagination" class="mt-2"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalle del plan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailContent"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <a href="#" id="detailPdfLink" class="btn btn-outline-primary" target="_blank"><i class="fas fa-file-pdf me-1"></i>Descargar PDF</a>
+                <button type="button" id="detailApproveBtn" class="btn btn-success" style="display:none;"><i class="fas fa-check me-1"></i>Aprobar</button>
+                <button type="button" id="detailRejectBtn" class="btn btn-danger" style="display:none;"><i class="fas fa-times me-1"></i>Rechazar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Rechazar (comentario obligatorio) -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Rechazar plan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">El comentario es obligatorio (mínimo 10 caracteres).</p>
+                <textarea id="rejectComment" class="form-control" rows="4" placeholder="Indique el motivo del rechazo..." minlength="10"></textarea>
+                <div class="invalid-feedback">Mínimo 10 caracteres.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="rejectConfirmBtn" class="btn btn-danger">Rechazar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/sweetalert2/sweetalert2.min.js"></script>
+    <script>
+        (function() {
+            var schoolId = '@ViewBag.SchoolId';
+            var currentPage = 1;
+            var pageSize = 25;
+            var currentPlanId = null;
+            var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            var filterOptions = { teachers: [], subjects: [], gradeLevels: [], groups: [] };
+
+            function loadFilterOptions() {
+                fetch('@Url.Action("FilterOptionsJson")')
+                    .then(function(r) { return r.json(); })
+                    .then(function(res) {
+                        if (!res.success || !res.data) return;
+                        var d = res.data;
+                        filterOptions = { teachers: d.teachers || [], subjects: d.subjects || [], gradeLevels: d.gradeLevels || [], groups: d.groups || [] };
+                        var selT = document.getElementById('filterTeacher'), selS = document.getElementById('filterSubject');
+                        var selG = document.getElementById('filterGradeLevel'), selGr = document.getElementById('filterGroup');
+                        filterOptions.teachers.forEach(function(t) { selT.appendChild(new Option(t.name, t.id)); });
+                        filterOptions.subjects.forEach(function(s) { selS.appendChild(new Option(s.name, s.id)); });
+                        filterOptions.gradeLevels.forEach(function(g) { selG.appendChild(new Option(g.name, g.id)); });
+                        filterOptions.groups.forEach(function(g) { selGr.appendChild(new Option(g.name, g.id)); });
+                    });
+            }
+
+            function buildQuery() {
+                var q = '?schoolId=' + encodeURIComponent(schoolId) + '&page=' + currentPage + '&pageSize=' + pageSize;
+                var ay = document.getElementById('filterAcademicYear').value;
+                var tri = document.getElementById('filterTrimester').value;
+                var st = document.getElementById('filterStatus').value;
+                var teacherId = document.getElementById('filterTeacher').value;
+                var subjectId = document.getElementById('filterSubject').value;
+                var gradeLevelId = document.getElementById('filterGradeLevel').value;
+                var groupId = document.getElementById('filterGroup').value;
+                if (ay) q += '&academicYearId=' + encodeURIComponent(ay);
+                if (tri) q += '&trimester=' + tri;
+                if (st) q += '&status=' + encodeURIComponent(st);
+                if (teacherId) q += '&teacherId=' + encodeURIComponent(teacherId);
+                if (subjectId) q += '&subjectId=' + encodeURIComponent(subjectId);
+                if (gradeLevelId) q += '&gradeLevelId=' + encodeURIComponent(gradeLevelId);
+                if (groupId) q += '&groupId=' + encodeURIComponent(groupId);
+                return q;
+            }
+
+            function renderFilterChips() {
+                var chips = document.getElementById('filterChips');
+                chips.innerHTML = '';
+                var ay = document.getElementById('filterAcademicYear');
+                var ayOpt = ay.options[ay.selectedIndex];
+                if (ay.value) chips.innerHTML += '<span class="badge bg-primary bg-opacity-75 rounded-pill px-2 py-1">Año: ' + (ayOpt ? ayOpt.text : ay.value) + ' <button type="button" class="btn-close btn-close-white btn-close-sm ms-1" style="font-size:0.6rem" data-clear="filterAcademicYear"></button></span>';
+                var tri = document.getElementById('filterTrimester');
+                var triLabels = { '1':'I', '2':'II', '3':'III' };
+                if (tri.value) chips.innerHTML += '<span class="badge bg-info bg-opacity-75 rounded-pill px-2 py-1">Trim: ' + (triLabels[tri.value] || tri.value) + ' <button type="button" class="btn-close btn-close-white btn-close-sm ms-1" style="font-size:0.6rem" data-clear="filterTrimester"></button></span>';
+                var st = document.getElementById('filterStatus');
+                var stOpt = st.options[st.selectedIndex];
+                if (st.value) chips.innerHTML += '<span class="badge bg-secondary rounded-pill px-2 py-1">Estado: ' + (stOpt ? stOpt.text : st.value) + ' <button type="button" class="btn-close btn-close-white btn-close-sm ms-1" style="font-size:0.6rem" data-clear="filterStatus"></button></span>';
+                var t = document.getElementById('filterTeacher');
+                var tOpt = t.options[t.selectedIndex];
+                if (t.value) chips.innerHTML += '<span class="badge bg-success bg-opacity-75 rounded-pill px-2 py-1">Docente: ' + (tOpt ? tOpt.text : '') + ' <button type="button" class="btn-close btn-close-white btn-close-sm ms-1" style="font-size:0.6rem" data-clear="filterTeacher"></button></span>';
+                var s = document.getElementById('filterSubject');
+                var sOpt = s.options[s.selectedIndex];
+                if (s.value) chips.innerHTML += '<span class="badge bg-warning text-dark rounded-pill px-2 py-1">Materia: ' + (sOpt ? sOpt.text : '') + ' <button type="button" class="btn-close btn-close-sm ms-1" style="font-size:0.6rem" data-clear="filterSubject"></button></span>';
+                var gl = document.getElementById('filterGradeLevel');
+                var glOpt = gl.options[gl.selectedIndex];
+                if (gl.value) chips.innerHTML += '<span class="badge bg-dark bg-opacity-75 rounded-pill px-2 py-1">Grado: ' + (glOpt ? glOpt.text : '') + ' <button type="button" class="btn-close btn-close-white btn-close-sm ms-1" style="font-size:0.6rem" data-clear="filterGradeLevel"></button></span>';
+                var gr = document.getElementById('filterGroup');
+                var grOpt = gr.options[gr.selectedIndex];
+                if (gr.value) chips.innerHTML += '<span class="badge bg-danger bg-opacity-75 rounded-pill px-2 py-1">Grupo: ' + (grOpt ? grOpt.text : '') + ' <button type="button" class="btn-close btn-close-white btn-close-sm ms-1" style="font-size:0.6rem" data-clear="filterGroup"></button></span>';
+                chips.querySelectorAll('[data-clear]').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        document.getElementById(btn.getAttribute('data-clear')).value = '';
+                        renderFilterChips();
+                        currentPage = 1;
+                        loadList();
+                    });
+                });
+            }
+
+            function loadList() {
+                fetch('@Url.Action("ListJson")' + buildQuery(), { headers: { 'RequestVerificationToken': token } })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (!data.success) return;
+                        var k = data.kpis;
+                        document.getElementById('kpiTotal').textContent = k.total;
+                        document.getElementById('kpiSubmitted').textContent = k.submitted;
+                        document.getElementById('kpiApproved').textContent = k.approved;
+                        document.getElementById('kpiRejected').textContent = k.rejected;
+                        var tbody = document.getElementById('plansBody');
+                        tbody.innerHTML = '';
+                        (data.items || []).forEach(function(p) {
+                            var tr = document.createElement('tr');
+                            var statusBadge = p.status === 'Approved' ? 'bg-success' : p.status === 'Submitted' ? 'bg-info' : p.status === 'Rejected' ? 'bg-danger' : 'bg-secondary';
+                            var updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('es') : (p.createdAt ? new Date(p.createdAt).toLocaleDateString('es') : '-');
+                            var triLabel = p.trimester === 1 ? 'I' : p.trimester === 2 ? 'II' : 'III';
+                            tr.innerHTML =
+                                '<td>' + (p.teacherName || '') + '</td>' +
+                                '<td>' + (p.subjectName || '') + '</td>' +
+                                '<td>' + (p.gradeLevelName || '') + ' / ' + (p.groupName || '') + '</td>' +
+                                '<td>' + triLabel + ' / ' + (p.academicYearName || '') + '</td>' +
+                                '<td><span class="badge ' + statusBadge + '">' + (p.status || '') + '</span></td>' +
+                                '<td>' + updated + '</td>' +
+                                '<td>' +
+                                '<a href="@Url.Action("ExportPdf")?id=' + p.id + '" class="btn btn-sm btn-outline-primary me-1" title="PDF"><i class="fas fa-file-pdf"></i></a>' +
+                                '<button type="button" class="btn btn-sm btn-outline-secondary btn-view" data-id="' + p.id + '" title="Ver">Ver</button> ';
+                            if (p.status === 'Submitted') {
+                                tr.innerHTML += '<button type="button" class="btn btn-sm btn-success ms-1 btn-approve" data-id="' + p.id + '" title="Aprobar">Aprobar</button> ';
+                                tr.innerHTML += '<button type="button" class="btn btn-sm btn-danger btn-reject" data-id="' + p.id + '" title="Rechazar">Rechazar</button>';
+                            }
+                            tr.innerHTML += '</td>';
+                            tbody.appendChild(tr);
+                        });
+                        if (!data.items || data.items.length === 0)
+                            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay planes con los filtros aplicados.</td></tr>';
+                        renderFilterChips();
+                    })
+                    .catch(function() {
+                        document.getElementById('plansBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error al cargar.</td></tr>';
+                    });
+            }
+
+            document.getElementById('btnSearch').addEventListener('click', function() { currentPage = 1; loadList(); });
+            document.getElementById('btnClear').addEventListener('click', function() {
+                ['filterAcademicYear','filterTrimester','filterStatus','filterTeacher','filterSubject','filterGradeLevel','filterGroup'].forEach(function(id) {
+                    document.getElementById(id).value = '';
+                });
+                currentPage = 1;
+                renderFilterChips();
+                loadList();
+            });
+
+            document.getElementById('btnExportConsolidated').addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = '@Url.Action("ExportConsolidatedPdf")' + buildQuery();
+            });
+
+            document.getElementById('plansTable').addEventListener('click', function(e) {
+                var btn = e.target.closest('.btn-view');
+                if (btn) {
+                    currentPlanId = btn.getAttribute('data-id');
+                    fetch('@Url.Action("DetailsJson")?id=' + currentPlanId)
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            if (!data.success || !data.data) return;
+                            var d = data.data;
+                            var html = '<div class="mb-3"><strong>Docente:</strong> ' + (d.teacherName || '') + '</div>';
+                            html += '<div class="mb-3"><strong>Materia:</strong> ' + (d.subjectName || '') + ' &nbsp; <strong>Grado/Grupo:</strong> ' + (d.gradeLevelName || '') + ' / ' + (d.groupName || '') + '</div>';
+                            html += '<div class="mb-3"><strong>Trimestre:</strong> ' + (d.trimester === 1 ? 'I' : d.trimester === 2 ? 'II' : 'III') + ' &nbsp; <strong>Año:</strong> ' + (d.academicYearName || '') + ' &nbsp; <strong>Estado:</strong> <span class="badge bg-secondary">' + (d.status || '') + '</span></div>';
+                            if (d.objectives) html += '<div class="mb-3"><strong>Objetivos:</strong><div class="bg-light p-2 rounded">' + (d.objectives || '').replace(/\n/g, '<br>') + '</div></div>';
+                            html += '<h6>Contenidos por bloques</h6><table class="table table-sm table-bordered"><thead><tr><th>Semanas</th><th>Tema</th><th>Conceptual</th><th>Procedimental</th><th>Actitudinal</th><th>Competencias</th><th>Indicadores</th></tr></thead><tbody>';
+                            (d.details || []).forEach(function(row) {
+                                html += '<tr><td>' + (row.weeksRange || '') + '</td><td>' + (row.topic || '') + '</td><td>' + (row.conceptualContent || '').substring(0, 50) + '</td><td>' + (row.proceduralContent || '').substring(0, 50) + '</td><td>' + (row.attitudinalContent || '').substring(0, 50) + '</td><td>' + (row.basicCompetencies || '').substring(0, 50) + '</td><td>' + (row.achievementIndicators || '').substring(0, 50) + '</td></tr>';
+                            });
+                            html += '</tbody></table>';
+                            if (d.reviewLog && d.reviewLog.length) {
+                                html += '<h6 class="mt-3">Historial de revisiones</h6><ul class="list-group">';
+                                d.reviewLog.forEach(function(log) {
+                                    html += '<li class="list-group-item"><strong>' + (log.action || '') + '</strong> por ' + (log.performedByName || '') + ' - ' + new Date(log.performedAt).toLocaleString('es') + (log.comment ? '<br><em>' + log.comment + '</em>' : '') + '</li>';
+                                });
+                                html += '</ul>';
+                            }
+                            document.getElementById('detailContent').innerHTML = html;
+                            document.getElementById('detailPdfLink').href = '@Url.Action("ExportPdf")?id=' + d.id;
+                            document.getElementById('detailApproveBtn').style.display = d.status === 'Submitted' ? 'inline-block' : 'none';
+                            document.getElementById('detailRejectBtn').style.display = d.status === 'Submitted' ? 'inline-block' : 'none';
+                            currentPlanId = d.id;
+                            new bootstrap.Modal(document.getElementById('detailModal')).show();
+                        });
+                }
+                var approveBtn = e.target.closest('.btn-approve');
+                if (approveBtn) {
+                    currentPlanId = approveBtn.getAttribute('data-id');
+                    Swal.fire({ title: '¿Aprobar este plan?', text: 'El plan quedará aprobado por Dirección Académica.', icon: 'question', showCancelButton: true, confirmButtonColor: '#0d6efd', cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, aprobar' })
+                        .then(function(res) {
+                            if (!res.isConfirmed) return;
+                            fetch('@Url.Action("ApproveJson")?id=' + currentPlanId, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                                body: JSON.stringify({ comment: '' })
+                            })
+                            .then(function(r) { return r.json(); })
+                            .then(function(data) {
+                                if (data.success) { Swal.fire({ icon: 'success', title: 'Aprobado', text: data.message }); loadList(); }
+                                else Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'No se pudo aprobar.' });
+                            });
+                        });
+                }
+                var rejectBtn = e.target.closest('.btn-reject');
+                if (rejectBtn) {
+                    currentPlanId = rejectBtn.getAttribute('data-id');
+                    document.getElementById('rejectComment').value = '';
+                    document.getElementById('rejectComment').classList.remove('is-invalid');
+                    new bootstrap.Modal(document.getElementById('rejectModal')).show();
+                }
+            });
+
+            document.getElementById('rejectConfirmBtn').addEventListener('click', function() {
+                var comment = document.getElementById('rejectComment').value.trim();
+                if (comment.length < 10) {
+                    document.getElementById('rejectComment').classList.add('is-invalid');
+                    return;
+                }
+                fetch('@Url.Action("RejectJson")?id=' + currentPlanId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                    body: JSON.stringify({ comment: comment })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    bootstrap.Modal.getInstance(document.getElementById('rejectModal')).hide();
+                    if (data.success) { Swal.fire({ icon: 'success', title: 'Rechazado', text: data.message }); loadList(); }
+                    else Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'No se pudo rechazar.' });
+                });
+            });
+
+            document.getElementById('detailApproveBtn').addEventListener('click', function() {
+                if (!currentPlanId) return;
+                fetch('@Url.Action("ApproveJson")?id=' + currentPlanId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                    body: JSON.stringify({ comment: '' })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) { Swal.fire({ icon: 'success', title: 'Aprobado' }); bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide(); loadList(); }
+                    else Swal.fire({ icon: 'error', title: 'Error', text: data.message });
+                });
+            });
+            document.getElementById('detailRejectBtn').addEventListener('click', function() {
+                if (!currentPlanId) return;
+                document.getElementById('rejectComment').value = '';
+                bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
+                new bootstrap.Modal(document.getElementById('rejectModal')).show();
+            });
+
+            loadFilterOptions();
+            loadList();
+        })();
+    </script>
+}

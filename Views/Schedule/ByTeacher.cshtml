@@ -1,0 +1,478 @@
+@inject SchoolManager.Services.Interfaces.ICurrentUserService CurrentUserService
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Horario por Docente";
+    var timeSlotsJson = ViewBag.TimeSlotsJson as string ?? "[]";
+    var academicYearsJson = ViewBag.AcademicYearsJson as string ?? "[]";
+    var teachersJson = ViewBag.TeachersJson as string ?? "[]";
+    var teacherId = ViewBag.TeacherId ?? Guid.Empty;
+    var academicYearId = ViewBag.AcademicYearId ?? Guid.Empty;
+    var isEditable = ViewBag.IsEditable ?? false;
+    var isTeacher = ViewBag.IsTeacher ?? true;
+    var hasNoAcademicYears = ViewBag.HasNoAcademicYears ?? false;
+    var teacherShiftNames = ViewBag.TeacherShiftNames as List<string> ?? new List<string>();
+    var dayNames = new[] { "", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo" };
+}
+
+@* JSON en script evita problemas de encoding en data-*; el navegador no ejecuta type="application/json" *@
+<script type="application/json" id="schedule-json-academic-years">@Html.Raw(academicYearsJson)</script>
+<script type="application/json" id="schedule-json-time-slots">@Html.Raw(timeSlotsJson)</script>
+<script type="application/json" id="schedule-json-teachers">@Html.Raw(teachersJson)</script>
+<script type="application/json" id="schedule-json-day-names">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(dayNames))</script>
+<div id="schedule-page-data" style="display: none;"
+     data-teacher-id="@teacherId"
+     data-academic-year-id="@academicYearId"
+     data-is-editable="@(isEditable ? "true" : "false")"
+     data-is-teacher="@(isTeacher ? "true" : "false")"
+     data-has-no-academic-years="@(hasNoAcademicYears ? "true" : "false")"></div>
+<style>
+    .schedule-cell-saving { opacity: 0.85; background-color: #f8f9fa !important; }
+</style>
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <h1>Horario por Docente</h1>
+            @if (isTeacher && teacherShiftNames.Any())
+            {
+                <p class="text-muted small mb-0">Usted imparte en jornada(s): <strong>@string.Join(", ", teacherShiftNames)</strong></p>
+            }
+            @if (isTeacher && !teacherShiftNames.Any())
+            {
+                <p class="text-muted small mb-0">Sus grupos aún no tienen jornada asignada. El administrador puede asignar Mañana/Tarde a cada grupo.</p>
+            }
+        </div>
+    </section>
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card card-outline card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">Tabla semanal</h3>
+                </div>
+                <div class="card-body">
+                    @Html.AntiForgeryToken()
+                    @if (hasNoAcademicYears)
+                    {
+                        <div class="alert alert-warning mb-0" role="alert">
+                            <strong>No hay años académicos configurados para su escuela.</strong><br />
+                            Póngase en contacto con el administrador para que cree al menos un año académico (Prematrícula o Administración). Hasta entonces no podrá usar la tabla de horarios.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row mb-3">
+                            @if (!isTeacher)
+                            {
+                                <div class="col-md-4">
+                                    <label class="form-label">Docente</label>
+                                    <select id="teacherSelect" class="form-control">
+                                        <option value="">-- Seleccione docente --</option>
+                                    </select>
+                                </div>
+                            }
+                            <div class="col-md-4">
+                                <label class="form-label">Año académico</label>
+                                <select id="academicYearSelect" class="form-control">
+                                    <option value="">-- Seleccione año --</option>
+                                </select>
+                                <small id="academicYearHelp" class="form-text text-muted" style="display: none;">No hay años académicos. Cree uno en Prematrícula o Administración.</small>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="button" id="btnLoad" class="btn btn-primary">Cargar horario</button>
+                            </div>
+                        </div>
+
+                        @if (isEditable)
+                        {
+                            <p class="text-muted small mb-2"><i class="fas fa-edit"></i> Puede modificar la asignación (materia/grupo) en cada celda usando el desplegable.</p>
+                        }
+                        <div id="tableContainer" class="table-responsive" style="display: none;">
+                            <table class="table table-bordered table-sm" id="scheduleTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="min-width: 100px;">Día</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <div id="noDataMessage" class="alert alert-info">
+                            Seleccione año académico@(isTeacher ? "" : ", docente") y pulse «Cargar horario».
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/lib/sweetalert2/sweetalert2.min.js"></script>
+    <script>
+        (function () {
+            var el = document.getElementById('schedule-page-data');
+            if (!el) { console.error('Schedule: elemento schedule-page-data no encontrado'); return; }
+            if (el.getAttribute('data-has-no-academic-years') === 'true') return;
+
+            function getJsonFromScript(id, fallback) {
+                var scriptEl = document.getElementById(id);
+                var str = scriptEl ? (scriptEl.textContent || scriptEl.innerText || '').trim() : '';
+                try { return str ? JSON.parse(str) : fallback; } catch (e) { console.warn('Schedule: error al parsear ' + id, e); return fallback; }
+            }
+            var dayNames = getJsonFromScript('schedule-json-day-names', ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']);
+            var timeSlots = getJsonFromScript('schedule-json-time-slots', []);
+            var academicYears = getJsonFromScript('schedule-json-academic-years', []);
+            var teachers = getJsonFromScript('schedule-json-teachers', []);
+            var isEditable = el.getAttribute('data-is-editable') === 'true';
+            var isTeacher = el.getAttribute('data-is-teacher') === 'true';
+            var currentTeacherId = (el.getAttribute('data-teacher-id') || '').trim();
+            var currentAcademicYearId = (el.getAttribute('data-academic-year-id') || '').trim();
+            var teacherAssignments = [];
+            var entriesByKey = {};
+
+            function initDropdowns() {
+                const aySelect = document.getElementById('academicYearSelect');
+                aySelect.innerHTML = '<option value="">-- Seleccione año --</option>';
+                if (academicYears && Array.isArray(academicYears) && academicYears.length > 0) {
+                    academicYears.forEach(function (a) {
+                        const opt = document.createElement('option');
+                        const id = (a.id !== undefined && a.id !== null) ? String(a.id) : (a.Id !== undefined && a.Id !== null) ? String(a.Id) : '';
+                        const name = (a.name !== undefined && a.name !== null) ? a.name : (a.Name !== undefined && a.Name !== null) ? a.Name : '';
+                        opt.value = id;
+                        opt.textContent = name || '(Sin nombre)';
+                        if (id && currentAcademicYearId && String(id).toLowerCase() === String(currentAcademicYearId).toLowerCase()) opt.selected = true;
+                        aySelect.appendChild(opt);
+                    });
+                } else {
+                    var help = document.getElementById('academicYearHelp');
+                    if (help) help.style.display = 'inline';
+                }
+
+                if (!isTeacher) {
+                    const tSelect = document.getElementById('teacherSelect');
+                    if (tSelect) {
+                        tSelect.innerHTML = '<option value="">-- Seleccione docente --</option>';
+                        (teachers || []).forEach(function (t) {
+                        const opt = document.createElement('option');
+                        opt.value = t.id || t.Id;
+                        opt.textContent = t.displayName || (t.name + ' ' + (t.lastName || '')).trim();
+                        if (opt.value === currentTeacherId) opt.selected = true;
+                        tSelect.appendChild(opt);
+                        });
+                    }
+                }
+            }
+
+            function toHhMm(t) {
+                if (!t) return '--:--';
+                if (typeof t === 'string') return t.substring(0, 5);
+                return '--:--';
+            }
+
+            function buildTable() {
+                if (!timeSlots || timeSlots.length === 0) {
+                    document.getElementById('noDataMessage').textContent = 'No hay bloques horarios configurados para su escuela.';
+                    document.getElementById('noDataMessage').style.display = 'block';
+                    return;
+                }
+                // Render dinámico: todos los TimeSlots activos (generados desde Configuración de jornada o creados manualmente).
+                var sortedSlots = timeSlots.slice().sort(function (a, b) {
+                    var oa = (a.displayOrder != null ? a.displayOrder : (a.DisplayOrder != null ? a.DisplayOrder : 0));
+                    var ob = (b.displayOrder != null ? b.displayOrder : (b.DisplayOrder != null ? b.DisplayOrder : 0));
+                    if (oa !== ob) return oa - ob;
+                    var sa = a.startTime || a.StartTime || '';
+                    var sb = b.startTime || b.StartTime || '';
+                    return String(sa).localeCompare(String(sb));
+                });
+
+                const thead = document.querySelector('#scheduleTable thead tr');
+                const tbody = document.querySelector('#scheduleTable tbody');
+                thead.innerHTML = '';
+                var thHora = document.createElement('th');
+                thHora.style.minWidth = '110px';
+                thHora.textContent = 'Hora';
+                thHora.className = 'align-middle';
+                thead.appendChild(thHora);
+                for (var d = 1; d <= 5; d++) {
+                    var thDay = document.createElement('th');
+                    thDay.className = 'text-center align-middle';
+                    thDay.textContent = dayNames[d];
+                    thDay.style.minWidth = '120px';
+                    thead.appendChild(thDay);
+                }
+
+                tbody.innerHTML = '';
+                sortedSlots.forEach(function (ts) {
+                    const id = ts.id || ts.Id;
+                    const name = ts.name || ts.Name || 'Bloque';
+                    const shiftName = ts.shiftName || ts.ShiftName || '';
+                    const startStr = toHhMm(ts.startTime || ts.StartTime);
+                    const endStr = toHhMm(ts.endTime || ts.EndTime);
+                    const tr = document.createElement('tr');
+                    var tdSlot = document.createElement('td');
+                    tdSlot.className = 'align-middle';
+                    var slotWrap = document.createElement('div');
+                    var slotStrong = document.createElement('strong');
+                    slotStrong.textContent = name + (shiftName ? ' (' + shiftName + ')' : '');
+                    var slotTime = document.createElement('div');
+                    slotTime.className = 'text-muted small';
+                    slotTime.textContent = startStr + ' – ' + endStr;
+                    slotWrap.appendChild(slotStrong);
+                    slotWrap.appendChild(slotTime);
+                    tdSlot.appendChild(slotWrap);
+                    tr.appendChild(tdSlot);
+
+                    for (var day = 1; day <= 5; day++) {
+                        const td = document.createElement('td');
+                        td.setAttribute('data-day', day);
+                        td.setAttribute('data-time-slot-id', id);
+                        td.className = 'align-middle';
+
+                        var displayDiv = document.createElement('div');
+                        displayDiv.className = 'schedule-cell-display mb-1';
+                        var subjectSpan = document.createElement('div');
+                        subjectSpan.className = 'schedule-cell-subject fw-bold';
+                        subjectSpan.style.fontSize = '0.9rem';
+                        var groupSpan = document.createElement('div');
+                        groupSpan.className = 'schedule-cell-group text-muted small';
+                        displayDiv.appendChild(subjectSpan);
+                        displayDiv.appendChild(groupSpan);
+                        td.appendChild(displayDiv);
+
+                        const sel = document.createElement('select');
+                        sel.className = 'form-control form-control-sm cell-select';
+                        sel.setAttribute('data-day', day);
+                        sel.setAttribute('data-time-slot-id', id);
+                        if (!isEditable) sel.disabled = true;
+                        var optEmpty = document.createElement('option');
+                        optEmpty.value = '';
+                        optEmpty.textContent = 'Vacío';
+                        sel.appendChild(optEmpty);
+                        teacherAssignments.forEach(function (ta) {
+                            var o = document.createElement('option');
+                            o.value = ta.teacherAssignmentId || ta.Id;
+                            o.textContent = (ta.subject || ta.Subject || '') + ' - ' + (ta.group || ta.Group || '');
+                            o.setAttribute('data-subject', (ta.subject || ta.Subject || ''));
+                            o.setAttribute('data-group', (ta.group || ta.Group || ''));
+                            sel.appendChild(o);
+                        });
+                        sel.addEventListener('change', onCellChange);
+                        td.appendChild(sel);
+                        tr.appendChild(td);
+                    }
+                    tbody.appendChild(tr);
+                });
+            }
+
+            function subjectToPastelColor(subject) {
+                if (!subject || typeof subject !== 'string') return '';
+                var h = 0;
+                for (var i = 0; i < subject.length; i++) h = ((h << 5) - h) + subject.charCodeAt(i);
+                h = Math.abs(h) % 360;
+                return 'hsl(' + h + ', 45%, 96%)';
+            }
+            function setCellDisplay(td, subject, group) {
+                var sub = td.querySelector('.schedule-cell-subject');
+                var grp = td.querySelector('.schedule-cell-group');
+                if (sub) sub.textContent = subject || '';
+                if (grp) grp.textContent = group ? (group + '') : '';
+                if (td) {
+                    if (subject) td.style.backgroundColor = subjectToPastelColor(subject);
+                    else td.style.backgroundColor = '';
+                }
+            }
+
+            function fillTableWithEntries(entries) {
+                entriesByKey = {};
+                (entries || []).forEach(function (e) {
+                    const key = e.dayOfWeek + '_' + e.timeSlotId;
+                    entriesByKey[key] = e;
+                });
+                document.querySelectorAll('.cell-select').forEach(function (sel) {
+                    const day = sel.getAttribute('data-day');
+                    const timeSlotId = sel.getAttribute('data-time-slot-id');
+                    const key = day + '_' + timeSlotId;
+                    const entry = entriesByKey[key];
+                    const td = sel.closest('td');
+                    sel.value = '';
+                    if (entry && entry.teacherAssignmentId) {
+                        sel.value = entry.teacherAssignmentId;
+                        td.setAttribute('data-entry-id', entry.id || '');
+                        setCellDisplay(td, entry.subjectName || entry.subject, entry.groupName || entry.group);
+                    } else {
+                        td.removeAttribute('data-entry-id');
+                        setCellDisplay(td, '', '');
+                    }
+                    td.classList.remove('table-danger');
+                });
+            }
+
+            function onCellChange(ev) {
+                if (!isEditable) return;
+                const sel = ev.target;
+                const day = parseInt(sel.getAttribute('data-day'), 10);
+                const timeSlotId = sel.getAttribute('data-time-slot-id');
+                const td = sel.closest('td');
+                const entryId = td.getAttribute('data-entry-id');
+                const teacherAssignmentId = sel.value;
+
+                if (!teacherAssignmentId) {
+                    if (entryId) {
+                        Swal.fire({
+                            title: '¿Eliminar?',
+                            text: '¿Quitar esta clase de este horario?',
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonColor: '#0d6efd',
+                            cancelButtonText: 'Cancelar'
+                        }).then(function (res) {
+                            if (res.isConfirmed) doDeleteEntry(entryId, td, sel);
+                        });
+                    }
+                    return;
+                }
+
+                doSaveEntry(teacherAssignmentId, timeSlotId, day, td, sel);
+            }
+
+            function showCellSaving(td, sel, saving) {
+                if (saving) {
+                    td.classList.add('schedule-cell-saving');
+                    sel.disabled = true;
+                    var lbl = td.querySelector('.cell-saving-label');
+                    if (!lbl) {
+                        lbl = document.createElement('span');
+                        lbl.className = 'cell-saving-label text-muted small';
+                        lbl.textContent = ' Guardando...';
+                        td.appendChild(lbl);
+                    }
+                    lbl.style.display = 'inline';
+                } else {
+                    td.classList.remove('schedule-cell-saving');
+                    sel.disabled = !isEditable;
+                    var lbl = td.querySelector('.cell-saving-label');
+                    if (lbl) lbl.style.display = 'none';
+                }
+            }
+
+            function refetchAndFillTable() {
+                var scheduleUrl = '@Url.Content("~/")' + 'Schedule/ListJsonByTeacher?teacherId=' + encodeURIComponent(currentTeacherId) + '&academicYearId=' + encodeURIComponent(currentAcademicYearId);
+                fetch(scheduleUrl).then(function (r) { return r.json(); }).then(function (data) {
+                    if (data.success && data.data) fillTableWithEntries(data.data);
+                });
+            }
+
+            function doSaveEntry(teacherAssignmentId, timeSlotId, day, td, sel) {
+                showCellSaving(td, sel, true);
+                const payload = {
+                    teacherAssignmentId: teacherAssignmentId,
+                    timeSlotId: timeSlotId,
+                    dayOfWeek: day,
+                    academicYearId: currentAcademicYearId
+                };
+                fetch('@Url.Action("SaveEntry", "Schedule")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value },
+                    body: JSON.stringify(payload)
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    showCellSaving(td, sel, false);
+                    if (data.success) {
+                        td.classList.remove('table-danger');
+                        refetchAndFillTable();
+                        Swal.fire({ title: 'Guardado', text: data.message || 'Entrada guardada.', icon: 'success', timer: 1500, showConfirmButton: false });
+                    } else {
+                        td.classList.add('table-danger');
+                        Swal.fire({ title: 'Error', text: data.message || 'No se pudo guardar.', icon: 'error' });
+                    }
+                })
+                .catch(function (err) {
+                    showCellSaving(td, sel, false);
+                    td.classList.add('table-danger');
+                    Swal.fire({ title: 'Error', text: err.message || 'Error de conexión.', icon: 'error' });
+                });
+            }
+
+            function doDeleteEntry(entryId, td, sel) {
+                showCellSaving(td, sel, true);
+                fetch('@Url.Action("DeleteEntry", "Schedule")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value },
+                    body: JSON.stringify({ id: entryId })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    showCellSaving(td, sel, false);
+                    if (data.success) {
+                        td.classList.remove('table-danger');
+                        refetchAndFillTable();
+                        Swal.fire({ title: 'Eliminado', text: data.message || 'Entrada eliminada.', icon: 'success', timer: 1500, showConfirmButton: false });
+                    } else {
+                        Swal.fire({ title: 'Error', text: data.message || 'No se pudo eliminar.', icon: 'error' });
+                    }
+                })
+                .catch(function (err) {
+                    showCellSaving(td, sel, false);
+                    Swal.fire({ title: 'Error', text: err.message || 'Error de conexión.', icon: 'error' });
+                });
+            }
+
+            function loadSchedule() {
+                const aySelect = document.getElementById('academicYearSelect');
+                currentAcademicYearId = aySelect.value;
+                if (!isTeacher) {
+                    const tSelect = document.getElementById('teacherSelect');
+                    currentTeacherId = tSelect.value;
+                }
+                if (!currentAcademicYearId || currentAcademicYearId === '') {
+                    Swal.fire({ title: 'Aviso', text: 'Seleccione el año académico.', icon: 'warning' });
+                    return;
+                }
+                if (!isTeacher && (!currentTeacherId || currentTeacherId === '')) {
+                    Swal.fire({ title: 'Aviso', text: 'Seleccione el docente.', icon: 'warning' });
+                    return;
+                }
+
+                const baseUrl = '@Url.Content("~/")';
+                const teacherAssignmentsUrl = baseUrl + 'TeacherAssignment/GetAssignmentsByTeacher?id=' + encodeURIComponent(currentTeacherId);
+                const scheduleUrl = baseUrl + 'Schedule/ListJsonByTeacher?teacherId=' + encodeURIComponent(currentTeacherId) + '&academicYearId=' + encodeURIComponent(currentAcademicYearId);
+
+                function fetchJson(url) {
+                    return fetch(url).then(function (r) {
+                        var ct = (r.headers.get('Content-Type') || '').toLowerCase();
+                        if (!r.ok)
+                            return r.text().then(function (t) { throw new Error('HTTP ' + r.status + (t && t.length < 200 ? ': ' + t : '')); });
+                        if (ct.indexOf('application/json') === -1)
+                            return r.text().then(function (t) { throw new Error('Se esperaba JSON. Compruebe la URL o si la sesión sigue activa.'); });
+                        return r.json();
+                    });
+                }
+
+                Promise.all([
+                    fetchJson(teacherAssignmentsUrl),
+                    fetchJson(scheduleUrl)
+                ]).then(function (results) {
+                    const assignData = results[0];
+                    const scheduleData = results[1];
+                    teacherAssignments = assignData.currentAssignments || [];
+                    const entries = scheduleData.success ? (scheduleData.data || []) : [];
+                    buildTable();
+                    fillTableWithEntries(entries);
+                    document.getElementById('tableContainer').style.display = 'block';
+                    document.getElementById('noDataMessage').style.display = 'none';
+                }).catch(function (err) {
+                    if (typeof Swal !== 'undefined')
+                        Swal.fire({ title: 'Error', text: err.message || 'Error al cargar datos.', icon: 'error' });
+                    else
+                        alert(err.message || 'Error al cargar datos.');
+                });
+            }
+
+            document.getElementById('btnLoad').addEventListener('click', loadSchedule);
+            initDropdowns();
+            if (currentAcademicYearId && currentTeacherId && timeSlots.length > 0) {
+                document.getElementById('btnLoad').click();
+            }
+        })();
+    </script>
+}

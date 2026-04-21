@@ -1,0 +1,188 @@
+@{
+    ViewData["Title"] = "Escanear Carnet";
+    Layout = "_SuperAdminLayout";
+}
+
+<style>
+    .scan-container {
+        max-width: 600px;
+        margin: 2rem auto;
+    }
+    .scan-input {
+        font-size: 1.2rem;
+        padding: 1rem;
+        border-radius: 10px;
+        border: 2px solid #ddd;
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+    .scan-input:focus {
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .scan-button {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1.2rem;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    .scan-button:hover {
+        transform: translateY(-2px);
+    }
+    .scan-button:active {
+        transform: translateY(0);
+    }
+    .result-card {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        border-radius: 10px;
+        display: none;
+    }
+    .result-card.success {
+        background: #d4edda;
+        border: 2px solid #28a745;
+        color: #155724;
+    }
+    .result-card.error {
+        background: #f8d7da;
+        border: 2px solid #dc3545;
+        color: #721c24;
+    }
+    .result-card.show {
+        display: block;
+    }
+    .result-info {
+        margin-top: 1rem;
+    }
+    .result-info p {
+        margin: 0.5rem 0;
+        font-size: 1.1rem;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-qrcode"></i> Escanear Carnet Estudiantil
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="scan-container">
+                        <div class="form-group">
+                            <label for="token" class="form-label">
+                                <i class="fas fa-key"></i> Token QR del Carnet
+                            </label>
+                            <input 
+                                type="text" 
+                                id="token" 
+                                class="form-control scan-input" 
+                                placeholder="Pegue o escanee el código QR aquí..." 
+                                autofocus
+                            />
+                        </div>
+                        <button onclick="scan()" class="scan-button">
+                            <i class="fas fa-search"></i> Escanear
+                        </button>
+                        
+                        <div id="result" class="result-card">
+                            <h4 id="resultTitle"></h4>
+                            <p id="resultMessage"></p>
+                            <div id="resultInfo" class="result-info"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function scan() {
+        const tokenInput = document.getElementById('token');
+        const token = tokenInput.value.trim();
+        const resultDiv = document.getElementById('result');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultMessage = document.getElementById('resultMessage');
+        const resultInfo = document.getElementById('resultInfo');
+        
+        if (!token) {
+            showResult('error', 'Error', 'Por favor ingrese un token válido');
+            return;
+        }
+
+        // Obtener userId del usuario actual (si está autenticado)
+        const userId = '@(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString())';
+        
+        fetch('/StudentIdCard/api/scan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                token: token,
+                // Si no hay usuario autenticado, se envía Guid.Empty como string.
+                scannedBy: userId && userId !== '@Guid.Empty.ToString()'
+                    ? userId
+                    : '00000000-0000-0000-0000-000000000000',
+                scanType: 'entry'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.allowed) {
+                showResult('success', '✓ Acceso Permitido', data.message, {
+                    estudiante: data.studentName,
+                    grado: data.grade,
+                    grupo: data.group
+                });
+            } else {
+                showResult('error', '✗ Acceso Denegado', data.message);
+            }
+        })
+        .catch(error => {
+            showResult('error', 'Error', 'Error al procesar el escaneo: ' + error.message);
+        });
+    }
+
+    function showResult(type, title, message, info = null) {
+        const resultDiv = document.getElementById('result');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultMessage = document.getElementById('resultMessage');
+        const resultInfo = document.getElementById('resultInfo');
+        
+        resultDiv.className = 'result-card ' + type + ' show';
+        resultTitle.textContent = title;
+        resultMessage.textContent = message;
+        
+        if (info) {
+            let infoHtml = '<hr><strong>Información del Estudiante:</strong>';
+            if (info.estudiante) infoHtml += `<p><strong>Estudiante:</strong> ${info.estudiante}</p>`;
+            if (info.grado) infoHtml += `<p><strong>Grado:</strong> ${info.grado}</p>`;
+            if (info.grupo) infoHtml += `<p><strong>Grupo:</strong> ${info.grupo}</p>`;
+            resultInfo.innerHTML = infoHtml;
+        } else {
+            resultInfo.innerHTML = '';
+        }
+        
+        // Scroll to result
+        resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Permitir Enter para escanear
+    document.getElementById('token').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            scan();
+        }
+    });
+</script>
+}

@@ -1,0 +1,303 @@
+@model SchoolManager.Dtos.CounselorAssignmentCreateDto
+
+@{
+    ViewData["Title"] = "Nueva Asignación de Consejero";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="content-wrapper">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">
+                        <i class="bi bi-plus-circle me-2"></i>
+                        Nueva Asignación de Consejero
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Inicio</a></li>
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index")">Asignaciones de Consejeros</a></li>
+                        <li class="breadcrumb-item active">Nueva Asignación</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <!-- Mensajes de error -->
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    @TempData["ErrorMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-person-plus me-2"></i>
+                                Información de la Asignación
+                            </h3>
+                        </div>
+                        <form asp-action="Create" method="post">
+                            <div class="card-body">
+                                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                                
+                                <!-- Usuario Consejero -->
+                                <div class="form-group mb-3">
+                                    <label asp-for="UserId" class="form-label">
+                                        <i class="bi bi-person me-1"></i>
+                                        Consejero *
+                                    </label>
+                                    <select asp-for="UserId" class="form-select" required>
+                                        <option value="">Seleccione un consejero</option>
+                                        @if (ViewBag.Users != null)
+                                        {
+                                            @foreach (var user in ViewBag.Users)
+                                            {
+                                                <option value="@user.Id">@user.Name @user.LastName - @user.Email (@user.Role)</option>
+                                            }
+                                        }
+                                    </select>
+                                    <span asp-validation-for="UserId" class="text-danger"></span>
+                                </div>
+
+                                <!-- Tipo de Asignación -->
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-diagram-3 me-1"></i>
+                                        Tipo de Asignación *
+                                    </label>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="assignmentType" id="combinationType" value="combination" checked>
+                                                <label class="form-check-label" for="combinationType">
+                                                    <i class="bi bi-diagram-3 text-primary me-1"></i>
+                                                    <strong>Por Combinación</strong>
+                                                    <br>
+                                                    <small class="text-muted">Consejero de grado-grupo específico</small>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Combinación Grado-Grupo -->
+                                <div class="form-group mb-3" id="combinationSection">
+                                    <label class="form-label">
+                                        <i class="bi bi-diagram-3 me-1"></i>
+                                        Combinación Grado - Grupo
+                                    </label>
+                                    <select id="gradeGroupCombination" class="form-select" required>
+                                        <option value="">Seleccione una combinación válida</option>
+                                        @if (ViewBag.ValidCombinations != null)
+                                        {
+                                            @foreach (var combination in ViewBag.ValidCombinations)
+                                            {
+                                                <option value="@combination.GradeId|@combination.GroupId" 
+                                                        data-grade-id="@combination.GradeId" 
+                                                        data-group-id="@combination.GroupId">
+                                                    @combination.DisplayText
+                                                </option>
+                                            }
+                                        }
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Solo se muestran las combinaciones que tienen estudiantes asignados
+                                    </small>
+                                    <span asp-validation-for="GradeId" class="text-danger"></span>
+                                    <span asp-validation-for="GroupId" class="text-danger"></span>
+                                </div>
+
+                                <!-- Campos ocultos para GradeId y GroupId -->
+                                <input type="hidden" asp-for="GradeId" id="hiddenGradeId" />
+                                <input type="hidden" asp-for="GroupId" id="hiddenGroupId" />
+
+                                <!-- Estado -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <div class="form-check">
+                                                <input asp-for="IsCounselor" class="form-check-input" type="checkbox" checked>
+                                                <label asp-for="IsCounselor" class="form-check-label">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    Es Consejero
+                                                </label>
+                                            </div>
+                                            <span asp-validation-for="IsCounselor" class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <div class="form-check">
+                                                <input asp-for="IsActive" class="form-check-input" type="checkbox" checked>
+                                                <label asp-for="IsActive" class="form-check-label">
+                                                    <i class="bi bi-play-circle me-1"></i>
+                                                    Activo
+                                                </label>
+                                            </div>
+                                            <span asp-validation-for="IsActive" class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Campos ocultos -->
+                                <input asp-for="SchoolId" type="hidden" value="@ViewBag.SchoolId" />
+                            </div>
+                            <div class="card-footer">
+                                <div class="d-flex justify-content-between">
+                                    <a href="@Url.Action("Index")" class="btn btn-secondary">
+                                        <i class="bi bi-arrow-left me-1"></i>
+                                        Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Crear Asignación
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <!-- Información de ayuda -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Información
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <h5>Tipos de Asignación:</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="bi bi-diagram-3 text-primary me-2"></i>
+                                    <strong>Por Combinación:</strong> Consejero de grado-grupo específico
+                                </li>
+                            </ul>
+
+                            <hr>
+
+                            <h5>Requisitos:</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-1">
+                                    <i class="bi bi-check text-success me-2"></i>
+                                    El usuario debe ser Teacher, Director o Admin
+                                </li>
+                                <li class="mb-1">
+                                    <i class="bi bi-check text-success me-2"></i>
+                                    Solo puede haber un consejero por tipo
+                                </li>
+                                <li class="mb-1">
+                                    <i class="bi bi-check text-success me-2"></i>
+                                    Las asignaciones pueden activarse/desactivarse
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Estadísticas rápidas -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-bar-chart me-2"></i>
+                                Estadísticas
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-12">
+                                    <h4 class="text-primary mb-0" id="combinationCount">-</h4>
+                                    <small class="text-muted">Combinaciones</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Inicializar con la sección de combinación visible
+            $('#combinationSection').show();
+            $('#gradeGroupCombination').prop('required', true);
+
+            // Manejar selección de combinación grado-grupo
+            $('#gradeGroupCombination').on('change', function() {
+                var selectedValue = $(this).val();
+                if (selectedValue) {
+                    var parts = selectedValue.split('|');
+                    var gradeId = parts[0];
+                    var groupId = parts[1];
+                    
+                    $('#hiddenGradeId').val(gradeId);
+                    $('#hiddenGroupId').val(groupId);
+                } else {
+                    $('#hiddenGradeId, #hiddenGroupId').val('');
+                }
+            });
+
+            // Validación del formulario
+            $('form').on('submit', function(e) {
+                var userId = $('#UserId').val();
+                
+                if (!userId) {
+                    e.preventDefault();
+                    alert('Por favor, seleccione un consejero.');
+                    return false;
+                }
+                
+                if (!$('#gradeGroupCombination').val()) {
+                    e.preventDefault();
+                    alert('Por favor, seleccione una combinación grado-grupo válida.');
+                    return false;
+                }
+            });
+
+            // Cargar estadísticas (simulado)
+            loadStats();
+        });
+
+        function loadStats() {
+            // Aquí podrías hacer una llamada AJAX para obtener las estadísticas reales
+            // Por ahora, mostramos valores simulados
+            $('#combinationCount').text('0');
+        }
+    </script>
+}
+
+<style>
+    .form-check-label {
+        cursor: pointer;
+    }
+    
+    .form-check-input:checked + .form-check-label {
+        font-weight: bold;
+    }
+    
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    }
+</style>

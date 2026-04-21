@@ -1,0 +1,232 @@
+﻿<script>
+    let subjectDataTable;
+
+    $(document).ready(function () {
+        subjectDataTable = $('#subjectTable').DataTable({
+            dom: 'rt<"row"<"col-sm-12"p>>',
+            language: {
+                zeroRecords: "No se encontraron materias",
+                info: "",
+                infoEmpty: "",
+                infoFiltered: "",
+                paginate: {
+                    first: "«",
+                    last: "»",
+                    next: "›",
+                    previous: "‹"
+                }
+            },
+            pageLength: 10
+        });
+
+        // Conectar búsqueda personalizada
+        $('#searchSubjects').on('keyup', function() {
+            subjectDataTable.search(this.value).draw();
+        });
+
+        // Botón editar
+        $('#subjectTable').on('click', '.btn-edit-subject', function() {
+            const row = $(this).closest('tr');
+            row.find('.subject-name-text, .subject-description-text').addClass('d-none');
+            row.find('.subject-name-input, .subject-description-input').removeClass('d-none');
+            row.find('.btn-edit-subject').addClass('d-none');
+            row.find('.btn-save-subject').removeClass('d-none');
+        });
+
+        // Botón guardar
+        $('#subjectTable').on('click', '.btn-save-subject', function() {
+            const row = $(this).closest('tr');
+            const subject = {
+                Id: row.data('id'),
+                Name: row.find('.subject-name-input').val().trim(),
+                Description: row.find('.subject-description-input').val().trim()
+            };
+
+            if (!subject.Name) {
+                Swal.fire('Advertencia', 'El nombre no puede estar vacío.', 'warning');
+                return;
+            }
+
+            $.ajax({
+                url: '/Subject/Edit',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(subject)
+            })
+            .done(function(response) {
+                if (response.success) {
+                    row.find('.subject-name-text').text(subject.Name).removeClass('d-none');
+                    row.find('.subject-description-text').text(subject.Description).removeClass('d-none');
+                    row.find('.subject-name-input, .subject-description-input').addClass('d-none');
+                    row.find('.btn-edit-subject').removeClass('d-none');
+                    row.find('.btn-save-subject').addClass('d-none');
+                    Swal.fire('¡Actualizado!', response.message, 'success');
+                } else {
+                    Swal.fire('Error', response.message || 'Error al actualizar la materia.', 'error');
+                }
+            })
+            .fail(function(error) {
+                Swal.fire('Error', 'Error al actualizar la materia: ' + (error.responseText || 'Error desconocido'), 'error');
+            });
+        });
+
+        // Botón activar/desactivar
+        $('#subjectTable').on('click', '.btn-toggle-subject', function() {
+            const row = $(this).closest('tr');
+            const id = row.data('id');
+            const isActive = row.data('active') === 'true';
+            const action = isActive ? 'desactivar' : 'activar';
+            const actionTitle = isActive ? 'Desactivar' : 'Activar';
+
+            Swal.fire({
+                title: `¿${actionTitle} esta materia?`,
+                text: isActive ? "Las materias inactivas no aparecerán en los filtros." : "La materia estará disponible nuevamente.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: isActive ? '#f59e0b' : '#22c55e',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: `Sí, ${action}`,
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/Subject/ToggleActive',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ id: id })
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            // Actualizar el estado en la fila
+                            row.data('active', (!isActive).toString());
+                            
+                            // Actualizar badge
+                            const badge = row.find('.subject-status-badge');
+                            if (!isActive) {
+                                badge.removeClass('bg-secondary').addClass('bg-success').text('Activa');
+                            } else {
+                                badge.removeClass('bg-success').addClass('bg-secondary').text('Inactiva');
+                            }
+                            
+                            // Actualizar botón
+                            const btn = row.find('.btn-toggle-subject');
+                            if (!isActive) {
+                                btn.removeClass('btn-success').addClass('btn-warning')
+                                   .attr('title', 'Desactivar')
+                                   .html('<i class="bi bi-pause-circle"></i>');
+                            } else {
+                                btn.removeClass('btn-warning').addClass('btn-success')
+                                   .attr('title', 'Activar')
+                                   .html('<i class="bi bi-play-circle"></i>');
+                            }
+                            
+                            Swal.fire('¡Actualizado!', response.message, 'success');
+                        } else {
+                            Swal.fire('Error', response.message || 'Error al cambiar el estado.', 'error');
+                        }
+                    })
+                    .fail(function(error) {
+                        Swal.fire('Error', 'Error al cambiar el estado: ' + (error.responseText || 'Error desconocido'), 'error');
+                    });
+                }
+            });
+        });
+
+        // Botón eliminar
+        $('#subjectTable').on('click', '.btn-delete-subject', function() {
+            const row = $(this).closest('tr');
+            const id = row.data('id');
+
+            if (!id) {
+                Swal.fire('Error', 'ID no válido para eliminar.', 'error');
+                return;
+            }
+
+            Swal.fire({
+                title: '¿Eliminar esta materia?',
+                text: "Esta acción no se puede deshacer. Se recomienda desactivar en lugar de eliminar.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/Subject/Delete',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ id: id })
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            subjectDataTable.row(row).remove().draw();
+                            Swal.fire('Eliminado', response.message, 'success');
+                        } else {
+                            Swal.fire('Error', response.message || 'Error al eliminar la materia.', 'error');
+                        }
+                    })
+                    .fail(function(error) {
+                        Swal.fire('Error', 'Error al eliminar la materia: ' + (error.responseText || 'Error desconocido'), 'error');
+                    });
+                }
+            });
+        });
+    });
+
+    // Función para crear nueva materia
+    window.createSubject = function() {
+        const name = $('#newSubjectName').val().trim();
+        const description = $('#newSubjectDescription').val().trim();
+
+        if (!name) {
+            Swal.fire('Advertencia', 'El nombre de la materia es obligatorio.', 'warning');
+            return;
+        }
+
+        const subject = { name, description };
+
+        $.ajax({
+            url: '/Subject/Create',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(subject)
+        })
+        .done(function(response) {
+            if (response.success) {
+                const newRow = subjectDataTable.row.add([
+                    `<td class="align-middle text-center">
+                        <span class="subject-name-text">${response.name}</span>
+                        <input type="text" class="form-control d-none subject-name-input" value="${response.name}" />
+                    </td>`,
+                    `<td class="align-middle text-center">
+                        <span class="subject-description-text">${response.description || ''}</span>
+                        <textarea class="form-control d-none subject-description-input">${response.description || ''}</textarea>
+                    </td>`,
+                    `<td class="align-middle text-center">
+                        <button class="btn btn-action btn-edit me-1 btn-edit-subject" title="Editar">
+                            <i class="bi bi-pencil me-1"></i> Editar
+                        </button>
+                        <button class="btn btn-action btn-save d-none me-1 btn-save-subject" title="Guardar">
+                            <i class="bi bi-check me-1"></i> Guardar
+                        </button>
+                        <button class="btn btn-action btn-delete btn-delete-subject" title="Eliminar">
+                            <i class="bi bi-trash me-1"></i> Eliminar
+                        </button>
+                    </td>`
+                ]).draw().node();
+
+                $(newRow).attr('data-id', response.id);
+                $('#newSubjectName').val('');
+                $('#newSubjectDescription').val('');
+                Swal.fire('¡Creado!', response.message, 'success');
+            } else {
+                Swal.fire('Error', response.message || 'Error al crear la materia.', 'error');
+            }
+        })
+        .fail(function(error) {
+            Swal.fire('Error', 'Error al crear la materia: ' + (error.responseText || 'Error desconocido'), 'error');
+        });
+    };
+</script>

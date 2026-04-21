@@ -1,0 +1,228 @@
+@model SchoolManager.Dtos.PrematriculationCreateDto
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Nueva Prematrícula";
+    var activePeriod = ViewBag.ActivePeriod as SchoolManager.Models.PrematriculationPeriod;
+    var students = ViewBag.Students as IEnumerable<dynamic>;
+    var grades = ViewBag.Grades as IEnumerable<SchoolManager.Models.GradeLevel>;
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-user-plus mr-2"></i>Nueva Prematrícula</h3>
+                <small>Complete el formulario para realizar la prematrícula</small>
+            </div>
+        </div>
+    </div>
+
+    @if (activePeriod == null)
+    {
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            <strong>El período de prematrícula no está disponible</strong>
+            <p class="mb-0">Por favor, espere a que se habilite un nuevo período de prematrícula.</p>
+        </div>
+        <a href="@Url.Action("MyPrematriculations")" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-2"></i>Volver
+        </a>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle mr-2"></i>
+            <strong>Período Activo:</strong> @TimeZoneService.ToLocalDisplayString(activePeriod.StartDate, "dd/MM/yyyy") - @TimeZoneService.ToLocalDisplayString(activePeriod.EndDate, "dd/MM/yyyy")
+        </div>
+
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-file-alt mr-2"></i>Datos de la Prematrícula</h5>
+                    </div>
+                    <div class="card-body">
+                        <form asp-action="Create" method="post" id="prematriculationForm">
+                            <input type="hidden" asp-for="PrematriculationPeriodId" value="@activePeriod.Id" />
+                            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                            <div class="mb-3">
+                                <label asp-for="StudentId" class="form-label">Estudiante *</label>
+                                @{
+                                    var currentUserId = ViewBag.CurrentUserId as Guid?;
+                                    var isStudentUser = ViewBag.IsStudentUser as bool? ?? false;
+                                }
+                                @if (isStudentUser && students != null && students.Count() == 1)
+                                {
+                                    // Si es estudiante, solo puede prematricularse a sí mismo
+                                    var student = students.First();
+                                    <input type="hidden" asp-for="StudentId" value="@student.Id" />
+                                    <input type="text" class="form-control" value="@student.Name" disabled />
+                                    <small class="form-text text-muted">Está creando su propia prematrícula</small>
+                                }
+                                else
+                                {
+                                    <select asp-for="StudentId" class="form-select" required>
+                                        <option value="">Seleccione un estudiante</option>
+                                        @if (students != null)
+                                        {
+                                            @foreach (var student in students)
+                                            {
+                                                <option value="@student.Id">@student.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                }
+                                <span asp-validation-for="StudentId" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="GradeId" class="form-label">Grado</label>
+                                <select asp-for="GradeId" class="form-select" id="gradeSelect">
+                                    <option value="">Seleccione un grado</option>
+                                    @if (grades != null)
+                                    {
+                                        @foreach (var grade in grades)
+                                        {
+                                            <option value="@grade.Id">@grade.Name</option>
+                                        }
+                                    }
+                                </select>
+                                <span asp-validation-for="GradeId" class="text-danger"></span>
+                                <small class="form-text text-muted">Si no selecciona un grupo, el sistema lo asignará automáticamente</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="GroupId" class="form-label">Grupo</label>
+                                <select asp-for="GroupId" class="form-select" id="groupSelect" disabled>
+                                    <option value="">Primero seleccione un grado</option>
+                                </select>
+                                <span asp-validation-for="GroupId" class="text-danger"></span>
+                                <small class="form-text text-muted">Grupos disponibles con cupos</small>
+                            </div>
+
+                            <div id="academicValidation" class="alert alert-warning" style="display:none;">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                <strong>Validando condición académica...</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="@Url.Action("MyPrematriculations")" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left mr-2"></i>Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save mr-2"></i>Enviar Prematrícula
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function() {
+            // Debug: Verificar datos cargados (usar solo AllGrades que ya está proyectado)
+            var allGradesFromViewBag = @Html.Raw(Json.Serialize(ViewBag.AllGrades ?? new List<object>()));
+            console.log('[FRONTEND DEBUG] ViewBag.AllGrades:', allGradesFromViewBag);
+            console.log('[FRONTEND DEBUG] Cantidad de grados en ViewBag.AllGrades:', allGradesFromViewBag ? allGradesFromViewBag.length : 0);
+            
+            // Verificar el select
+            var $gradeSelect = $('#gradeSelect');
+            console.log('[FRONTEND DEBUG] Select encontrado:', $gradeSelect.length > 0);
+            console.log('[FRONTEND DEBUG] Opciones en select:', $gradeSelect.find('option').length);
+            console.log('[FRONTEND DEBUG] Opciones en select (detalle):', $gradeSelect.find('option').map(function() { return { value: $(this).val(), text: $(this).text() }; }).get());
+            $('#gradeSelect').on('change', function() {
+                var gradeId = $(this).val();
+                if (gradeId) {
+                    // Obtener grupos disponibles
+                    $.get('@Url.Action("GetAvailableGroups")', { gradeId: gradeId })
+                        .done(function(groups) {
+                            var $groupSelect = $('#groupSelect');
+                            $groupSelect.empty();
+                            $groupSelect.append('<option value="">Seleccione un grupo (opcional)</option>');
+                            
+                            if (groups && groups.length > 0) {
+                                groups.forEach(function(group) {
+                                    // Manejar tanto camelCase como PascalCase
+                                    var isAvailable = group.isAvailable !== undefined ? group.isAvailable : group.IsAvailable;
+                                    var groupName = group.groupName || group.GroupName || '';
+                                    var availableSpots = group.availableSpots !== undefined ? group.availableSpots : group.AvailableSpots || 0;
+                                    var groupId = group.groupId || group.GroupId;
+                                    
+                                    if (isAvailable) {
+                                        var optionText = groupName + ' (Disponibles: ' + availableSpots + ')';
+                                        $groupSelect.append('<option value="' + groupId + '">' + optionText + '</option>');
+                                    }
+                                });
+                            }
+                            
+                            $groupSelect.prop('disabled', false);
+                        })
+                        .fail(function(xhr, status, error) {
+                            console.error('Error al cargar grupos:', error);
+                            var $groupSelect = $('#groupSelect');
+                            $groupSelect.empty();
+                            $groupSelect.append('<option value="">Error al cargar grupos</option>');
+                            $groupSelect.prop('disabled', true);
+                        });
+                } else {
+                    $('#groupSelect').prop('disabled', true).empty().append('<option value="">Primero seleccione un grado</option>');
+                }
+            });
+
+            // Validar condición académica y actualizar grados disponibles cuando se selecciona un estudiante
+            $('#StudentId').on('change', function() {
+                var studentId = $(this).val();
+                if (studentId) {
+                    $('#academicValidation').show().html('<i class="fas fa-spinner fa-spin mr-2"></i>Validando condición académica...');
+                    // La validación se hará en el servidor al enviar el formulario
+                    $('#academicValidation').hide();
+                    
+                    // Actualizar grados disponibles según el estudiante seleccionado
+                    $.get('@Url.Action("GetAvailableGrades")', { studentId: studentId }, function(grades) {
+                        var $gradeSelect = $('#gradeSelect');
+                        var currentValue = $gradeSelect.val(); // Guardar valor actual
+                        $gradeSelect.empty();
+                        $gradeSelect.append('<option value="">Seleccione un grado</option>');
+                        
+                        grades.forEach(function(grade) {
+                            var $option = $('<option></option>')
+                                .attr('value', grade.id)
+                                .text(grade.name);
+                            $gradeSelect.append($option);
+                        });
+                        
+                        // Restaurar valor si todavía es válido
+                        if (currentValue) {
+                            var optionExists = grades.some(g => g.id === currentValue);
+                            if (optionExists) {
+                                $gradeSelect.val(currentValue);
+                            }
+                        }
+                    });
+                } else {
+                    // Si no hay estudiante seleccionado, cargar todos los grados
+                    var allGrades = @Html.Raw(Json.Serialize(ViewBag.AllGrades ?? ViewBag.Grades));
+                    var $gradeSelect = $('#gradeSelect');
+                    $gradeSelect.empty();
+                    $gradeSelect.append('<option value="">Seleccione un grado</option>');
+                    
+                    if (allGrades) {
+                        allGrades.forEach(function(grade) {
+                            var $option = $('<option></option>')
+                                .attr('value', grade.id)
+                                .text(grade.name);
+                            $gradeSelect.append($option);
+                        });
+                    }
+                }
+            });
+        });
+    </script>
+}
+

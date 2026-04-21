@@ -1,0 +1,130 @@
+@model SchoolManager.ViewModels.UserEditViewModel
+
+@{
+    ViewData["Title"] = "Editar Usuario";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-user-edit me-2"></i>@ViewData["Title"]
+                    </h3>
+                </div>
+                <div class="card-body">
+                    @if (TempData["SuccessMessage"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show">@TempData["SuccessMessage"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+                    }
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show">@TempData["ErrorMessage"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+                    }
+                    <form asp-action="EditUser" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Name" class="form-label"></label>
+                            <input asp-for="Name" class="form-control" autocomplete="off" />
+                            <span asp-validation-for="Name" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="LastName" class="form-label"></label>
+                            <input asp-for="LastName" class="form-control" autocomplete="off" />
+                            <span asp-validation-for="LastName" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label"></label>
+                            <input asp-for="Email" class="form-control" autocomplete="off" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Role" class="form-label"></label>
+                            <select asp-for="Role" class="form-select">
+                                <option value="superadmin">Super Administrador</option>
+                                <option value="admin">Administrador</option>
+                                <option value="teacher">Profesor</option>
+                                <option value="student">Estudiante</option>
+                            </select>
+                            <span asp-validation-for="Role" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Foto del usuario</label>
+                            <div class="d-flex align-items-start gap-3">
+                                @if (!string.IsNullOrEmpty(Model.PhotoUrl))
+                                {
+                                    <img src="@UserPhotoLinks.Href(Model.PhotoUrl)" alt="Foto" class="rounded shadow-sm" style="width:80px;height:80px;object-fit:cover;" />
+                                }
+                                else
+                                {
+                                    <div class="rounded bg-light d-flex align-items-center justify-content-center text-muted" style="width:80px;height:80px;"><i class="fas fa-user-circle fa-2x"></i></div>
+                                }
+                                <div>
+                                    <form asp-action="UpdateUserPhoto" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="file" name="photo" accept=".jpg,.jpeg,.png,image/jpeg,image/png" class="form-control form-control-sm mb-1" style="max-width:220px;" />
+                                        <small class="text-muted d-block mb-1">JPEG o PNG; hasta 12 MB de subida, se guarda a máx. 2 MB</small>
+                                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload me-1"></i>Subir foto</button>
+                                    </form>
+                                    @if (!string.IsNullOrEmpty(Model.PhotoUrl))
+                                    {
+                                        <form asp-action="RemoveUserPhoto" asp-route-id="@Model.Id" method="post" class="d-inline ms-1">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar la foto de este usuario?');"><i class="fas fa-trash me-1"></i>Eliminar</button>
+                                        </form>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Status" class="form-label"></label>
+                            @if (Model.Role == "superadmin")
+                            {
+                                <select asp-for="Status" class="form-select" disabled>
+                                    <option value="active">Activo</option>
+                                    <option value="inactive">Inactivo</option>
+                                </select>
+                                <input type="hidden" asp-for="Status" value="active" />
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i> Los usuarios SuperAdmin no pueden ser inactivados por seguridad.
+                                </small>
+                            }
+                            else
+                            {
+                                <select asp-for="Status" class="form-select">
+                                    <option value="active">Activo</option>
+                                    <option value="inactive">Inactivo</option>
+                                </select>
+                            }
+                            <span asp-validation-for="Status" class="text-danger"></span>
+                        </div>
+
+                        <div class="card-footer bg-transparent border-0">
+                            <div class="d-flex justify-content-between">
+                                <a asp-action="ListSchools" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>Volver
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Guardar Cambios
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+} 

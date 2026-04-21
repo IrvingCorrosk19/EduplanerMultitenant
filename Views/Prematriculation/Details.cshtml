@@ -1,0 +1,179 @@
+@model SchoolManager.Dtos.PrematriculationDto
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Detalles de Prematrícula";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-info-circle mr-2"></i>Detalles de Prematrícula</h3>
+                <small>Información completa de la prematrícula</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-file-alt mr-2"></i>Información de la Prematrícula</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Código de Prematrícula:</dt>
+                        <dd class="col-sm-8"><code>@Model.PrematriculationCode</code></dd>
+
+                        <dt class="col-sm-4">Estudiante:</dt>
+                        <dd class="col-sm-8">@Model.StudentName</dd>
+
+                        <dt class="col-sm-4">Documento:</dt>
+                        <dd class="col-sm-8">@Model.StudentDocumentId</dd>
+
+                        <dt class="col-sm-4">Grado:</dt>
+                        <dd class="col-sm-8">@(Model.GradeName ?? "No asignado")</dd>
+
+                        <dt class="col-sm-4">Grupo:</dt>
+                        <dd class="col-sm-8">@(Model.GroupName ?? "No asignado")</dd>
+
+                        <dt class="col-sm-4">Estado:</dt>
+                        <dd class="col-sm-8">
+                            @switch (Model.Status)
+                            {
+                                case "Pendiente":
+                                    <span class="badge bg-warning">Pendiente</span>
+                                    break;
+                                case "Prematriculado":
+                                    <span class="badge bg-info">Prematriculado</span>
+                                    break;
+                                case "Pagado":
+                                    <span class="badge bg-primary">Pagado</span>
+                                    break;
+                                case "Matriculado":
+                                    <span class="badge bg-success">Matriculado</span>
+                                    break;
+                                case "Rechazado":
+                                    <span class="badge bg-danger">Rechazado</span>
+                                    break;
+                                default:
+                                    <span class="badge bg-secondary">@Model.Status</span>
+                                    break;
+                            }
+                        </dd>
+
+                        <dt class="col-sm-4">Materias Fracasadas:</dt>
+                        <dd class="col-sm-8">
+                            @if (Model.FailedSubjectsCount.HasValue)
+                            {
+                                if (Model.FailedSubjectsCount.Value <= 3)
+                                {
+                                    <span class="badge bg-success">@Model.FailedSubjectsCount</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">@Model.FailedSubjectsCount</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">N/A</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-4">Condición Académica:</dt>
+                        <dd class="col-sm-8">
+                            @if (Model.AcademicConditionValid == true)
+                            {
+                                <span class="badge bg-success">Válida</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">No válida</span>
+                            }
+                        </dd>
+
+                        @if (!string.IsNullOrEmpty(Model.RejectionReason))
+                        {
+                            <dt class="col-sm-4">Motivo de Rechazo:</dt>
+                            <dd class="col-sm-8">@Model.RejectionReason</dd>
+                        }
+
+                        <dt class="col-sm-4">Fecha de Creación:</dt>
+                        <dd class="col-sm-8">@TimeZoneService.ToLocalDisplayString(Model.CreatedAt, "dd/MM/yyyy HH:mm")</dd>
+
+                        @if (Model.PaymentDate.HasValue)
+                        {
+                            <dt class="col-sm-4">Fecha de Pago:</dt>
+                            <dd class="col-sm-8">@TimeZoneService.ToLocalDisplayString(Model.PaymentDate, "dd/MM/yyyy HH:mm")</dd>
+                        }
+
+                        @if (Model.MatriculationDate.HasValue)
+                        {
+                            <dt class="col-sm-4">Fecha de Matrícula:</dt>
+                            <dd class="col-sm-8">@TimeZoneService.ToLocalDisplayString(Model.MatriculationDate, "dd/MM/yyyy HH:mm")</dd>
+                        }
+                    </dl>
+
+                    @if (Model.Payments != null && Model.Payments.Any())
+                    {
+                        <h5 class="mt-4">Pagos Registrados</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Recibo</th>
+                                        <th>Monto</th>
+                                        <th>Fecha</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var payment in Model.Payments)
+                                    {
+                                        <tr>
+                                            <td>@payment.ReceiptNumber</td>
+                                            <td>@payment.Amount.ToString("C")</td>
+                                            <td>@TimeZoneService.ToLocalDisplayString(payment.PaymentDate, "dd/MM/yyyy")</td>
+                                            <td>
+                                                @if (payment.PaymentStatus == "Confirmado")
+                                                {
+                                                    <span class="badge bg-success">Confirmado</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning">Pendiente</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    @if (Model.Status == "Matriculado")
+                    {
+                        <div class="mt-4 d-flex justify-content-between">
+                            <a href="@Url.Action("Index")" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left mr-2"></i>Volver
+                            </a>
+                            <a href="@Url.Action("Certificate", new { id = Model.Id })" class="btn btn-primary" target="_blank">
+                                <i class="fas fa-file-pdf mr-2"></i>Ver Comprobante de Matrícula
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mt-4">
+                            <a href="@Url.Action("Index")" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left mr-2"></i>Volver
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

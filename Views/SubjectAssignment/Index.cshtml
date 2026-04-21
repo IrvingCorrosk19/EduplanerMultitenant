@@ -1,0 +1,858 @@
+@model IEnumerable<SchoolManager.Models.ViewModels.SubjectAssignmentViewModel>
+
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Catálogo de Materias";
+}
+
+<style>
+    .portal-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: white;
+        padding: 2rem 2rem 1.5rem 2rem;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    .portal-header h3 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    .portal-header small {
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+    .card {
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08);
+        border: none;
+        margin-bottom: 1.5rem;
+    }
+    .card-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: white;
+        border-radius: 1rem 1rem 0 0 !important;
+        font-weight: 600;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .table {
+        border-radius: 0.5rem;
+        overflow: hidden;
+        margin-bottom: 0;
+    }
+    .table thead th {
+        background-color: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+        text-align: center;
+        vertical-align: middle;
+        font-weight: 600;
+    }
+    .table tbody td {
+        text-align: center;
+        vertical-align: middle;
+    }
+    .btn-primary, .btn-danger, .btn-success {
+        border-radius: 0.5rem;
+        font-weight: 500;
+    }
+    .badge {
+        font-size: 1em;
+        border-radius: 0.5rem;
+        padding: 0.5em 1em;
+    }
+    .search-bar {
+        margin-bottom: 1rem;
+    }
+    .search-bar input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        background-color: #f8fafc;
+    }
+    .search-bar input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .search-bar input::placeholder {
+        color: #94a3b8;
+    }
+    .dataTables_filter {
+        display: none;
+    }
+    .dataTables_length {
+        display: none;
+    }
+    .dataTables_info {
+        display: none;
+    }
+    .table thead th {
+        vertical-align: top;
+        padding-top: 1rem;
+    }
+    .table thead th .form-select {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+    }
+    .table thead th .form-select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+    }
+    .table thead th span {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+<div class="container-fluid">
+    <!-- ENCABEZADO AZUL -->
+    <div class="portal-header d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-journal-bookmark-fill fs-2 text-white"></i>
+            <h3 class="mb-0">Catálogo de Materias</h3>
+        </div>
+        <div class="text-end">
+            <small>@TimeZoneService.GetTodayLongString()</small>
+        </div>
+    </div>
+
+    <div class="card card-primary card-outline">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <i class="bi bi-journal-bookmark-fill me-2"></i> Asignaciones Actuales
+            </div>
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createModal">
+                <i class="bi bi-plus-circle me-2"></i> Crear Asignación
+            </button>
+        </div>
+        <!-- Barra de búsqueda -->
+        <div class="search-bar d-flex justify-content-center align-items-center" style="margin-top: 1rem; margin-bottom: 1rem;">
+            <div class="input-group" style="max-width: 500px; width: 100%;">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                <input type="text" id="searchAssignments" class="form-control border-start-0" placeholder="Buscar por especialidad, área, materia, grado, grupo o estado..." autocomplete="off">
+                <button class="btn btn-outline-secondary border-start-0" type="button" id="clearSearch" title="Limpiar búsqueda">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>
+        </div>
+        <!-- Contador de resultados y botón limpiar filtros -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <small class="text-muted" id="searchResultsCount">
+                Mostrando <span id="visibleCount">@Model.Count()</span> de <span id="totalCount">@Model.Count()</span> asignaciones
+            </small>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="clearAllFilters" title="Limpiar todos los filtros">
+                <i class="bi bi-arrow-clockwise me-1"></i> Limpiar Filtros
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle text-center" id="asignacionTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>
+                                <div class="d-flex flex-column align-items-center">
+                                    <span>Especialidad</span>
+                                    <select class="form-select form-select-sm mt-1" id="filterSpecialty" style="min-width: 120px;">
+                                        <option value="">Todas</option>
+                                    </select>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="d-flex flex-column align-items-center">
+                                    <span>Área</span>
+                                    <select class="form-select form-select-sm mt-1" id="filterArea" style="min-width: 120px;">
+                                        <option value="">Todas</option>
+                                    </select>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="d-flex flex-column align-items-center">
+                                    <span>Materia</span>
+                                    <select class="form-select form-select-sm mt-1" id="filterSubject" style="min-width: 120px;">
+                                        <option value="">Todas</option>
+                                    </select>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="d-flex flex-column align-items-center">
+                                    <span>Estado</span>
+                                    <select class="form-select form-select-sm mt-1" id="filterStatus" style="min-width: 100px;">
+                                        <option value="">Todos</option>
+                                        <option value="Activo">Activo</option>
+                                        <option value="Inactivo">Inactivo</option>
+                                    </select>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="d-flex flex-column align-items-center">
+                                    <span>Grado</span>
+                                    <select class="form-select form-select-sm mt-1" id="filterGrade" style="min-width: 100px;">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="d-flex flex-column align-items-center">
+                                    <span>Grupo</span>
+                                    <select class="form-select form-select-sm mt-1" id="filterGroup" style="min-width: 100px;">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                            </th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ int i = 1; foreach (var item in Model) {
+                            <tr data-assignment-id="@item.Id">
+                                <td>@i</td>
+                                <td class="text-start">@item.SpecialtyName</td>
+                                <td class="text-start">@item.AreaName</td>
+                                <td class="text-start">@item.SubjectName</td>
+                                <td>
+                                    <span class="badge @(item.Status == "Active" ? "bg-success" : "bg-danger")">
+                                        @(item.Status == "Active" ? "Activo" : "Inactivo")
+                                    </span>
+                                </td>
+                                <td>@item.GradeLevelName</td>
+                                <td>@item.GroupName</td>
+                                <td class="d-flex justify-content-start align-items-center">
+                                    <button type="button" class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#editModal"
+                                            data-assignment-id="@item.Id"
+                                            data-specialty-name="@item.SpecialtyName"
+                                            data-area-name="@item.AreaName"
+                                            data-subject-name="@item.SubjectName"
+                                            data-grade-name="@item.GradeLevelName"
+                                            data-group-name="@item.GroupName">
+                                        <i class="bi bi-pencil-square"></i> Editar
+                                    </button>
+                                    <a href="@Url.Action("ChangeStatus", new { id = item.Id })" class="btn btn-sm @(item.Status == "Active" ? "btn-danger" : "btn-success")">
+                                        <i class="bi @(item.Status == "Active" ? "bi-pause-circle" : "bi-play-circle")"></i>
+                                        @(item.Status == "Active" ? "Desactivar" : "Activar")
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger btn-delete-assignment ms-2" data-assignment-id="@item.Id">
+                                        <i class="bi bi-trash"></i> Eliminar
+                                    </button>
+                                </td>
+                            </tr>
+                            i++;
+                        } }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edición -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="editModalLabel">Editar Asignación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editAssignmentForm">
+                    <div class="mb-3">
+                        <label for="specialtyId" class="form-label">Especialidad</label>
+                        <select class="form-control" id="specialtyId" name="SpecialtyId">
+                            <option value="">Seleccione una especialidad</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="areaId" class="form-label">Área</label>
+                        <select class="form-control" id="areaId" name="AreaId">
+                            <option value="">Seleccione un área</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="subjectId" class="form-label">Materia</label>
+                        <select class="form-control" id="subjectId" name="SubjectId">
+                            <option value="">Seleccione una materia</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="gradeLevelId" class="form-label">Grado</label>
+                        <select class="form-control" id="gradeLevelId" name="GradeLevelId">
+                            <option value="">Seleccione un grado</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="groupId" class="form-label">Grupo</label>
+                        <select class="form-control" id="groupId" name="GroupId">
+                            <option value="">Seleccione un grupo</option>
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-success" id="btnSaveChanges">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Creación -->
+<div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content shadow">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="createModalLabel">Crear Nueva Asignación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createAssignmentForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="createSpecialtyId" class="form-label">Especialidad</label>
+                                <select class="form-control" id="createSpecialtyId" name="SpecialtyId" required>
+                                    <option value="">Seleccione una especialidad</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="createAreaId" class="form-label">Área</label>
+                                <select class="form-control" id="createAreaId" name="AreaId" required>
+                                    <option value="">Seleccione un área</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="createSubjectId" class="form-label">Materia</label>
+                                <select class="form-control" id="createSubjectId" name="SubjectId" required>
+                                    <option value="">Seleccione una materia</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="createGradeLevelId" class="form-label">Grado</label>
+                                <select class="form-control" id="createGradeLevelId" name="GradeLevelId" required>
+                                    <option value="">Seleccione un grado</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="createGroupId" class="form-label">Grupo</label>
+                                <select class="form-control" id="createGroupId" name="GroupId" required>
+                                    <option value="">Seleccione un grupo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-success" id="btnCreateAssignment">Crear Asignación</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        /*----------------------------------
+          DataTable + filtros (ext.search: no mezclar .show/.hide con DataTables)
+        ----------------------------------*/
+        var subjectAssignmentDataTable = null;
+
+        $(function () {
+            subjectAssignmentDataTable = $('#asignacionTable').DataTable({
+                dom: 'rt<"row mt-2"<"col-sm-12"p>>',
+                language: {
+                    paginate: {
+                        first: "«",
+                        last: "»",
+                        next: "›",
+                        previous: "‹"
+                    },
+                    zeroRecords: "No se encontraron registros"
+                },
+                pageLength: 25,
+                responsive: true,
+                ordering: false
+            });
+
+            function updateResultCounts() {
+                if (!subjectAssignmentDataTable) return;
+                var filtered = subjectAssignmentDataTable.rows({ search: 'applied' }).count();
+                var total = subjectAssignmentDataTable.rows().count();
+                var searchValue = $('#searchAssignments').val().toLowerCase().trim();
+                var hasColumnFilters = $('#filterSpecialty').val() || $('#filterArea').val() || $('#filterSubject').val() ||
+                    $('#filterStatus').val() || $('#filterGrade').val() || $('#filterGroup').val();
+                if (filtered === 0 && (searchValue !== '' || hasColumnFilters)) {
+                    $('#searchResultsCount').html('<small class="text-danger">No se encontraron asignaciones que coincidan con los filtros aplicados</small>');
+                } else {
+                    $('#searchResultsCount').html('<small class="text-muted">Mostrando <span id="visibleCount">' + filtered + '</span> de <span id="totalCount">' + total + '</span> asignaciones</small>');
+                }
+            }
+
+            $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                if (settings.nTable.id !== 'asignacionTable') return true;
+
+                var api = new $.fn.dataTable.Api(settings);
+                var rowNode = api.row(dataIndex).node();
+                if (!rowNode) return true;
+                var $row = $(rowNode);
+
+                var searchValue = $('#searchAssignments').val().toLowerCase().trim();
+                if (searchValue !== '') {
+                    var found = false;
+                    $row.find('td').each(function (index) {
+                        var $td = $(this);
+                        if (index === $row.find('td').length - 1) return;
+                        var cellText = $td.text().toLowerCase().trim();
+                        if (cellText.indexOf(searchValue) !== -1) {
+                            found = true;
+                            return false;
+                        }
+                    });
+                    if (!found) return false;
+                }
+
+                var specialtyFilter = $('#filterSpecialty').val();
+                if (specialtyFilter && $row.find('td:eq(1)').text().trim() !== specialtyFilter) return false;
+
+                var areaFilter = $('#filterArea').val();
+                if (areaFilter && $row.find('td:eq(2)').text().trim() !== areaFilter) return false;
+
+                var subjectFilter = $('#filterSubject').val();
+                if (subjectFilter && $row.find('td:eq(3)').text().trim() !== subjectFilter) return false;
+
+                var statusFilter = $('#filterStatus').val();
+                if (statusFilter) {
+                    var statusText = $row.find('td:eq(4)').text().trim();
+                    var statusValue = statusText === 'Activo' ? 'Activo' : 'Inactivo';
+                    if (statusValue !== statusFilter) return false;
+                }
+
+                var gradeFilter = $('#filterGrade').val();
+                if (gradeFilter && $row.find('td:eq(5)').text().trim() !== gradeFilter) return false;
+
+                var groupFilter = $('#filterGroup').val();
+                if (groupFilter && $row.find('td:eq(6)').text().trim() !== groupFilter) return false;
+
+                return true;
+            });
+
+            subjectAssignmentDataTable.on('draw', updateResultCounts);
+
+            window.subjectAssignmentApplyFilters = function () {
+                if (subjectAssignmentDataTable) {
+                    subjectAssignmentDataTable.draw();
+                }
+            };
+
+            populateFilterDropdowns();
+            updateResultCounts();
+        });
+
+        /*----------------------------------
+          Variables globales
+        ----------------------------------*/
+        let currentAssignmentId = null;
+
+        /*----------------------------------
+          Cargar asignación actual
+        ----------------------------------*/
+        $('#editModal').on('show.bs.modal', function (e) {
+            const btn = $(e.relatedTarget);
+            currentAssignmentId = btn.data('assignment-id');
+
+            // Cargar datos de dropdowns y luego cargar la asignación actual
+            $.get('@Url.Action("GetDropdownData", "SubjectAssignment")', function(response) {
+                if (response.success) {
+                    // Poblar dropdowns con todos los datos disponibles
+                    $('#specialtyId').html('<option value="">Seleccione una especialidad</option>' + 
+                        response.specialties.map(s => `<option value="${s.id}">${s.name}</option>`).join(''));
+                    $('#areaId').html('<option value="">Seleccione un área</option>' + 
+                        response.areas.map(a => `<option value="${a.id}">${a.name}</option>`).join(''));
+                    $('#subjectId').html('<option value="">Seleccione una materia</option>' + 
+                        response.subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join(''));
+                    $('#gradeLevelId').html('<option value="">Seleccione un grado</option>' + 
+                        response.gradeLevels.map(g => `<option value="${g.id}">${g.name}</option>`).join(''));
+                    $('#groupId').html('<option value="">Seleccione un grupo</option>' + 
+                        response.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join(''));
+
+                    // Ahora cargar los valores actuales de la asignación
+                    loadCurrentAssignmentValues(currentAssignmentId);
+                } else {
+                    Swal.fire('Error', response.message, 'error');
+                }
+            });
+        });
+
+        // Función para cargar los valores actuales de la asignación
+        function loadCurrentAssignmentValues(assignmentId) {
+            // Obtener los datos actuales de la asignación desde la tabla
+            const row = $(`tr[data-assignment-id="${assignmentId}"]`);
+            if (row.length > 0) {
+                const specialtyName = row.find('td:eq(1)').text().trim();
+                const areaName = row.find('td:eq(2)').text().trim();
+                const subjectName = row.find('td:eq(3)').text().trim();
+                const gradeLevelName = row.find('td:eq(5)').text().trim();
+                const groupName = row.find('td:eq(6)').text().trim();
+
+                // Seleccionar los valores correctos en los dropdowns
+                $('#specialtyId option').each(function() {
+                    if ($(this).text().trim() === specialtyName) {
+                        $(this).prop('selected', true);
+                    }
+                });
+
+                $('#areaId option').each(function() {
+                    if ($(this).text().trim() === areaName) {
+                        $(this).prop('selected', true);
+                    }
+                });
+
+                $('#subjectId option').each(function() {
+                    if ($(this).text().trim() === subjectName) {
+                        $(this).prop('selected', true);
+                    }
+                });
+
+                $('#gradeLevelId option').each(function() {
+                    if ($(this).text().trim() === gradeLevelName) {
+                        $(this).prop('selected', true);
+                    }
+                });
+
+                $('#groupId option').each(function() {
+                    if ($(this).text().trim() === groupName) {
+                        $(this).prop('selected', true);
+                    }
+                });
+            }
+        }
+
+        /*----------------------------------
+          Cascada para el modal de editar (opcional - mantener todos los datos disponibles)
+        ----------------------------------*/
+        // Los dropdowns del modal de editar mantienen todos los datos disponibles
+        // No necesitamos cascada porque todos los datos están cargados
+
+                    /*----------------------------------
+                      Guardar cambios
+                    ----------------------------------*/
+        $('#btnSaveChanges').on('click', function() {
+                   const formData = {
+            Id: currentAssignmentId, // debe ser un Guid correcto, no vacío
+            SpecialtyId: $('#specialtyId').val() || null,
+            AreaId: $('#areaId').val() || null,
+            SubjectId: $('#subjectId').val() || null,
+            GradeLevelId: $('#gradeLevelId').val() || null,
+            GroupId: $('#groupId').val() || null
+           };
+
+             $.ajax({
+                url: '@Url.Action("Edit", "SubjectAssignment")',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire('Éxito', response.message, 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire({
+                            text: response.message,
+                            showCancelButton: false,
+                            confirmButtonText: 'Aceptar',
+                            showConfirmButton: true,
+                            icon: 'error',
+                            customClass: {
+                                title: 'd-none'
+                            }
+                        });
+                    }
+                },
+                    error: function(xhr) {
+                        let errorMessage = 'No se pudieron guardar los cambios';
+
+                        // Si el servidor devuelve algún mensaje en el cuerpo
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+
+                        Swal.fire({
+                            text: errorMessage,
+                            showCancelButton: false,
+                            confirmButtonText: 'Aceptar',
+                            showConfirmButton: true,
+                            icon: 'error',
+                            customClass: {
+                                title: 'd-none'
+                            }
+                        });
+                    }
+             });
+
+        });
+
+        /*----------------------------------
+          Funcionalidad de Creación
+        ----------------------------------*/
+        
+        // Cargar datos de dropdowns al abrir el modal de creación
+        $('#createModal').on('show.bs.modal', function (e) {
+            // Limpiar formulario
+            $('#createAssignmentForm')[0].reset();
+            
+            // Cargar datos de dropdowns
+            $.get('@Url.Action("GetDropdownData", "SubjectAssignment")', function(response) {
+                if (response.success) {
+                    // Poblar dropdowns
+                    $('#createSpecialtyId').html('<option value="">Seleccione una especialidad</option>' + 
+                        response.specialties.map(s => `<option value="${s.id}">${s.name}</option>`).join(''));
+                    $('#createAreaId').html('<option value="">Seleccione un área</option>' + 
+                        response.areas.map(a => `<option value="${a.id}">${a.name}</option>`).join(''));
+                    $('#createSubjectId').html('<option value="">Seleccione una materia</option>' + 
+                        response.subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join(''));
+                    $('#createGradeLevelId').html('<option value="">Seleccione un grado</option>' + 
+                        response.gradeLevels.map(g => `<option value="${g.id}">${g.name}</option>`).join(''));
+                    $('#createGroupId').html('<option value="">Seleccione un grupo</option>' + 
+                        response.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join(''));
+                } else {
+                    Swal.fire('Error', response.message, 'error');
+                }
+            });
+        });
+
+        // Crear asignación
+        $('#btnCreateAssignment').on('click', function() {
+            const formData = {
+                SpecialtyId: $('#createSpecialtyId').val(),
+                AreaId: $('#createAreaId').val(),
+                SubjectId: $('#createSubjectId').val(),
+                GradeLevelId: $('#createGradeLevelId').val(),
+                GroupId: $('#createGroupId').val()
+            };
+
+            // Validar que todos los campos estén llenos
+            if (!formData.SpecialtyId || !formData.AreaId || !formData.SubjectId || 
+                !formData.GradeLevelId || !formData.GroupId) {
+                Swal.fire({
+                    text: 'Por favor complete todos los campos',
+                    showCancelButton: false,
+                    confirmButtonText: 'Aceptar',
+                    showConfirmButton: true,
+                    icon: 'warning',
+                    customClass: {
+                        title: 'd-none'
+                    }
+                });
+                return;
+            }
+
+            // Mostrar loading
+            Swal.fire({
+                title: 'Creando asignación...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            $.ajax({
+                url: '@Url.Action("Create", "SubjectAssignment")',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire({
+                            text: response.message,
+                            showCancelButton: false,
+                            confirmButtonText: 'Aceptar',
+                            showConfirmButton: true,
+                            icon: 'success',
+                            customClass: {
+                                title: 'd-none'
+                            }
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            text: response.message,
+                            showCancelButton: false,
+                            confirmButtonText: 'Aceptar',
+                            showConfirmButton: true,
+                            icon: 'error',
+                            customClass: {
+                                title: 'd-none'
+                            }
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    let errorMessage = 'No se pudo crear la asignación';
+
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    }
+
+                    Swal.fire({
+                        text: errorMessage,
+                        showCancelButton: false,
+                        confirmButtonText: 'Aceptar',
+                        showConfirmButton: true,
+                        icon: 'error',
+                        customClass: {
+                            title: 'd-none'
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+    <script>
+        $(document).on('click', '.btn-delete-assignment', function () {
+            var assignmentId = $(this).data('assignment-id');
+            showConfirm('¿Está seguro de que desea eliminar esta asignación del catálogo de materias?', function () {
+                $.ajax({
+                    url: '@Url.Action("DeleteAssignment", "SubjectAssignment")', // Corrected URL to use Razor
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(assignmentId),
+                    success: function (response) {
+                        if (response.success) {
+                            showSuccess(response.message);
+                            var $tr = $('tr[data-assignment-id="' + assignmentId + '"]');
+                            if ($.fn.DataTable.isDataTable('#asignacionTable')) {
+                                var dt = $('#asignacionTable').DataTable();
+                                dt.row($tr).remove().draw(false);
+                                if (typeof populateFilterDropdowns === 'function') {
+                                    populateFilterDropdowns();
+                                }
+                                if (typeof window.subjectAssignmentApplyFilters === 'function') {
+                                    window.subjectAssignmentApplyFilters();
+                                }
+                            } else {
+                                $tr.fadeOut(400, function () { $(this).remove(); });
+                            }
+                        } else {
+                            showError(response.message);
+                        }
+                    },
+                    error: function () {
+                        showError('Ocurrió un error al intentar eliminar la asignación.');
+                    }
+                });
+            });
+        });
+    </script>
+    <script>
+
+        // Botón para limpiar búsqueda
+        $('#clearSearch').on('click', function() {
+            $('#searchAssignments').val('').trigger('input');
+            $('#searchAssignments').focus();
+        });
+
+        /*----------------------------------
+          Poblar dropdowns de filtros (todas las filas del DataTable)
+        ----------------------------------*/
+        function populateFilterDropdowns() {
+            if (!subjectAssignmentDataTable) return;
+
+            var specialties = [];
+            var areas = [];
+            var subjects = [];
+            var grades = [];
+            var groups = [];
+
+            subjectAssignmentDataTable.rows().every(function () {
+                var row = $(this.node());
+                var specialty = row.find('td:eq(1)').text().trim();
+                if (specialty && specialties.indexOf(specialty) === -1) specialties.push(specialty);
+                var area = row.find('td:eq(2)').text().trim();
+                if (area && areas.indexOf(area) === -1) areas.push(area);
+                var subject = row.find('td:eq(3)').text().trim();
+                if (subject && subjects.indexOf(subject) === -1) subjects.push(subject);
+                var grade = row.find('td:eq(5)').text().trim();
+                if (grade && grades.indexOf(grade) === -1) grades.push(grade);
+                var group = row.find('td:eq(6)').text().trim();
+                if (group && groups.indexOf(group) === -1) groups.push(group);
+            });
+
+            populateDropdown('#filterSpecialty', specialties);
+            populateDropdown('#filterArea', areas);
+            populateDropdown('#filterSubject', subjects);
+            populateDropdown('#filterGrade', grades);
+            populateDropdown('#filterGroup', groups);
+        }
+
+        function populateDropdown(selector, values) {
+            var dropdown = $(selector);
+            var currentValue = dropdown.val();
+            dropdown.find('option:not(:first)').remove();
+            values.sort(function (a, b) {
+                return a.localeCompare(b, 'es', { sensitivity: 'base' });
+            });
+            values.forEach(function (value) {
+                var esc = $('<div/>').text(value).html();
+                dropdown.append('<option value="' + esc + '">' + esc + '</option>');
+            });
+            if (currentValue) {
+                dropdown.val(currentValue);
+            }
+        }
+
+        $('#filterSpecialty, #filterArea, #filterSubject, #filterStatus, #filterGrade, #filterGroup').on('change', function () {
+            if (typeof window.subjectAssignmentApplyFilters === 'function') {
+                window.subjectAssignmentApplyFilters();
+            }
+        });
+
+        $('#clearAllFilters').on('click', function () {
+            $('#searchAssignments').val('');
+            $('#filterSpecialty').val('');
+            $('#filterArea').val('');
+            $('#filterSubject').val('');
+            $('#filterStatus').val('');
+            $('#filterGrade').val('');
+            $('#filterGroup').val('');
+            if (typeof window.subjectAssignmentApplyFilters === 'function') {
+                window.subjectAssignmentApplyFilters();
+            }
+            $('#searchAssignments').focus();
+        });
+
+        $(document).on('input', '#searchAssignments', function () {
+            if (typeof window.subjectAssignmentApplyFilters === 'function') {
+                window.subjectAssignmentApplyFilters();
+            }
+        });
+    </script>
+}
+
+
+

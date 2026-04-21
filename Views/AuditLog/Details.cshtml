@@ -1,0 +1,78 @@
+@model SchoolManager.Models.AuditLog
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Detalles de Log de Auditoría";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-info-circle mr-2"></i>Detalles de Log de Auditoría</h3>
+                <small>Información completa del registro</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-list mr-2"></i>Información del Log</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">ID:</dt>
+                        <dd class="col-sm-8"><code>@Model.Id</code></dd>
+
+                        <dt class="col-sm-4">Fecha/Hora:</dt>
+                        <dd class="col-sm-8">@TimeZoneService.ToLocalDisplayString(Model.Timestamp, "dd/MM/yyyy HH:mm:ss")</dd>
+
+                        <dt class="col-sm-4">Usuario:</dt>
+                        <dd class="col-sm-8"><strong>@(Model.UserName ?? "N/A")</strong></dd>
+
+                        <dt class="col-sm-4">Rol:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-primary">@(Model.UserRole ?? "N/A")</span>
+                        </dd>
+
+                        <dt class="col-sm-4">Escuela:</dt>
+                        <dd class="col-sm-8">@(Model.School?.Name ?? "N/A")</dd>
+
+                        <dt class="col-sm-4">Acción:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge @(Model.Action?.ToLower().Contains("delete") == true ? "bg-danger" : Model.Action?.ToLower().Contains("create") == true ? "bg-success" : "bg-info")">
+                                @(Model.Action ?? "N/A")
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-4">Recurso:</dt>
+                        <dd class="col-sm-8">@(Model.Resource ?? "N/A")</dd>
+
+                        <dt class="col-sm-4">Dirección IP:</dt>
+                        <dd class="col-sm-8"><code>@(Model.IpAddress ?? "N/A")</code></dd>
+
+                        <dt class="col-sm-4">Detalles:</dt>
+                        <dd class="col-sm-8">
+                            <div class="alert alert-light">
+                                @(Model.Details ?? "Sin detalles adicionales")
+                            </div>
+                        </dd>
+                    </dl>
+
+                    <div class="mt-4">
+                        @if (Model.UserId.HasValue)
+                        {
+                            <a href="@Url.Action("LogsByUser", new { userId = Model.UserId })" class="btn btn-secondary">
+                                <i class="fas fa-user mr-2"></i>Ver todos los logs de este usuario
+                            </a>
+                        }
+                        <a href="@Url.Action("Index")" class="btn btn-primary">
+                            <i class="fas fa-arrow-left mr-2"></i>Volver
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

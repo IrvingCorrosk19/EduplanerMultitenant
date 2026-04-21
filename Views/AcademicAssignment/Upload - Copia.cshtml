@@ -1,0 +1,165 @@
+﻿@{
+    ViewData["Title"] = "Carga con Excel desde el navegador";
+    Layout = "_AdminLayout";
+}
+
+<h3>Cargar y previsualizar archivo Excel</h3>
+
+<input type="file" id="excelFile" class="form-control mb-3" accept=".xlsx,.xls" />
+
+<table id="excelTable" class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Especialidad</th>
+            <th>Área</th>
+            <th>Materia</th>
+            <th>Grado</th>
+            <th>Grupo</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<div class="text-right mt-3">
+    <button id="btnGuardarAsignaciones" class="btn btn-success">Guardar Asignaciones</button>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).ready(function () {
+            $('#excelFile').on('change', function (e) {
+                const file = e.target.files[0];
+                if (!file) {
+                    Swal.fire("Archivo requerido", "Por favor selecciona un archivo Excel (.xlsx o .xls).", "warning");
+                    return;
+                }
+
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                    // Validación de encabezados exactos
+                    const headersEsperados = ["ESPECIALIDAD", "AREA", "MATERIA", "GRADO", "GRUPO"];
+                    const headersObtenidos = json[0]?.map(h => h?.toString().trim().toUpperCase());
+                    const headersValidados = headersEsperados.every((expected, i) =>
+                        headersObtenidos[i] === expected
+                    );
+
+                    if (!headersValidados) {
+                        Swal.fire(
+                            "Encabezados incorrectos",
+                            `Las columnas deben estar en este orden exacto: ${headersEsperados.join(", ")}`,
+                            "error"
+                        );
+                        return;
+                    }
+
+                    const tbody = $('#excelTable tbody');
+                    tbody.empty();
+
+                    let filasInvalidas = 0;
+
+                    for (let i = 1; i < json.length; i++) {
+                        const row = json[i];
+                        const isValid = row.length >= 5 && row.slice(0, 5).every(cell => cell && cell.toString().trim() !== "");
+
+                        if (!isValid) filasInvalidas++;
+
+                        const rowHtml = `
+                            <tr class="${isValid ? "" : "table-danger"}">
+                                <td>${row[0] ?? ""}</td>
+                                <td>${row[1] ?? ""}</td>
+                                <td>${row[2] ?? ""}</td>
+                                <td>${row[3] ?? ""}</td>
+                                <td>${row[4] ?? ""}</td>
+                            </tr>
+                        `;
+                        tbody.append(rowHtml);
+                    }
+
+                    if (filasInvalidas > 0) {
+                        Swal.fire("Advertencia", `${filasInvalidas} fila(s) tienen datos incompletos y han sido marcadas en rojo.`, "warning");
+                    }
+
+                    if ($.fn.DataTable.isDataTable('#excelTable')) {
+                        $('#excelTable').DataTable().destroy();
+                    }
+
+                    $('#excelTable').DataTable({
+                        language: {
+                            search: "Buscar:",
+                            lengthMenu: "Mostrar _MENU_ registros",
+                            info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                            paginate: {
+                                first: "Primero",
+                                last: "Último",
+                                next: "Siguiente",
+                                previous: "Anterior"
+                            },
+                            zeroRecords: "No se encontraron resultados",
+                            infoEmpty: "Sin registros disponibles",
+                            infoFiltered: "(filtrado de _MAX_ registros)"
+                        }
+                    });
+                };
+
+                reader.readAsArrayBuffer(file);
+            });
+
+            $('#btnGuardarAsignaciones').on('click', function () {
+                const asignaciones = [];
+
+                $('#excelTable tbody tr').each(function () {
+                    const especialidad = $(this).find('td').eq(0).text().trim();
+                    const area = $(this).find('td').eq(1).text().trim();
+                    const materia = $(this).find('td').eq(2).text().trim();
+                    const grado = $(this).find('td').eq(3).text().trim();
+                    const grupo = $(this).find('td').eq(4).text().trim();
+
+                    if (especialidad && area && materia && grado && grupo) {
+                        asignaciones.push({ especialidad, area, materia, grado, grupo });
+                    }
+                });
+
+                if (asignaciones.length === 0) {
+                    Swal.fire("Sin datos válidos", "No hay filas completas para guardar. Revisa el archivo o corrige las filas marcadas en rojo.", "error");
+                    return;
+                }
+
+                Swal.fire({
+                    title: "¿Deseas guardar?",
+                    text: `Se van a guardar ${asignaciones.length} asignaciones válidas.`,
+                    icon: "question",
+                    showCancelButton: true,
+                    confirmButtonText: "Sí, guardar",
+                    cancelButtonText: "Cancelar"
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        Swal.showLoading();
+
+                        $.ajax({
+                            url: '/AcademicAssignment/SaveAssignmentsFromExcel',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(asignaciones),
+                            success: function (response) {
+                                Swal.fire("Éxito", response.message || "Asignaciones guardadas correctamente.", "success");
+                            },
+                            error: function () {
+                                Swal.fire("Error del servidor", "No se pudieron guardar las asignaciones. Intenta más tarde.", "error");
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+}
+

@@ -1,0 +1,105 @@
+@model IEnumerable<SchoolManager.Dtos.PaymentDto>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Pagos del Grupo";
+    var group = ViewBag.Group as SchoolManager.Models.Group;
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-users mr-2"></i>Pagos del Grupo: @(group?.Name ?? "N/A")</h3>
+                <small>Consulta los pagos realizados por los estudiantes de este grupo</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list mr-2"></i>Lista de Pagos</h5>
+                </div>
+                <div class="card-body">
+                    @if (!Model.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>No hay pagos registrados para este grupo.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="paymentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Estudiante</th>
+                                        <th>Número de Recibo</th>
+                                        <th>Concepto</th>
+                                        <th>Monto</th>
+                                        <th>Método de Pago</th>
+                                        <th>Fecha de Pago</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var payment in Model)
+                                    {
+                                        <tr>
+                                            <td><strong>@(payment.StudentName ?? "N/A")</strong></td>
+                                            <td><code>@payment.ReceiptNumber</code></td>
+                                            <td>@(payment.PaymentConceptName ?? "-")</td>
+                                            <td><strong>@payment.Amount.ToString("C")</strong></td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(payment.PaymentMethod))
+                                                {
+                                                    <span class="badge bg-info">@payment.PaymentMethod</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>@TimeZoneService.ToLocalDisplayString(payment.PaymentDate, "dd/MM/yyyy")</td>
+                                            <td>
+                                                @if (payment.PaymentStatus == "Confirmado")
+                                                {
+                                                    <span class="badge bg-success">Confirmado</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning">Pendiente</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <a href="@Url.Action("Details", new { id = payment.Id })" class="btn btn-sm btn-info" title="Ver detalles">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#paymentsTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json"
+                },
+                "order": [[5, "desc"]]
+            });
+        });
+    </script>
+}
+

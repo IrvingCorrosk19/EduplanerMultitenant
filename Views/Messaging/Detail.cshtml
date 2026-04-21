@@ -1,0 +1,234 @@
+@model SchoolManager.ViewModels.MessageDetailViewModel
+@{
+    ViewData["Title"] = "Detalle del Mensaje";
+    Layout = "_AdminLayout";
+}
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="@Url.Action("Inbox", "Messaging")" class="btn btn-outline-secondary btn-sm mb-3">
+                <i class="bi bi-arrow-left"></i> Volver a Bandeja
+            </a>
+            <h2 class="mb-3">
+                <i class="bi bi-envelope-open"></i> @Model.Subject
+            </h2>
+        </div>
+    </div>
+
+    <!-- Mensaje principal -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-circle"></i> @Model.SenderName
+                        <span class="badge bg-secondary ms-2">@Model.SenderRole</span>
+                    </h5>
+                    <small class="text-muted">@Model.SenderEmail</small>
+                </div>
+                <div class="col-md-4 text-end">
+                    <small class="text-muted">
+                        <i class="bi bi-clock"></i> @TimeZoneService.ToLocalDisplayString(Model.SentAt, "dd/MM/yyyy HH:mm")
+                    </small>
+                    <br />
+                    @switch (Model.Priority)
+                    {
+                        case "Urgent":
+                            <span class="badge bg-danger">Urgente</span>
+                            break;
+                        case "High":
+                            <span class="badge bg-warning">Alta Prioridad</span>
+                            break;
+                        case "Normal":
+                            <span class="badge bg-secondary">Normal</span>
+                            break;
+                        case "Low":
+                            <span class="badge bg-light text-dark">Baja Prioridad</span>
+                            break;
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <strong>Para:</strong> @Model.RecipientInfo
+                @switch (Model.MessageType)
+                {
+                    case "Individual":
+                        <span class="badge bg-primary ms-2">Individual</span>
+                        break;
+                    case "Group":
+                        <span class="badge bg-info ms-2">Grupo</span>
+                        break;
+                    case "AllTeachers":
+                        <span class="badge bg-success ms-2">Todos los Profesores</span>
+                        break;
+                    case "AllStudents":
+                        <span class="badge bg-warning ms-2">Todos los Estudiantes</span>
+                        break;
+                    case "Broadcast":
+                        <span class="badge bg-danger ms-2">Difusión General</span>
+                        break;
+                }
+            </div>
+            
+            <hr />
+            
+            <div class="message-content" style="white-space: pre-wrap;">
+                @Model.Content
+            </div>
+            
+            @if (Model.IsRead)
+            {
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-check2-all text-success"></i> Leído el @Model.ReadAt?.ToString("dd/MM/yyyy HH:mm")
+                    </small>
+                </div>
+            }
+        </div>
+        <div class="card-footer">
+            <a href="@Url.Action("Compose", "Messaging", new { replyTo = Model.Id })" 
+               class="btn btn-primary btn-sm">
+                <i class="bi bi-reply"></i> Responder
+            </a>
+            <button type="button" class="btn btn-danger btn-sm" id="delete-message" 
+                    data-message-id="@Model.Id">
+                <i class="bi bi-trash"></i> Eliminar
+            </button>
+        </div>
+    </div>
+
+    <!-- Respuestas -->
+    @if (Model.Replies != null && Model.Replies.Any())
+    {
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="bi bi-chat-dots"></i> Respuestas (@Model.Replies.Count)
+                </h5>
+            </div>
+            <div class="card-body">
+                @foreach (var reply in Model.Replies)
+                {
+                    <div class="card mb-3 border-start border-primary border-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <strong>@reply.SenderName</strong>
+                                    <span class="badge bg-secondary ms-2">@reply.SenderRole</span>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="bi bi-clock"></i> @TimeZoneService.ToLocalDisplayString(reply.SentAt, "dd/MM/yyyy HH:mm")
+                                </small>
+                            </div>
+                            <div style="white-space: pre-wrap;">
+                                @reply.Content
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Formulario de respuesta rápida -->
+    <div class="card mt-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="bi bi-reply"></i> Respuesta Rápida
+            </h5>
+        </div>
+        <div class="card-body">
+            <form id="reply-form">
+                <input type="hidden" id="parent-message-id" value="@Model.Id" />
+                <div class="mb-3">
+                    <textarea class="form-control" id="reply-content" rows="4" 
+                              placeholder="Escribe tu respuesta aquí..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-send"></i> Enviar Respuesta
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Eliminar mensaje
+            $('#delete-message').click(function () {
+                const messageId = $(this).data('message-id');
+                
+                Swal.fire({
+                    title: '¿Eliminar mensaje?',
+                    text: 'Esta acción no se puede deshacer',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("Delete", "Messaging")',
+                            type: 'POST',
+                            data: { id: messageId },
+                            success: function (response) {
+                                if (response.success) {
+                                    Swal.fire('Eliminado', response.message, 'success').then(() => {
+                                        window.location.href = '@Url.Action("Inbox", "Messaging")';
+                                    });
+                                } else {
+                                    Swal.fire('Error', response.message, 'error');
+                                }
+                            },
+                            error: function () {
+                                Swal.fire('Error', 'No se pudo eliminar el mensaje', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Enviar respuesta rápida
+            $('#reply-form').submit(function (e) {
+                e.preventDefault();
+                
+                const parentMessageId = $('#parent-message-id').val();
+                const content = $('#reply-content').val().trim();
+                
+                if (!content) {
+                    Swal.fire('Error', 'Debe escribir un mensaje', 'error');
+                    return;
+                }
+                
+                $.ajax({
+                    url: '@Url.Action("SendReply", "Messaging")',
+                    type: 'POST',
+                    data: {
+                        parentMessageId: parentMessageId,
+                        content: content,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            Swal.fire('Enviado', response.message, 'success').then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Error', response.message, 'error');
+                        }
+                    },
+                    error: function () {
+                        Swal.fire('Error', 'No se pudo enviar la respuesta', 'error');
+                    }
+                });
+            });
+        });
+    </script>
+}
+

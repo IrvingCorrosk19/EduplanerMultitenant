@@ -1,0 +1,1865 @@
+@model IEnumerable<SchoolManager.Models.User>
+@{
+    ViewData["Title"] = "Gestión de Usuarios";
+    Layout = "_AdminLayout";
+}
+
+<style>
+    .portal-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: white;
+        padding: 2rem 2rem 1.5rem 2rem;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    .portal-header h3 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    .portal-header small {
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+    .card {
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08);
+        border: none;
+        margin-bottom: 1.5rem;
+    }
+    .card-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: white;
+        border-radius: 1rem 1rem 0 0 !important;
+        font-weight: 600;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .card-header.bg-light {
+        background: #f1f5f9 !important;
+        color: #1e293b !important;
+    }
+    .card-body {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    .table-container {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+    .table-responsive {
+        border-radius: 0.75rem;
+        background: white;
+        margin-top: 1rem;
+        overflow-x: auto !important;
+        overflow-y: visible;
+        min-height: 400px;
+        -webkit-overflow-scrolling: touch; /* Para scroll suave en móviles */
+    }
+    .table {
+        margin-bottom: 0;
+        width: 100% !important;
+        min-width: 2000px; /* Aumentado para asegurar scroll */
+        font-size: 0.95rem;
+        border-collapse: separate;
+        border-spacing: 0;
+        table-layout: auto; /* Permite que las columnas se ajusten al contenido */
+    }
+    .table thead th {
+        background: #f1f5f9;
+        color: #475569;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        padding: 0.75rem 1rem;
+        border-bottom: 2px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    
+    .table thead th:last-child,
+    .table tbody td:last-child {
+        min-width: 200px; /* Ancho mínimo para la columna de Acciones */
+        width: 200px; /* Ancho fijo para la columna de Acciones */
+    }
+    
+    /* Asegurar que las columnas de especialización tengan ancho mínimo */
+    .table thead th.specialization-column,
+    .table tbody td.specialization-column {
+        min-width: 120px;
+        width: 120px;
+    }
+    .table tbody tr {
+        transition: all 0.2s;
+    }
+    .table tbody tr:nth-child(even) {
+        background-color: #f8fafc;
+    }
+    .table tbody tr:hover {
+        background-color: #f1f5f9;
+    }
+    .table tbody td {
+        padding: 0.75rem 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #e2e8f0;
+        color: #334155;
+        font-size: 0.875rem;
+        white-space: nowrap;
+    }
+    
+    /* Columna de Acciones pegada a la derecha */
+    .table thead th:last-child,
+    .table tbody td:last-child {
+        position: sticky;
+        right: 0;
+        background: white;
+        z-index: 10;
+        box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .table thead th:last-child {
+        background: #f1f5f9;
+    }
+    
+    .table tbody tr:nth-child(even) td:last-child {
+        background-color: #f8fafc;
+    }
+    
+    .table tbody tr:hover td:last-child {
+        background-color: #f1f5f9;
+    }
+    .btn-primary, .btn-warning, .btn-info, .btn-danger {
+        border-radius: 0.5rem;
+        font-weight: 500;
+    }
+    .badge {
+        font-size: 0.75rem;
+        font-weight: 500;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+    }
+    .badge.bg-success {
+        background-color: #10b981 !important;
+    }
+    .badge.bg-danger {
+        background-color: #ef4444 !important;
+    }
+    .search-bar {
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+    .search-bar input[type="text"] {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        background-color: white;
+        font-size: 0.95rem;
+        color: #1e293b;
+        transition: all 0.2s;
+    }
+    .search-bar input[type="text"]:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .search-bar .flex-grow-1 {
+        position: relative;
+    }
+    .search-bar .flex-grow-1::before {
+        content: "";
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 1rem;
+        height: 1rem;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        opacity: 0.5;
+        z-index: 10;
+        pointer-events: none;
+    }
+    .role-filter .form-select {
+        padding: 0.75rem 1rem;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        background-color: white;
+        font-size: 0.95rem;
+        color: #1e293b;
+        transition: all 0.2s;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 1rem;
+        padding-right: 2.5rem;
+    }
+    .role-filter .form-select:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .dataTables_wrapper {
+        display: flex;
+        flex-direction: column;
+    }
+    .dataTables_wrapper .dataTables_paginate {
+        padding: 1.5rem 0 0.5rem 0;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        gap: 0.25rem;
+        width: 100%;
+        border-top: 1px solid #e2e8f0;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 0.5rem 0.75rem;
+        margin: 0;
+        min-width: 2rem;
+        text-align: center;
+        border: none;
+        background: transparent !important;
+        color: #64748b !important;
+        font-weight: 500;
+        font-size: 0.875rem;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: #f1f5f9 !important;
+        color: #2563eb !important;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: #2563eb !important;
+        color: white !important;
+        border-radius: 0.25rem;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    .dataTables_wrapper .dataTables_paginate .ellipsis {
+        padding: 0.5rem 0.75rem;
+        color: #64748b;
+    }
+    /* Ocultar elementos innecesarios */
+    .dataTables_length,
+    .dataTables_filter,
+    .dataTables_info {
+        display: none !important;
+    }
+    
+    /* Asegurar que el contenedor de la tabla permita scroll horizontal */
+    .dataTables_wrapper {
+        overflow-x: auto !important;
+    }
+    
+    /* Forzar que las columnas de especialización sean visibles */
+    .specialization-column {
+        display: table-cell !important;
+        visibility: visible !important;
+    }
+    @@media (max-width: 768px) {
+        .table thead th,
+        .table tbody td {
+            min-width: 120px; /* Ancho mínimo para celdas */
+        }
+        .table thead th:first-child,
+        .table tbody td:first-child {
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 2;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+        }
+        .table thead th:first-child {
+            background: #f1f5f9;
+        }
+        .table tbody tr:nth-child(even) td:first-child {
+            background-color: #f8fafc;
+        }
+        .table tbody tr:hover td:first-child {
+            background-color: #f1f5f9;
+        }
+        .table thead th:last-child,
+        .table tbody td:last-child {
+            position: sticky;
+            right: 0;
+            background: white;
+            z-index: 2;
+            box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+        }
+        .action-buttons {
+            white-space: nowrap;
+        }
+    }
+    .action-buttons {
+        display: flex;
+        gap: 0.3rem;
+        justify-content: center;
+    }
+    .btn-action {
+        padding: 0.3rem 0.7rem;
+        border-radius: 0.4rem;
+        font-weight: 500;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        transition: all 0.2s;
+        color: white;
+    }
+    .btn-action:hover {
+        transform: translateY(-1px);
+        color: white;
+    }
+    .btn-action i {
+        font-size: 0.85rem;
+    }
+    .btn-edit {
+        background-color: #2563eb;
+        border: none;
+    }
+    .btn-edit:hover {
+        background-color: #1e40af;
+    }
+    .btn-delete {
+        background-color: #ef4444;
+        border: none;
+    }
+    .btn-delete:hover {
+        background-color: #dc2626;
+    }
+    .btn-send-password {
+        background-color: #10b981;
+        border: none;
+    }
+    .btn-send-password:hover {
+        background-color: #059669;
+    }
+    .role-text {
+        font-weight: 600;
+        font-size: 0.875rem;
+        padding: 0.25rem 0;
+    }
+    .role-admin {
+        color: #7c3aed;
+    }
+    .role-teacher {
+        color: #0284c7;
+    }
+    .role-student {
+        color: #059669;
+    }
+    .role-parent {
+        color: #d97706;
+    }
+    .role-director {
+        color: #7c3aed;
+    }
+    .role-contable {
+        color: #0f766e;
+    }
+    .role-secretaria {
+        color: #0369a1;
+    }
+    .role-clubparentsadmin {
+        color: #059669;
+    }
+    .role-qlservices {
+        color: #0d9488;
+    }
+    .role-inspector {
+        color: #7c2d12;
+    }
+</style>
+
+<div class="container-fluid">
+    <!-- ENCABEZADO AZUL -->
+    <div class="portal-header d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-people-fill fs-2 text-white"></i>
+            <h3 class="mb-0">Gestión de Usuarios</h3>
+        </div>
+        <div class="text-end">
+            <small>@TimeZoneService.GetTodayLongString()</small>
+        </div>
+    </div>
+
+    <div class="card card-primary card-outline">
+        <div class="card-header">
+            <i class="fas fa-user-plus me-2"></i> Crear / Editar Usuario
+        </div>
+        <div class="card-body">
+            <form id="userForm" novalidate>
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="UserId" id="UserId" />
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Nombre</label>
+                            <input type="text" class="form-control" name="Name" placeholder="Nombre" required autocomplete="off">
+                            <div class="invalid-feedback">Nombre obligatorio.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Apellidos</label>
+                            <input type="text" class="form-control" name="LastName" placeholder="Apellidos" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Correo Electrónico</label>
+                            <input type="email" class="form-control" name="Email" placeholder="correo@ejemplo.com" required autocomplete="off">
+                            <div class="invalid-feedback">Correo obligatorio.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Documento de Identidad</label>
+                            <input type="text" class="form-control" name="DocumentId" placeholder="Ej. 8-123-4567" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group position-relative">
+                            <label>Contraseña</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" name="PasswordHash" placeholder="********" autocomplete="new-password" id="userPasswordInput">
+                                <button type="button" class="btn btn-outline-secondary" id="toggleUserPassword" style="border: 1px solid #ced4da;">
+                                    <i class="fas fa-eye" id="toggleUserIcon"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-info" id="generatePassword" title="Generar contraseña temporal">
+                                    <i class="fas fa-key"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted" id="passwordInfo" style="display: none;">
+                                <i class="fas fa-info-circle"></i> Contraseña generada temporalmente
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Fecha de Nacimiento</label>
+                            <input type="date" class="form-control" name="DateOfBirth">
+                            <div class="invalid-feedback">La fecha de nacimiento es obligatoria.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Celular Principal</label>
+                            <input type="tel" class="form-control" name="CellphonePrimary" placeholder="+507 6514 9884" autocomplete="off" maxlength="14">
+                            <div class="invalid-feedback">Formato de celular inválido.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Celular Secundario</label>
+                            <input type="tel" class="form-control" name="CellphoneSecondary" placeholder="+507 6514 9884" autocomplete="off" maxlength="14">
+                            <div class="invalid-feedback">Formato de celular inválido.</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Campo Inclusión para estudiantes - Solo visible para rol student -->
+                <div class="row mb-3" id="inclusionSection">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="inclusionSelect">
+                                <i class="fas fa-heart me-1"></i>Inclusión E
+                            </label>
+                            <select class="form-control" name="Inclusion" id="inclusionSelect">
+                                <option value="">Seleccionar...</option>
+                                <option value="si">Sí</option>
+                                <option value="no">No</option>
+                            </select>
+                            <small class="form-text text-muted">Indica si el estudiante tiene alguna discapacidad</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Rol</label>
+                            <select class="form-control" name="Role" id="roleSelect">
+                                @foreach (var role in ViewBag.Roles)
+                                {
+                                    <option value="@role">@GetRoleDisplayName(role)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Estado</label>
+                            <select class="form-control" name="Status">
+                                <option value="active">Activo</option>
+                                <option value="inactive">Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Foto del usuario (visible al editar; se usa en el carnet) -->
+                <div class="row mb-3" id="userPhotoSection" style="display: none;">
+                    <div class="col-12">
+                        <label class="form-label">Foto del usuario</label>
+                        <p class="text-muted small mb-2">Se usará en el carnet estudiantil si es estudiante. JPEG o PNG; si supera 2 MB se comprimirá automáticamente (máx. de subida 12 MB).</p>
+                        <div class="d-flex align-items-start gap-3 flex-wrap">
+                            <div id="userPhotoPreview" class="rounded shadow-sm bg-light d-flex align-items-center justify-content-center text-muted" style="width:100px;height:100px;">
+                                <i class="fas fa-user-circle fa-3x"></i>
+                            </div>
+                            <img id="userPhotoImg" src="" alt="Foto" class="rounded shadow-sm" style="width:100px;height:100px;object-fit:cover;display:none;" onerror="this.style.display='none'; document.getElementById('userPhotoPreview').style.display='flex';" />
+                            <div>
+                                <input type="file" id="userPhotoInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" class="form-control form-control-sm mb-1" style="max-width:240px;" />
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <button type="button" id="btnUploadUserPhoto" class="btn btn-sm btn-primary"><i class="fas fa-upload me-1"></i>Subir foto</button>
+                                    <button type="button" id="btnRemoveUserPhoto" class="btn btn-sm btn-outline-danger" style="display:none;"><i class="fas fa-trash me-1"></i>Eliminar foto</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Campo Inclusivo para estudiantes - Solo visible para rol student -->
+ @*                <div class="row mb-3" id="inclusivoSection" style="display: none;">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="inclusivoSelect">
+                                <i class="fas fa-users me-1"></i>Inclusivo
+                            </label>
+                            <select class="form-control" name="Inclusivo" id="inclusivoSelect">
+                                <option value="">Seleccionar...</option>
+                                <option value="true">Sí</option>
+                                <option value="false">No</option>
+                            </select>
+                            <small class="form-text text-muted">Indica si el estudiante tiene necesidades especiales</small>
+                        </div>
+                    </div>
+                </div> *@
+                
+                <!-- Nueva sección para especializaciones - Solo visible para rol Teacher -->
+                <div class="row mb-4" id="specializationsSection" style="display: none;">
+                    <div class="col-12">
+                        <h5 class="mb-3"><i class="fas fa-graduation-cap me-2"></i>Especializaciones Docentes</h5>
+                        <p class="text-muted mb-3">Selecciona las especialidades del docente:</p>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="Disciplina" id="disciplinaCheck" value="true">
+                                <label class="form-check-label" for="disciplinaCheck">
+                                    <i class="fas fa-balance-scale me-1"></i>Disciplina
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="Orientacion" id="orientacionCheck" value="true">
+                                <label class="form-check-label" for="orientacionCheck">
+                                    <i class="fas fa-compass me-1"></i>Orientación
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="Inclusion" id="inclusionCheck" value="true">
+                                <label class="form-check-label" for="inclusionCheck">
+                                    <i class="fas fa-heart me-1"></i>Inclusión
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button type="button" id="btnCreateUser" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i> Crear Usuario
+                    </button>
+                    <button type="button" id="btnUpdateUser" class="btn btn-warning" disabled>
+                        <i class="fas fa-save"></i> Actualizar Usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-container">
+            <div class="search-bar d-flex gap-3 align-items-center">
+                <!-- Filtro de Roles -->
+                <div class="role-filter">
+                    <select id="roleFilter" class="form-select" style="min-width: 180px;">
+                        <option value="">Todos los roles</option>
+                        <option value="Director">Director</option>
+                        <option value="Teacher">Docente</option>
+                        <option value="Contable">Contable</option>
+                        <option value="Secretaria">Secretaria</option>
+                        <option value="Estudiante">Estudiante</option>
+                        <option value="ClubParentsAdmin">Administrador Club de Padres</option>
+                        <option value="QlServices">QL Services</option>
+                        <option value="Inspector">Inspector</option>
+                    </select>
+                </div>
+                <!-- Campo de búsqueda -->
+                <div class="flex-grow-1">
+                    <input type="text" id="searchInput" placeholder="Buscar usuario por nombre, correo o documento..." class="form-control">
+                </div>
+            </div>
+            <div class="table-responsive">
+            <table class="table" id="users-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Apellidos</th>
+                            <th>Correo</th>
+                            <th>Fecha de nacimiento</th>
+                            <th>Documento</th>
+                            <th>Celular Principal</th>
+                            <th>Celular Secundario</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th class="specialization-column">Disciplina</th>
+                            <th class="specialization-column">Orientación</th>
+                            <th class="specialization-column">Inclusión D</th>
+                            <th class="specialization-column">Inclusión E</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                <tbody>
+                        @foreach (var user in Model)
+                        {
+                            <tr>
+                            <td>@user.Name</td>
+                            <td>@user.LastName</td>
+                            <td>@user.Email</td>
+                            <td>@(user.DateOfBirth?.ToString("dd/MM/yyyy"))</td>
+                            <td>@user.DocumentId</td>
+                            <td>@(user.CellphonePrimary ?? "-")</td>
+                            <td>@(user.CellphoneSecondary ?? "-")</td>
+                            <td>
+                                <span class="role-text @GetRoleClass(user.Role?.ToLower())">
+                                    @GetRoleDisplayName(user.Role)
+                                </span>
+                            </td>
+                            <td>
+                                    @if (user.Status?.ToLowerInvariant() == "active")
+                                    {
+                                        <span class="badge bg-success">Activo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Inactivo</span>
+                                    }
+                                </td>
+                            <td class="specialization-column">
+                                @if (user.Disciplina == true)
+                                {
+                                    <span class="badge bg-primary"><i class="fas fa-balance-scale me-1"></i>Sí</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">No</span>
+                                }
+                            </td>
+                            <td class="specialization-column">
+                                @if (user.Orientacion == true)
+                                {
+                                    <span class="badge bg-info"><i class="fas fa-compass me-1"></i>Sí</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">No</span>
+                                }
+                            </td>
+                            <td class="specialization-column">
+                                @if (user.Inclusivo == true)
+                                {
+                                    <span class="badge bg-warning"><i class="fas fa-users me-1"></i>Sí</span>
+                                }
+                                else if (user.Inclusivo == false)
+                                {
+                                    <span class="badge bg-danger"><i class="fas fa-times me-1"></i>No</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary"><i class="fas fa-minus me-1"></i>Sin definir</span>
+                                }
+                            </td>
+                            <td class="specialization-column">
+                                @if (user.Inclusion == "si")
+                                {
+                                    <span class="badge bg-success"><i class="fas fa-heart me-1"></i>Sí</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">No</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    @if (user.Role?.ToLower() != "admin")
+                                    {
+                                        <button type="button" class="btn btn-action btn-edit btn-edit-user" data-id="@user.Id" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-action btn-delete btn-delete-user" data-id="@user.Id" title="Eliminar">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-action btn-edit" disabled title="No se puede editar usuarios administradores">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-action btn-delete" disabled title="No se puede eliminar usuarios administradores">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    }
+                                    <button type="button" class="btn btn-action btn-send-password" 
+                                            data-id="@user.Id" 
+                                            data-name="@user.Name" 
+                                            data-email="@user.Email" 
+                                            title="Enviar contraseña por email">
+                                        <i class="fas fa-envelope"></i>
+                                    </button>
+                                </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css" />
+    <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+    <link rel="stylesheet" href="~/lib/sweetalert2/sweetalert2.min.css" />
+    <script src="~/lib/sweetalert2/sweetalert2.min.js"></script>
+
+    <script>
+        // Variable global para la tabla de usuarios
+        var usersTable = null;
+        
+        $(document).ready(function () {
+            function userAdminPhotoHref(stored) {
+                return '/File/GetUserPhoto?photoUrl=' + encodeURIComponent(stored || '');
+            }
+
+            // Funcionalidad para mostrar/ocultar especializaciones según el rol
+            $('#roleSelect').on('change', function() {
+                const selectedRole = $(this).val().toLowerCase();
+                const specializationsSection = $('#specializationsSection');
+                const inclusivoSection = $('#inclusivoSection');
+                const inclusionSection = $('#inclusionSection');
+                
+                
+                if (selectedRole === 'teacher') {
+                    specializationsSection.show();
+                    inclusivoSection.hide();
+                    inclusionSection.hide();
+                    // Limpiar campos cuando se ocultan
+                    $('#inclusivoSelect').val('');
+                    $('#inclusionSelect').val('');
+                } else if (selectedRole === 'student' || selectedRole === 'estudiante') {
+                    specializationsSection.hide();
+                    inclusivoSection.show();
+                    inclusionSection.show();
+                    
+                    // Forzar la visibilidad con CSS
+                    inclusionSection.css('display', 'block');
+                    
+                    
+                    // Limpiar checkboxes de especializaciones cuando se oculta la sección
+                    $('#disciplinaCheck').prop('checked', false);
+                    $('#orientacionCheck').prop('checked', false);
+                    $('#inclusionCheck').prop('checked', false);
+                } else {
+                    specializationsSection.hide();
+                    inclusivoSection.hide();
+                    inclusionSection.hide();
+                    // Limpiar todos los campos cuando se ocultan las secciones
+                    $('#disciplinaCheck').prop('checked', false);
+                    $('#orientacionCheck').prop('checked', false);
+                    $('#inclusionCheck').prop('checked', false);
+                    $('#inclusivoSelect').val('');
+                    $('#inclusionSelect').val('');
+                }
+            });
+
+            // Verificar el rol inicial al cargar la página
+            const initialRole = $('#roleSelect').val().toLowerCase();
+            
+            if (initialRole === 'teacher') {
+                $('#specializationsSection').show();
+                $('#inclusivoSection').hide();
+                $('#inclusionSection').hide();
+            } else if (initialRole === 'student' || initialRole === 'estudiante') {
+                $('#specializationsSection').hide();
+                $('#inclusivoSection').show();
+                $('#inclusionSection').show();
+                
+                // Forzar la visibilidad con CSS
+                $('#inclusionSection').css('display', 'block');
+                
+            } else {
+                $('#specializationsSection').hide();
+                $('#inclusivoSection').hide();
+                $('#inclusionSection').hide();
+            }
+
+            // Funcionalidad para mostrar/ocultar contraseña en formulario de usuarios
+            $('#toggleUserPassword').on('click', function() {
+                const passwordInput = $('#userPasswordInput');
+                const toggleIcon = $('#toggleUserIcon');
+                
+                if (passwordInput.attr('type') === 'password') {
+                    passwordInput.attr('type', 'text');
+                    toggleIcon.removeClass('fa-eye').addClass('fa-eye-slash');
+                } else {
+                    passwordInput.attr('type', 'password');
+                    toggleIcon.removeClass('fa-eye-slash').addClass('fa-eye');
+                }
+            });
+
+            // Funcionalidad para generar contraseña temporal
+            $('#generatePassword').on('click', function() {
+                const generatedPassword = generateTemporaryPassword();
+                $('#userPasswordInput').val(generatedPassword).attr('type', 'text');
+                $('#toggleUserIcon').removeClass('fa-eye').addClass('fa-eye-slash');
+                $('#passwordInfo').show();
+                
+                // Mostrar la contraseña generada en un SweetAlert
+                Swal.fire({
+                    title: 'Contraseña Generada',
+                    html: `
+                        <div class="text-center">
+                            <p><strong>Contraseña temporal generada:</strong></p>
+                            <div class="alert alert-info">
+                                <code style="font-size: 1.2rem; font-weight: bold;">${generatedPassword}</code>
+                            </div>
+                            <p class="text-muted">Esta contraseña se ha copiado al campo de contraseña.</p>
+                        </div>
+                    `,
+                    icon: 'success',
+                    confirmButtonText: 'Entendido',
+                    allowOutsideClick: false
+                });
+            });
+
+            // Función para generar contraseña temporal
+            function generateTemporaryPassword() {
+                const length = 12;
+                const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@@" + String.fromCharCode(35) + "$%^&*";
+                let password = "";
+                
+                // Asegurar al menos un carácter de cada tipo
+                password += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)]; // Mayúscula
+                password += "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)]; // Minúscula
+                password += "0123456789"[Math.floor(Math.random() * 10)]; // Número
+                password += "!@@" + String.fromCharCode(35) + "$%^&*"[Math.floor(Math.random() * 8)]; // Especial
+                
+                // Completar con caracteres aleatorios
+                for (let i = password.length; i < length; i++) {
+                    password += charset.charAt(Math.floor(Math.random() * charset.length));
+                }
+                
+                // Mezclar la contraseña
+                return password.split('').sort(() => Math.random() - 0.5).join('');
+            }
+
+            // Función para mostrar/ocultar columnas de especialización
+            function toggleSpecializationColumns() {
+                // Las columnas de especialización siempre se muestran ahora
+                $('.specialization-column').show();
+                // Forzar visibilidad con CSS
+                $('.specialization-column').css({
+                    'display': 'table-cell !important',
+                    'visibility': 'visible !important'
+                });
+            }
+
+            // Función para inicializar DataTables de forma segura
+            function initializeDataTables() {
+                // Verificar que la tabla existe y tiene contenido
+                var $table = $('#users-table');
+                if ($table.length === 0) {
+                    console.error('❌ Tabla #users-table no encontrada');
+                    return null;
+                }
+
+                // Verificar que la tabla tenga el número correcto de columnas
+                var headerColumns = $table.find('thead tr th').length;
+                var bodyRows = $table.find('tbody tr');
+                var bodyColumns = bodyRows.length > 0 ? bodyRows.first().find('td').length : 0;
+                
+                console.log('Columnas en header:', headerColumns);
+                console.log('Columnas en body:', bodyColumns);
+                console.log('Filas en body:', bodyRows.length);
+                
+                if (headerColumns === 0) {
+                    console.error('❌ No se encontraron columnas en el header');
+                    return null;
+                }
+                
+                if (bodyRows.length === 0) {
+                    console.error('❌ No se encontraron filas en el body');
+                    return null;
+                }
+                
+                if (headerColumns !== bodyColumns) {
+                    console.error('❌ Error: Número de columnas no coincide. Header:', headerColumns, 'Body:', bodyColumns);
+                    return null;
+                }
+                
+                // Verificar que todas las filas tengan el mismo número de columnas
+                var hasInconsistentRows = false;
+                bodyRows.each(function(index) {
+                    var rowColumns = $(this).find('td').length;
+                    if (rowColumns !== headerColumns) {
+                        console.error('❌ Error: Fila', index, 'tiene', rowColumns, 'columnas, esperadas:', headerColumns);
+                        hasInconsistentRows = true;
+                    }
+                });
+                
+                if (hasInconsistentRows) {
+                    console.error('❌ Se encontraron filas con número inconsistente de columnas');
+                    return null;
+                }
+
+                // Limpiar cualquier instancia previa de DataTables
+                if ($.fn.DataTable.isDataTable('#users-table')) {
+                    $('#users-table').DataTable().destroy();
+                }
+                
+                // Limpiar cualquier atributo o clase que pueda interferir
+                $table.removeClass('dataTable');
+                $table.find('thead tr th').removeClass('sorting sorting_asc sorting_desc');
+                $table.find('tbody tr').removeClass('odd even');
+                
+                // Verificar que no haya elementos HTML malformados
+                var malformedElements = $table.find('td:empty, th:empty');
+                if (malformedElements.length > 0) {
+                    console.warn('⚠️ Se encontraron elementos vacíos:', malformedElements.length);
+                    malformedElements.each(function() {
+                        if ($(this).html().trim() === '') {
+                            $(this).html('&nbsp;'); // Agregar espacio no rompible
+                        }
+                    });
+                }
+
+                // Inicializar DataTables con configuración más conservadora
+                try {
+                    var usersTable = $table.DataTable({
+                        "pageLength": 25,
+                        "dom": "<'row'<'col-sm-12'tr>><'row'<'col-sm-12'p>>",
+                        "language": {
+                            "paginate": {
+                                "first": "«",
+                                "last": "»",
+                                "next": "›",
+                                "previous": "‹"
+                            },
+                            "zeroRecords": "No se encontraron resultados",
+                            "infoEmpty": "",
+                            "infoFiltered": "",
+                            "info": ""
+                        },
+                        "ordering": true,
+                        "order": [[0, 'asc']],
+                        "columnDefs": [
+                            { "orderable": true, "targets": [0,1,2,3,4,5,6,7,8,9,10,11,12] },
+                            { "orderable": false, "targets": [13] } // Columna de Acciones (índice 13)
+                        ],
+                        "scrollX": true,
+                        "scrollCollapse": true,
+                        "autoWidth": false,
+                        "responsive": false,
+                        "deferRender": true, // Renderizar filas bajo demanda
+                        "processing": true, // Mostrar indicador de procesamiento
+                        "createdRow": function(row, data, dataIndex) {
+                            // Asegurar que cada fila tenga las propiedades necesarias
+                            $(row).attr('data-index', dataIndex);
+                            // Asegurar que todas las celdas tengan contenido válido
+                            $(row).find('td').each(function() {
+                                if ($(this).html().trim() === '') {
+                                    $(this).html('&nbsp;');
+                                }
+                            });
+                        },
+                        "drawCallback": function(settings) {
+                            // Verificar que las filas tengan las propiedades correctas
+                            try {
+                                var api = this.api();
+                                api.rows().every(function() {
+                                    var row = this.node();
+                                    if (row && !row._DT_CellIndex) {
+                                        // Asegurar que la fila tenga las propiedades necesarias
+                                        $(row).find('td').each(function() {
+                                            if ($(this).html().trim() === '') {
+                                                $(this).html('&nbsp;');
+                                            }
+                                        });
+                                        // Forzar la actualización de las propiedades de DataTables
+                                        $(row).trigger('draw.dt');
+                                    }
+                                });
+                            } catch (error) {
+                                console.warn('⚠️ Error en drawCallback:', error);
+                            }
+                        },
+                        "initComplete": function() {
+                            console.log('✅ DataTables inicializado correctamente con', this.api().columns().count(), 'columnas');
+                        },
+                        "error": function(xhr, error, thrown) {
+                            console.error('❌ Error en DataTables:', error, thrown);
+                        }
+                    });
+                    
+                    return usersTable;
+                    
+                } catch (error) {
+                    console.error('❌ Error inicializando DataTables:', error);
+                    return null;
+                }
+            }
+
+            // Esperar a que el DOM esté completamente cargado
+            function waitForTableAndInitialize() {
+                var attempts = 0;
+                var maxAttempts = 10;
+                
+                function checkAndInitialize() {
+                    attempts++;
+                    var $table = $('#users-table');
+                    var $tbody = $table.find('tbody');
+                    var $rows = $tbody.find('tr');
+                    
+                    console.log(`Intento ${attempts}: Verificando tabla...`);
+                    console.log('Tabla encontrada:', $table.length > 0);
+                    console.log('TBody encontrado:', $tbody.length > 0);
+                    console.log('Filas encontradas:', $rows.length);
+                    
+                    // Verificar que la tabla esté completamente renderizada
+                    if ($table.length > 0 && $tbody.length > 0 && $rows.length > 0) {
+                        // Verificar que las filas tengan contenido
+                        var firstRow = $rows.first();
+                        var cells = firstRow.find('td');
+                        
+                        if (cells.length > 0) {
+                            console.log('✅ Tabla completamente cargada, inicializando DataTables...');
+                            usersTable = initializeDataTables();
+                            
+                            if (usersTable) {
+                                // Conectar el input de búsqueda personalizado con DataTables
+                                $('#searchInput').on('keyup', function () {
+                                    usersTable.search(this.value).draw();
+                                });
+                                
+                                // Índice de la columna Rol (buscar por cabecera por si el orden cambia)
+                                var $headers = $('#users-table thead th');
+                                var roleColumnIndex = $headers.index($headers.filter(function() { return $(this).text().trim() === 'Rol'; }).first());
+                                if (roleColumnIndex < 0) roleColumnIndex = 7;
+                                // Conectar el filtro de roles con DataTables
+                                $('#roleFilter').on('change', function () {
+                                    const selectedRole = $(this).val();
+                                    if (selectedRole === '') {
+                                        usersTable.column(roleColumnIndex).search('').draw();
+                                    } else if (selectedRole === 'Director') {
+                                        usersTable.column(roleColumnIndex).search('\\s*Director\\s*', true, false).draw();
+                                    } else if (selectedRole === 'Teacher') {
+                                        usersTable.column(roleColumnIndex).search('\\s*Docente\\s*', true, false).draw();
+                                    } else if (selectedRole === 'Estudiante') {
+                                        usersTable.column(roleColumnIndex).search('(Estudiante|Student)', true, false).draw();
+                                    } else if (selectedRole === 'Secretaria') {
+                                        usersTable.column(roleColumnIndex).search('\\s*Secretaria\\s*', true, false).draw();
+                                    } else if (selectedRole === 'ClubParentsAdmin') {
+                                        usersTable.column(roleColumnIndex).search('(Administrador Club de Padres|ClubParentsAdmin)', true, false).draw();
+                                    } else if (selectedRole === 'QlServices') {
+                                        usersTable.column(roleColumnIndex).search('(QL Services|QlServices)', true, false).draw();
+                                    } else if (selectedRole === 'Inspector') {
+                                        usersTable.column(roleColumnIndex).search('\\s*Inspector\\s*', true, false).draw();
+                                    } else {
+                                        usersTable.column(roleColumnIndex).search('\\s*' + selectedRole.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*', true, false).draw();
+                                    }
+                                });
+                            } else {
+                                console.warn('⚠️ DataTables no se pudo inicializar, usando búsqueda simple');
+                                setupSimpleSearch();
+                            }
+                            return;
+                        }
+                    }
+                    
+                    // Si no está listo y no hemos excedido los intentos, esperar un poco más
+                    if (attempts < maxAttempts) {
+                        console.log(`⏳ Tabla no está lista, reintentando en 100ms... (${attempts}/${maxAttempts})`);
+                        setTimeout(checkAndInitialize, 100);
+                    } else {
+                        console.error('❌ No se pudo cargar la tabla después de', maxAttempts, 'intentos');
+                        setupSimpleSearch();
+                    }
+                }
+                
+                checkAndInitialize();
+            }
+            
+            // Función de búsqueda simple como fallback
+            function setupSimpleSearch() {
+                $('#searchInput').on('keyup', function () {
+                    filterTable();
+                });
+                
+                $('#roleFilter').on('change', function () {
+                    filterTable();
+                });
+                
+                function filterTable() {
+                    var searchText = $('#searchInput').val().toLowerCase();
+                    var selectedRole = $('#roleFilter').val();
+                    var $headers = $('#users-table thead th');
+                    var roleColIdx = $headers.index($headers.filter(function() { return $(this).text().trim() === 'Rol'; }).first());
+                    if (roleColIdx < 0) roleColIdx = 7;
+                    
+                    $('#users-table tbody tr').each(function() {
+                        var rowText = $(this).text().toLowerCase();
+                        var roleCell = $(this).find('td:eq(' + roleColIdx + ')').text().trim();
+                        
+                        var matchesSearch = searchText === '' || rowText.indexOf(searchText) !== -1;
+                        var matchesRole = true;
+                        
+                        if (selectedRole !== '') {
+                            if (selectedRole === 'Director') {
+                                matchesRole = roleCell.indexOf('Director') !== -1;
+                            } else if (selectedRole === 'Teacher') {
+                                matchesRole = roleCell.indexOf('Docente') !== -1;
+                            } else if (selectedRole === 'Estudiante') {
+                                matchesRole = roleCell.indexOf('Estudiante') !== -1 || roleCell.indexOf('Student') !== -1;
+                            } else if (selectedRole === 'Secretaria') {
+                                matchesRole = roleCell.indexOf('Secretaria') !== -1;
+                            } else if (selectedRole === 'ClubParentsAdmin') {
+                                matchesRole = roleCell.indexOf('Administrador Club de Padres') !== -1 || roleCell.indexOf('ClubParentsAdmin') !== -1;
+                            } else if (selectedRole === 'QlServices') {
+                                matchesRole = roleCell.indexOf('QL Services') !== -1 || roleCell.indexOf('QlServices') !== -1;
+                            } else if (selectedRole === 'Inspector') {
+                                matchesRole = roleCell.indexOf('Inspector') !== -1;
+                            } else {
+                                matchesRole = roleCell.indexOf(selectedRole) !== -1;
+                            }
+                        }
+                        
+                        if (matchesSearch && matchesRole) {
+                            $(this).show();
+                        } else {
+                            $(this).hide();
+                        }
+                    });
+                }
+            }
+            
+            // Iniciar el proceso de verificación e inicialización
+            waitForTableAndInitialize();
+
+            // Mostrar/ocultar columnas de especialización después de inicializar DataTables
+            toggleSpecializationColumns();
+            
+            // Asegurar que el scroll horizontal funcione correctamente
+            setTimeout(function() {
+                // Forzar que todas las columnas sean visibles
+                $('.specialization-column').removeClass('dtr-hidden').show();
+                
+                // Asegurar que el contenedor tenga scroll horizontal
+                $('.table-responsive').css('overflow-x', 'auto');
+                $('.dataTables_wrapper').css('overflow-x', 'auto');
+                
+                // Recalcular el ancho de la tabla solo si DataTables está inicializado
+                if (typeof usersTable !== 'undefined' && usersTable && $.fn.DataTable.isDataTable('#users-table')) {
+                    usersTable.columns.adjust().draw();
+                }
+            }, 100);
+
+            // Usar delegación de eventos para los botones de editar y eliminar
+            $(document).on('click', '.btn-edit-user', function() {
+                const userId = $(this).data('id');
+
+                $.get(`/User/GetUserJson?id=${userId}`, function (user) {
+                    
+                    // Llenar campos básicos
+                    $('#UserId').val(user.id);
+                    $('[name="Name"]').val(user.name);
+                    $('[name="LastName"]').val(user.lastName);
+                    $('[name="Email"]').val(user.email);
+                    $('[name="DocumentId"]').val(user.documentId);
+                    
+                    
+                    // Mostrar información sobre contraseñas hasheadas
+                    $('[name="PasswordHash"]').val('').attr('placeholder', 'Dejar vacío para mantener la contraseña actual');
+                    $('#passwordInfo').html('<i class="fas fa-shield-alt text-warning"></i> Las contraseñas están protegidas con hash. Use el botón <i class="fas fa-key"></i> para generar una nueva.').show();
+                    
+                    // Normalizar rol para coincidir con option value (enum: Inspector, ClubParentsAdmin, etc.)
+                    var roleForSelect = (user.role || '').toLowerCase();
+                    if (roleForSelect === 'clubparentsadmin') roleForSelect = 'ClubParentsAdmin';
+                    else if (roleForSelect === 'qlservices') roleForSelect = 'QlServices';
+                    else if (roleForSelect === 'inspector') roleForSelect = 'Inspector';
+                    else if (roleForSelect.length > 0) roleForSelect = (user.role || '').charAt(0).toUpperCase() + (user.role || '').slice(1).toLowerCase();
+                    $('[name="Role"]').val(roleForSelect);
+                    $('[name="Status"]').val(user.status);
+                    $('[name="DateOfBirth"]').val(user.dateOfBirth ? user.dateOfBirth.split('T')[0] : '');
+                    $('[name="CellphonePrimary"]').val(user.cellphonePrimary || '');
+                    $('[name="CellphoneSecondary"]').val(user.cellphoneSecondary || '');
+                    
+                    
+                    // Manejar checkboxes de especializaciones
+                    $('#disciplinaCheck').prop('checked', user.disciplina === true);
+                    $('#orientacionCheck').prop('checked', user.orientacion === true);
+                    $('#inclusionCheck').prop('checked', user.inclusion === "si");
+                    
+                    
+                    // Manejar campo Inclusivo para estudiantes
+                    const inclusivoValue = user.inclusivo === true ? 'true' : user.inclusivo === false ? 'false' : '';
+                    $('#inclusivoSelect').val(inclusivoValue);
+                    
+                    // Manejar campo Inclusión para estudiantes
+                    const userRoleForMapping = user.role ? user.role.toLowerCase() : '';
+                    const inclusionValue = (userRoleForMapping === 'student' || userRoleForMapping === 'estudiante') ? 
+                        (user.inclusivo === true ? 'si' : user.inclusivo === false ? 'no' : '') : 
+                        (user.inclusion || '');
+                    $('#inclusionSelect').val(inclusionValue);
+
+                    
+                    // Mostrar/ocultar secciones según el rol
+                    const userRole = user.role.toLowerCase().trim();
+                    
+                    if (userRole === 'teacher') {
+                        $('#specializationsSection').show();
+                        $('#inclusivoSection').hide();
+                        $('#inclusionSection').hide();
+                    } else if (userRole === 'student' || userRole === 'estudiante') {
+                        
+                        $('#specializationsSection').hide();
+                        $('#inclusivoSection').show();
+                        $('#inclusionSection').show();
+                        
+                        // Forzar la visibilidad con CSS
+                        $('#inclusionSection').css('display', 'block');
+                        
+                    } else {
+                        $('#specializationsSection').hide();
+                        $('#inclusivoSection').hide();
+                        $('#inclusionSection').hide();
+                    }
+
+                    // Configurar visibilidad de secciones según el rol del usuario
+                    // Normalizar el rol para comparación (convertir a minúscula)
+                    const normalizedRole = user.role ? user.role.toLowerCase() : '';
+                    
+                    if (normalizedRole === 'teacher') {
+                        $('#specializationsSection').show();
+                        $('#inclusivoSection').hide();
+                        $('#inclusionSection').hide();
+                    } else if (normalizedRole === 'student' || normalizedRole === 'estudiante') {
+                        $('#specializationsSection').hide();
+                        $('#inclusivoSection').show();
+                        $('#inclusionSection').show();
+                        
+                        // Forzar la visibilidad con CSS
+                        $('#inclusionSection').css('display', 'block');
+                        
+                    } else {
+                        $('#specializationsSection').hide();
+                        $('#inclusivoSection').hide();
+                        $('#inclusionSection').hide();
+                    }
+
+                    // Cambiar el tipo de input a password cuando se edita
+                    $('#userPasswordInput').attr('type', 'password');
+                    $('#toggleUserIcon').removeClass('fa-eye-slash').addClass('fa-eye');
+
+                    $('#btnUpdateUser').prop('disabled', false);
+                    $('#btnCreateUser').prop('disabled', true);
+
+                    // Mostrar sección de foto y actualizar vista
+                    $('#userPhotoSection').show();
+                    $('#userPhotoInput').val('');
+                    if (user.photoUrl) {
+                        $('#userPhotoImg').attr('src', userAdminPhotoHref(user.photoUrl)).show();
+                        $('#userPhotoPreview').hide();
+                        $('#btnRemoveUserPhoto').show();
+                    } else {
+                        $('#userPhotoImg').attr('src', userAdminPhotoHref('')).show();
+                        $('#userPhotoPreview').hide();
+                        $('#btnRemoveUserPhoto').hide();
+                    }
+                })
+                .fail(function(xhr, status, error) {
+                });
+            });
+
+            $(document).on('click', '.btn-delete-user', function() {
+                const userId = $(this).data('id');
+                const userName = $(this).closest('tr').find('td:first').text();
+
+                Swal.fire({
+                    title: `¿Eliminar a "${userName}"?`,
+                    text: "Esta acción no se puede deshacer.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `/User/DeleteConfirmed/${userId}`,
+                            type: 'POST'
+                        })
+                        .done(function () {
+                            Swal.fire('Eliminado', 'Usuario eliminado correctamente', 'success')
+                                .then(() => location.reload());
+                        })
+                        .fail(function (xhr) {
+                            const message = xhr.responseJSON?.message || xhr.responseText || 'Error inesperado';
+                            Swal.fire('Error', message, 'error');
+                        });
+                    }
+                });
+            });
+
+            // Subir foto del usuario (desde Index)
+            $('#btnUploadUserPhoto').on('click', function() {
+                var userId = $('#UserId').val();
+                if (!userId) return;
+                var fileInput = document.getElementById('userPhotoInput');
+                if (!fileInput.files || !fileInput.files.length) {
+                    Swal.fire({ icon: 'warning', title: 'Sin archivo', text: 'Seleccione una imagen (JPEG o PNG; máx. de subida 12 MB).' });
+                    return;
+                }
+                var formData = new FormData();
+                formData.append('id', userId);
+                formData.append('photo', fileInput.files[0]);
+                formData.append('__RequestVerificationToken', $('input[name="__RequestVerificationToken"]').val());
+                var btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Subiendo...');
+                $.ajax({
+                    url: '/User/UpdatePhoto/' + userId,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .done(function(res) {
+                    if (res.success && res.photoUrl) {
+                        $('#userPhotoImg').attr('src', userAdminPhotoHref(res.photoUrl)).show();
+                        $('#userPhotoPreview').hide();
+                        $('#btnRemoveUserPhoto').show();
+                        $('#userPhotoInput').val('');
+                        Swal.fire({ icon: 'success', title: 'Foto actualizada', text: 'Se usará en el carnet.' });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'No se pudo subir la foto.' });
+                    }
+                })
+                .fail(function(xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'No se pudo actualizar la foto.';
+                    Swal.fire({ icon: 'error', title: 'Error', text: msg });
+                })
+                .always(function() {
+                    btn.prop('disabled', false).html('<i class="fas fa-upload me-1"></i>Subir foto');
+                });
+            });
+
+            // Eliminar foto del usuario (desde Index)
+            $('#btnRemoveUserPhoto').on('click', function() {
+                var userId = $('#UserId').val();
+                if (!userId) return;
+                Swal.fire({
+                    title: '¿Eliminar la foto?',
+                    text: 'Dejará de mostrarse en el carnet.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, eliminar'
+                }).then(function(result) {
+                    if (!result.isConfirmed) return;
+                    $.ajax({
+                        url: '/User/RemovePhoto/' + userId,
+                        type: 'POST',
+                        data: { __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val() },
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .done(function(res) {
+                        if (res.success) {
+                            $('#userPhotoImg').attr('src', userAdminPhotoHref('')).show();
+                            $('#userPhotoPreview').hide();
+                            $('#btnRemoveUserPhoto').hide();
+                            Swal.fire({ icon: 'success', title: 'Foto eliminada' });
+                        } else {
+                            Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'No se pudo eliminar.' });
+                        }
+                    })
+                    .fail(function(xhr) {
+                        var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'No se pudo eliminar la foto.';
+                        Swal.fire({ icon: 'error', title: 'Error', text: msg });
+                    });
+                });
+            });
+
+            // Funcionalidad para enviar contraseña por email
+            $(document).on('click', '.btn-send-password', function() {
+                const userId = $(this).data('id');
+                const userName = $(this).data('name');
+                const userEmail = $(this).data('email');
+                const btn = $(this);
+
+                Swal.fire({
+                    title: `¿Enviar contraseña a "${userName}"?`,
+                    text: `Se enviará un email con la contraseña a: ${userEmail}`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#10b981',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, enviar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Mostrar loading
+                        btn.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+                        
+                        $.ajax({
+                            url: `/User/SendPasswordEmail/${userId}`,
+                            type: 'POST',
+                            headers: {
+                                'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                            }
+                        })
+                        .done(function (response) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Email enviado!',
+                                text: response.message || 'La contraseña se ha enviado exitosamente al usuario.',
+                                confirmButtonColor: '#10b981',
+                                confirmButtonText: '¡Perfecto!'
+                            });
+                        })
+                        .fail(function (xhr) {
+                            const message = xhr.responseJSON?.message || xhr.responseText || 'Error al enviar el email';
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: message,
+                                confirmButtonColor: '#ef4444',
+                                confirmButtonText: 'Entendido'
+                            });
+                        })
+                        .always(function() {
+                            // Restaurar botón
+                            btn.html('<i class="fas fa-envelope"></i>').prop('disabled', false);
+                        });
+                    }
+                });
+            });
+
+            function showValidationErrors(user) {
+                const form = $('#userForm');
+                form.find('input, select').removeClass('is-invalid');
+                if (!user.Name) form.find('[name="Name"]').addClass('is-invalid');
+                if (!user.Email) form.find('[name="Email"]').addClass('is-invalid');
+            }
+
+            $('#btnCreateUser').on('click', function () {
+                const form = $('#userForm');
+                const selectedRole = form.find('[name="Role"]').val().toLowerCase();
+                const user = {
+                    Name: form.find('[name="Name"]').val().trim(),
+                    LastName: form.find('[name="LastName"]').val().trim(),
+                    Email: form.find('[name="Email"]').val().trim(),
+                    DocumentId: form.find('[name="DocumentId"]').val().trim(),
+                    PasswordHash: form.find('[name="PasswordHash"]').val(),
+                    Role: form.find('[name="Role"]').val(),
+                    Status: form.find('[name="Status"]').val(),
+                    DateOfBirth: form.find('[name="DateOfBirth"]').val() || null,
+                    CellphonePrimary: form.find('[name="CellphonePrimary"]').val() || null,
+                    CellphoneSecondary: form.find('[name="CellphoneSecondary"]').val() || null,
+                    Disciplina: selectedRole === 'teacher' ? $('#disciplinaCheck').is(':checked') : false,
+                    Inclusion: selectedRole === 'teacher' ? ($('#inclusionCheck').is(':checked') ? 'si' : 'no') : null,
+                    Orientacion: selectedRole === 'teacher' ? $('#orientacionCheck').is(':checked') : false,
+                    Inclusivo: (selectedRole === 'student' || selectedRole === 'estudiante') ? ($('#inclusionSelect').val() === 'si' ? true : $('#inclusionSelect').val() === 'no' ? false : null) : ($('#inclusivoSelect').val() === 'true' ? true : $('#inclusivoSelect').val() === 'false' ? false : null)
+                };
+                
+                // LOGS PARA DEBUGGING DE CELULARES - CREATE
+                console.log('=== FRONTEND - CREATE USER - CAPTURA DE CELULARES ===');
+                console.log('CellphonePrimary input value:', form.find('[name="CellphonePrimary"]').val());
+                console.log('CellphoneSecondary input value:', form.find('[name="CellphoneSecondary"]').val());
+                console.log('CellphonePrimary en objeto user:', user.CellphonePrimary);
+                console.log('CellphoneSecondary en objeto user:', user.CellphoneSecondary);
+                
+                // LOGS PARA DEBUGGING DE ESPECIALIZACIONES - CREATE
+                console.log('=== FRONTEND - CREATE USER - ESPECIALIZACIONES ===');
+                console.log('selectedRole:', selectedRole);
+                console.log('disciplinaCheck checked:', $('#disciplinaCheck').is(':checked'));
+                console.log('orientacionCheck checked:', $('#orientacionCheck').is(':checked'));
+                console.log('inclusionCheck checked:', $('#inclusionCheck').is(':checked'));
+                console.log('inclusivoSelect value:', $('#inclusivoSelect').val());
+                console.log('inclusionSelect value:', $('#inclusionSelect').val());
+                console.log('Disciplina en objeto user:', user.Disciplina);
+                console.log('Inclusion en objeto user:', user.Inclusion);
+                console.log('Orientacion en objeto user:', user.Orientacion);
+                console.log('Inclusivo en objeto user:', user.Inclusivo);
+                console.log('Objeto user completo:', user);
+
+                showValidationErrors(user);
+                if (!user.Name || !user.Email) return;
+
+                $.ajax({
+                    url: '/User/CreateJson',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(user)
+                })
+                .done(function (response) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Usuario Creado!',
+                        text: response.message || 'El usuario se ha creado exitosamente en el sistema',
+                        confirmButtonColor: '#10b981',
+                        confirmButtonText: '¡Excelente!'
+                    }).then(() => {
+                        resetUserForm();
+                        toggleSpecializationColumns(); // Actualizar columnas antes de recargar
+                        location.reload();
+                    });
+                })
+                .fail(function (xhr) {
+                    let message = 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.';
+                    
+                    console.log('❌ ERROR EN CREACIÓN - Status:', xhr.status);
+                    console.log('❌ ERROR EN CREACIÓN - Response:', xhr.responseText);
+                    console.log('❌ ERROR EN CREACIÓN - ResponseJSON:', xhr.responseJSON);
+                    
+                    if (xhr.responseJSON?.message) {
+                        message = xhr.responseJSON.message;
+                        console.log('✅ Usando mensaje del servidor:', message);
+                    } else if (xhr.responseText) {
+                        console.log('📄 Analizando responseText:', xhr.responseText);
+                        
+                        // Solo aplicar lógica específica si NO es un mensaje del servidor
+                        if (xhr.responseText.toLowerCase().includes('document') || 
+                            xhr.responseText.toLowerCase().includes('dni') || 
+                            xhr.responseText.toLowerCase().includes('cedula') ||
+                            xhr.responseText.toLowerCase().includes('duplicate') ||
+                            xhr.responseText.toLowerCase().includes('ya existe')) {
+                            message = '⚠️ El número de documento (DNI) ya está registrado en el sistema. Por favor, verifica que el documento sea único o contacta al administrador si necesitas ayuda.';
+                        } else if (xhr.responseText.toLowerCase().includes('email') && 
+                                   xhr.responseText.toLowerCase().includes('registrado') &&
+                                   xhr.responseText.toLowerCase().includes('sistema')) {
+                            message = '📧 El correo electrónico ya está registrado en el sistema. Por favor, utiliza un correo diferente.';
+                        } else {
+                            // Si no es un error específico conocido, usar el texto completo
+                            message = xhr.responseText;
+                        }
+                    }
+                    
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'No se pudo crear el usuario',
+                        text: message,
+                        confirmButtonColor: '#ef4444',
+                        confirmButtonText: 'Entendido'
+                    });
+                });
+            });
+
+            $('#btnUpdateUser').on('click', function () {
+                const form = $('#userForm');
+                const passwordValue = form.find('[name="PasswordHash"]').val().trim();
+                const selectedRole = form.find('[name="Role"]').val().toLowerCase();
+                const user = {
+                    Id: $('#UserId').val(),
+                    Name: form.find('[name="Name"]').val().trim(),
+                    LastName: form.find('[name="LastName"]').val().trim(),
+                    Email: form.find('[name="Email"]').val().trim(),
+                    DocumentId: form.find('[name="DocumentId"]').val().trim(),
+                    PasswordHash: passwordValue || null, // Solo enviar si hay valor
+                    Role: form.find('[name="Role"]').val(),
+                    Status: form.find('[name="Status"]').val(),
+                    DateOfBirth: form.find('[name="DateOfBirth"]').val() || null,
+                    CellphonePrimary: form.find('[name="CellphonePrimary"]').val() || null,
+                    CellphoneSecondary: form.find('[name="CellphoneSecondary"]').val() || null,
+                    Disciplina: selectedRole === 'teacher' ? $('#disciplinaCheck').is(':checked') : false,
+                    Inclusion: selectedRole === 'teacher' ? ($('#inclusionCheck').is(':checked') ? 'si' : 'no') : null,
+                    Orientacion: selectedRole === 'teacher' ? $('#orientacionCheck').is(':checked') : false,
+                    Inclusivo: (selectedRole === 'student' || selectedRole === 'estudiante') ? ($('#inclusionSelect').val() === 'si' ? true : $('#inclusionSelect').val() === 'no' ? false : null) : ($('#inclusivoSelect').val() === 'true' ? true : $('#inclusivoSelect').val() === 'false' ? false : null)
+                };
+                
+                // LOGS PARA DEBUGGING DE CELULARES - UPDATE
+                console.log('=== FRONTEND - UPDATE USER - CAPTURA DE CELULARES ===');
+                console.log('CellphonePrimary input value:', form.find('[name="CellphonePrimary"]').val());
+                console.log('CellphoneSecondary input value:', form.find('[name="CellphoneSecondary"]').val());
+                console.log('CellphonePrimary en objeto user:', user.CellphonePrimary);
+                console.log('CellphoneSecondary en objeto user:', user.CellphoneSecondary);
+                
+                // LOGS PARA DEBUGGING DE ESPECIALIZACIONES - UPDATE
+                console.log('=== FRONTEND - UPDATE USER - ESPECIALIZACIONES ===');
+                console.log('selectedRole:', selectedRole);
+                console.log('disciplinaCheck checked:', $('#disciplinaCheck').is(':checked'));
+                console.log('orientacionCheck checked:', $('#orientacionCheck').is(':checked'));
+                console.log('inclusionCheck checked:', $('#inclusionCheck').is(':checked'));
+                console.log('inclusivoSelect value:', $('#inclusivoSelect').val());
+                console.log('inclusionSelect value:', $('#inclusionSelect').val());
+                console.log('Disciplina en objeto user:', user.Disciplina);
+                console.log('Inclusion en objeto user:', user.Inclusion);
+                console.log('Orientacion en objeto user:', user.Orientacion);
+                console.log('Inclusivo en objeto user:', user.Inclusivo);
+                console.log('Objeto user completo:', user);
+
+                showValidationErrors(user);
+                if (!user.Name || !user.Email) return;
+
+                $.ajax({
+                    url: '/User/UpdateJson',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(user)
+                })
+                .done(function (response) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Usuario Actualizado!',
+                        text: response.message || 'Los datos del usuario se han actualizado correctamente',
+                        confirmButtonColor: '#10b981',
+                        confirmButtonText: '¡Perfecto!'
+                    }).then(() => {
+                        resetUserForm();
+                        toggleSpecializationColumns(); // Actualizar columnas antes de recargar
+                        location.reload();
+                    });
+                })
+                .fail(function (xhr) {
+                    let message = 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.';
+                    
+                    console.log('❌ ERROR EN ACTUALIZACIÓN - Status:', xhr.status);
+                    console.log('❌ ERROR EN ACTUALIZACIÓN - Response:', xhr.responseText);
+                    console.log('❌ ERROR EN ACTUALIZACIÓN - ResponseJSON:', xhr.responseJSON);
+                    
+                    if (xhr.responseJSON?.message) {
+                        message = xhr.responseJSON.message;
+                        console.log('✅ Usando mensaje del servidor:', message);
+                    } else if (xhr.responseJSON) {
+                        // Manejar errores de validación de ModelState
+                        console.log('📋 Analizando errores de validación:', xhr.responseJSON);
+                        
+                        if (xhr.responseJSON.Email && Array.isArray(xhr.responseJSON.Email)) {
+                            message = `📧 Error en el correo electrónico: ${xhr.responseJSON.Email.join(', ')}`;
+                        } else if (xhr.responseJSON.DocumentId && Array.isArray(xhr.responseJSON.DocumentId)) {
+                            message = `🆔 Error en el documento: ${xhr.responseJSON.DocumentId.join(', ')}`;
+                        } else if (xhr.responseJSON.Name && Array.isArray(xhr.responseJSON.Name)) {
+                            message = `👤 Error en el nombre: ${xhr.responseJSON.Name.join(', ')}`;
+                        } else {
+                            // Procesar otros errores de validación
+                            const errors = [];
+                            for (const [field, fieldErrors] of Object.entries(xhr.responseJSON)) {
+                                if (Array.isArray(fieldErrors)) {
+                                    errors.push(`${field}: ${fieldErrors.join(', ')}`);
+                                }
+                            }
+                            message = `⚠️ Errores de validación:\n${errors.join('\n')}`;
+                        }
+                    } else if (xhr.responseText) {
+                        console.log('📄 Analizando responseText:', xhr.responseText);
+                        
+                        // Solo aplicar lógica específica si NO es un mensaje del servidor
+                        if (xhr.responseText.toLowerCase().includes('document') || 
+                            xhr.responseText.toLowerCase().includes('dni') || 
+                            xhr.responseText.toLowerCase().includes('cedula') ||
+                            xhr.responseText.toLowerCase().includes('duplicate') ||
+                            xhr.responseText.toLowerCase().includes('ya existe')) {
+                            message = '⚠️ El número de documento (DNI) ya está registrado en el sistema. Por favor, verifica que el documento sea único o contacta al administrador si necesitas ayuda.';
+                        } else if (xhr.responseText.toLowerCase().includes('email') && 
+                                   xhr.responseText.toLowerCase().includes('registrado') &&
+                                   xhr.responseText.toLowerCase().includes('sistema')) {
+                            message = '📧 El correo electrónico ya está registrado en el sistema. Por favor, utiliza un correo diferente.';
+                        } else {
+                            // Si no es un error específico conocido, usar el texto completo
+                            message = xhr.responseText;
+                        }
+                    }
+                    
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'No se pudo actualizar el usuario',
+                        text: message,
+                        confirmButtonColor: '#ef4444',
+                        confirmButtonText: 'Entendido'
+                    });
+                });
+            });
+
+            function resetUserForm() {
+                const form = $('#userForm');
+                form[0].reset();
+                $('#UserId').val('');
+                // Restaurar el placeholder original y tipo de input
+                $('[name="PasswordHash"]').attr('placeholder', '********');
+                $('#userPasswordInput').attr('type', 'password');
+                $('#toggleUserIcon').removeClass('fa-eye-slash').addClass('fa-eye');
+                $('#passwordInfo').hide(); // Ocultar mensaje informativo
+                // Limpiar campos de celular
+                $('[name="CellphonePrimary"]').val('');
+                $('[name="CellphoneSecondary"]').val('');
+                
+                // Limpiar checkboxes de especializaciones
+                $('#disciplinaCheck').prop('checked', false);
+                $('#orientacionCheck').prop('checked', false);
+                
+                // Limpiar campo Inclusivo
+                $('#inclusivoSelect').val('');
+                
+                // Limpiar campo Inclusión
+                $('#inclusionSelect').val('');
+                
+                // Ocultar secciones al resetear
+                $('#specializationsSection').hide();
+                $('#inclusivoSection').hide();
+                $('#inclusionSection').hide();
+                
+                $('#btnUpdateUser').prop('disabled', true);
+                $('#btnCreateUser').prop('disabled', false);
+                form.find('input, select').removeClass('is-invalid');
+                $('#userPhotoSection').hide();
+                $('#userPhotoImg').attr('src', userAdminPhotoHref('')).show();
+                $('#userPhotoPreview').hide();
+                $('#userPhotoInput').val('');
+                $('#btnRemoveUserPhoto').hide();
+            }
+        });
+        
+        // Formatear números de celular con código de Panamá
+        function formatPhoneNumbers() {
+            $('input[name="CellphonePrimary"], input[name="CellphoneSecondary"]').on('input', function() {
+                let value = $(this).val().replace(/\D/g, ''); // Solo números
+                
+                // Si no empieza con 507, agregarlo automáticamente
+                if (value.length > 0 && !value.startsWith('507')) {
+                    value = '507' + value;
+                }
+                
+                // Limitar a 11 dígitos (507 + 8 dígitos)
+                if (value.length > 11) {
+                    value = value.substring(0, 11);
+                }
+                
+                // Formatear: +507 XXXX XXXX
+                if (value.length >= 3) {
+                    let formatted = '+' + value.substring(0, 3);
+                    if (value.length > 3) {
+                        formatted += ' ' + value.substring(3, 7);
+                    }
+                    if (value.length > 7) {
+                        formatted += ' ' + value.substring(7);
+                    }
+                    $(this).val(formatted);
+                } else if (value.length > 0) {
+                    $(this).val('+' + value);
+                }
+            });
+            
+            // Manejar el evento de pegar
+            $('input[name="CellphonePrimary"], input[name="CellphoneSecondary"]').on('paste', function(e) {
+                setTimeout(() => {
+                    let value = $(this).val().replace(/\D/g, '');
+                    if (value.length > 0 && !value.startsWith('507')) {
+                        value = '507' + value;
+                    }
+                    if (value.length > 11) {
+                        value = value.substring(0, 11);
+                    }
+                    
+                    if (value.length >= 3) {
+                        let formatted = '+' + value.substring(0, 3);
+                        if (value.length > 3) {
+                            formatted += ' ' + value.substring(3, 7);
+                        }
+                        if (value.length > 7) {
+                            formatted += ' ' + value.substring(7);
+                        }
+                        $(this).val(formatted);
+                    }
+                }, 10);
+            });
+        }
+        
+        // Inicializar formateo de teléfonos
+        formatPhoneNumbers();
+        
+        
+        // Función para asegurar visibilidad de inclusionSection para estudiantes
+        window.ensureInclusionSectionVisible = function() {
+            const currentRole = $('#roleSelect').val().toLowerCase();
+            console.log('🔧 ASEGURANDO VISIBILIDAD - Rol actual:', currentRole);
+            
+            if (currentRole === 'student' || currentRole === 'estudiante') {
+                console.log('👨‍🎓 Forzando visibilidad para estudiante');
+                $('#inclusionSection').show();
+                $('#inclusionSection').css('display', 'block');
+                $('#inclusionSection').css('visibility', 'visible');
+                $('#inclusionSection').removeClass('d-none');
+                
+                console.log('✅ inclusionSection visible:', $('#inclusionSection').is(':visible'));
+                console.log('✅ inclusionSection display:', $('#inclusionSection').css('display'));
+                console.log('✅ inclusionSection visibility:', $('#inclusionSection').css('visibility'));
+                console.log('✅ inclusionSection classes:', $('#inclusionSection').attr('class'));
+            }
+        };
+        
+        // Llamar la función después de un pequeño delay para asegurar que el DOM esté listo
+        setTimeout(function() {
+            window.ensureInclusionSectionVisible();
+        }, 100);
+    </script>
+}
+
+@functions {
+    private string GetRoleClass(string role)
+    {
+        return role?.ToLower() switch
+        {
+            "admin" => "role-admin",
+            "contable" => "role-contable",
+            "secretaria" => "role-secretaria",
+            "teacher" => "role-teacher",
+            "student" => "role-student",
+            "estudiante" => "role-student",
+            "parent" => "role-parent",
+            "director" => "role-director",
+            "superadmin" => "role-admin",
+            "clubparentsadmin" => "role-clubparentsadmin",
+            "qlservices" => "role-qlservices",
+            "inspector" => "role-inspector",
+            _ => ""
+        };
+    }
+
+    private string GetRoleDisplayName(string role)
+    {
+        return role?.ToLower() switch
+        {
+            "admin" => "Administrador",
+            "contable" => "Contable",
+            "secretaria" => "Secretaria",
+            "superadmin" => "Super Administrador",
+            "teacher" => "Docente",
+            "student" => "Estudiante",
+            "estudiante" => "Estudiante",
+            "parent" => "Padre/Madre",
+            "director" => "Director",
+            "clubparentsadmin" => "Administrador Club de Padres",
+            "qlservices" => "QL Services",
+            "inspector" => "Inspector",
+            _ => role ?? "Sin rol"
+        };
+    }
+}

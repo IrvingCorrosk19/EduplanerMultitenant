@@ -1,0 +1,257 @@
+@model SchoolManager.Dtos.TeacherWorkPlanDto
+@{
+    ViewData["Title"] = "Editar Plan de Trabajo Trimestral";
+    Layout = "_AdminLayout";
+    var options = ViewBag.Options as SchoolManager.Dtos.TeacherWorkPlanFormOptionsDto ?? new SchoolManager.Dtos.TeacherWorkPlanFormOptionsDto();
+}
+
+<div class="container-fluid">
+    <div class="mb-4" style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 1.5rem 2rem; border-radius: 1rem;">
+        <a href="@Url.Action("Index")" class="text-white text-decoration-none small"><i class="fas fa-arrow-left me-1"></i> Volver al listado</a>
+        <h3 class="mb-0 mt-2"><i class="fas fa-edit me-2"></i>Editar Plan de Trabajo Trimestral</h3>
+        <small class="opacity-90">@Model?.SubjectName - @Model?.GroupName - Trimestre @(Model?.Trimester == 1 ? "I" : Model?.Trimester == 2 ? "II" : "III")</small>
+    </div>
+
+    <form id="planForm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" id="PlanId" value="@Model?.Id" />
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Información general</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Año lectivo</label>
+                        <select id="AcademicYearId" name="AcademicYearId" class="form-select" required>
+                            @foreach (var ay in options.AcademicYears)
+                            {
+                                <option value="@ay.Id" selected="@(ay.Id == Model?.AcademicYearId)">@ay.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Trimestre</label>
+                        <select id="Trimester" name="Trimester" class="form-select" required>
+                            <option value="1" selected="@(Model?.Trimester == 1)">I</option>
+                            <option value="2" selected="@(Model?.Trimester == 2)">II</option>
+                            <option value="3" selected="@(Model?.Trimester == 3)">III</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Materia / Grado / Grupo</label>
+                        <select id="AssignmentOption" class="form-select" required>
+                            @foreach (var a in options.AssignmentOptions)
+                            {
+                                var val = $"{a.SubjectId}|{a.GradeLevelId}|{a.GroupId}";
+                                var sel = a.SubjectId == Model?.SubjectId && a.GradeLevelId == Model?.GradeLevelId && a.GroupId == Model?.GroupId;
+                                <option value="@val" selected="@sel">@a.Label</option>
+                            }
+                        </select>
+                        <input type="hidden" id="SubjectId" name="SubjectId" value="@Model?.SubjectId" />
+                        <input type="hidden" id="GradeLevelId" name="GradeLevelId" value="@Model?.GradeLevelId" />
+                        <input type="hidden" id="GroupId" name="GroupId" value="@Model?.GroupId" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Objetivos de aprendizaje</label>
+                        <textarea id="Objectives" name="Objectives" class="form-control" rows="4">@Model?.Objectives</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-table me-2"></i>Contenidos por bloques (semanas)</h5>
+                <button type="button" id="btnAddRow" class="btn btn-sm btn-light"><i class="fas fa-plus me-1"></i>Agregar bloque</button>
+            </div>
+            <div class="card-body overflow-auto">
+                <table class="table table-bordered" id="detailsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:90px">Semanas</th>
+                            <th>Tema</th>
+                            <th>Conceptual</th>
+                            <th>Procedimental</th>
+                            <th>Actitudinal</th>
+                            <th>Competencias básicas</th>
+                            <th>Indicadores de logro</th>
+                            <th style="width:50px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="detailsBody">
+                        @if (Model?.Details != null)
+                        {
+                            foreach (var d in Model.Details.OrderBy(x => x.DisplayOrder))
+                            {
+                                <tr>
+                                    <td><input type="text" class="form-control form-control-sm weeks" value="@d.WeeksRange" maxlength="20" /></td>
+                                    <td><input type="text" class="form-control form-control-sm topic" value="@d.Topic" /></td>
+                                    <td><textarea class="form-control form-control-sm conceptual" rows="2">@d.ConceptualContent</textarea></td>
+                                    <td><textarea class="form-control form-control-sm procedural" rows="2">@d.ProceduralContent</textarea></td>
+                                    <td><textarea class="form-control form-control-sm attitudinal" rows="2">@d.AttitudinalContent</textarea></td>
+                                    <td><textarea class="form-control form-control-sm competencies" rows="2">@d.BasicCompetencies</textarea></td>
+                                    <td><textarea class="form-control form-control-sm indicators" rows="2">@d.AchievementIndicators</textarea></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger btn-remove-row"><i class="fas fa-times"></i></button></td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body d-flex gap-2 flex-wrap">
+                <button type="submit" id="btnSave" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i>Guardar cambios
+                </button>
+                @if (Model?.Status == "Draft")
+                {
+                    <button type="button" id="btnSubmit" class="btn btn-info">
+                        <i class="fas fa-paper-plane me-1"></i>Enviar a revisión
+                    </button>
+                }
+                <a href="@Url.Action("DownloadPdf", new { id = Model?.Id })" class="btn btn-outline-success">
+                    <i class="fas fa-file-pdf me-1"></i>Generar PDF
+                </a>
+                <a href="@Url.Action("Index")" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/lib/sweetalert2/sweetalert2.min.js"></script>
+    <script>
+        (function() {
+            var planId = document.getElementById('PlanId').value;
+            var detailsBody = document.getElementById('detailsBody');
+            var assignmentSelect = document.getElementById('AssignmentOption');
+            var planForm = document.getElementById('planForm');
+
+            function setAssignmentIds() {
+                var v = assignmentSelect.value;
+                if (!v) return;
+                var parts = v.split('|');
+                if (parts.length >= 3) {
+                    document.getElementById('SubjectId').value = parts[0];
+                    document.getElementById('GradeLevelId').value = parts[1];
+                    document.getElementById('GroupId').value = parts[2];
+                }
+            }
+            assignmentSelect.addEventListener('change', setAssignmentIds);
+
+            function addRow(order) {
+                var tr = document.createElement('tr');
+                tr.innerHTML =
+                    '<td><input type="text" class="form-control form-control-sm weeks" placeholder="1-4" maxlength="20" /></td>' +
+                    '<td><input type="text" class="form-control form-control-sm topic" placeholder="Tema" /></td>' +
+                    '<td><textarea class="form-control form-control-sm conceptual" rows="2"></textarea></td>' +
+                    '<td><textarea class="form-control form-control-sm procedural" rows="2"></textarea></td>' +
+                    '<td><textarea class="form-control form-control-sm attitudinal" rows="2"></textarea></td>' +
+                    '<td><textarea class="form-control form-control-sm competencies" rows="2"></textarea></td>' +
+                    '<td><textarea class="form-control form-control-sm indicators" rows="2"></textarea></td>' +
+                    '<td><button type="button" class="btn btn-sm btn-outline-danger btn-remove-row"><i class="fas fa-times"></i></button></td>';
+                tr.querySelector('.btn-remove-row').addEventListener('click', function() { tr.remove(); });
+                detailsBody.appendChild(tr);
+            }
+
+            document.getElementById('btnAddRow').addEventListener('click', function() { addRow(0); });
+
+            detailsBody.querySelectorAll('.btn-remove-row').forEach(function(btn) {
+                btn.addEventListener('click', function() { btn.closest('tr').remove(); });
+            });
+            if (detailsBody.querySelectorAll('tr').length === 0) addRow(0);
+
+            function collectDetails() {
+                var rows = detailsBody.querySelectorAll('tr');
+                var list = [];
+                rows.forEach(function(tr, i) {
+                    list.push({
+                        weeksRange: tr.querySelector('.weeks').value.trim(),
+                        topic: tr.querySelector('.topic').value.trim(),
+                        conceptualContent: tr.querySelector('.conceptual').value.trim(),
+                        proceduralContent: tr.querySelector('.procedural').value.trim(),
+                        attitudinalContent: tr.querySelector('.attitudinal').value.trim(),
+                        basicCompetencies: tr.querySelector('.competencies').value.trim(),
+                        achievementIndicators: tr.querySelector('.indicators').value.trim(),
+                        displayOrder: i
+                    });
+                });
+                return list;
+            }
+
+            function getPayload(status) {
+                setAssignmentIds();
+                var subjectId = document.getElementById('SubjectId').value;
+                var gradeLevelId = document.getElementById('GradeLevelId').value;
+                var groupId = document.getElementById('GroupId').value;
+                if (!subjectId || !gradeLevelId || !groupId) {
+                    Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Seleccione materia/grado/grupo.' });
+                    return null;
+                }
+                var s = status || 'Draft';
+                return {
+                    subjectId: subjectId,
+                    gradeLevelId: gradeLevelId,
+                    groupId: groupId,
+                    academicYearId: document.getElementById('AcademicYearId').value,
+                    trimester: parseInt(document.getElementById('Trimester').value, 10),
+                    objectives: document.getElementById('Objectives').value.trim() || null,
+                    status: s,
+                    details: collectDetails()
+                };
+            }
+
+            planForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var payload = getPayload('Draft');
+                if (!payload) return;
+                var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                fetch('@Url.Action("Edit", new { id = Model?.Id })', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                    body: JSON.stringify(payload)
+                })
+                .then(function(r) {
+                    if (r.ok) return r.json();
+                    return r.json().then(function(j) { throw new Error(j.message || 'Error al guardar'); });
+                })
+                .then(function(data) {
+                    Swal.fire({ icon: 'success', title: 'Guardado', text: data.message || 'Plan actualizado.' })
+                        .then(function() { window.location.href = '@Url.Action("Index")'; });
+                })
+                .catch(function(err) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+                });
+            });
+
+            var btnSubmit = document.getElementById('btnSubmit');
+            if (btnSubmit) {
+                btnSubmit.addEventListener('click', function() {
+                    var payload = getPayload('Submitted');
+                    if (!payload) return;
+                    var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                    fetch('@Url.Action("Edit", new { id = Model?.Id })', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(function(r) {
+                        if (r.ok) return r.json();
+                        return r.json().then(function(j) { throw new Error(j.message || 'Error al enviar'); });
+                    })
+                    .then(function(data) {
+                        Swal.fire({ icon: 'success', title: 'Enviado', text: 'Plan enviado a revisión.' })
+                            .then(function() { window.location.href = '@Url.Action("Index")'; });
+                    })
+                    .catch(function(err) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+                    });
+                });
+            }
+        })();
+    </script>
+}

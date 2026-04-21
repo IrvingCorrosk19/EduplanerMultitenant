@@ -1,0 +1,109 @@
+@model IEnumerable<SchoolManager.Models.Activity>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Actividades Académicas";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-tasks mr-2"></i>Actividades Académicas</h3>
+                <small>Gestionar tareas, parciales y exámenes</small>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle mr-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <a href="@Url.Action("Create")" class="btn btn-primary">
+                <i class="fas fa-plus mr-2"></i>Nueva Actividad
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list mr-2"></i>Lista de Actividades</h5>
+                </div>
+                <div class="card-body">
+                    @if (!Model.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>No hay actividades registradas.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="activitiesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Tipo</th>
+                                        <th>Trimestre</th>
+                                        <th>Fecha Entrega</th>
+                                        <th>Materia</th>
+                                        <th>Grupo</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var activity in Model)
+                                    {
+                                        <tr>
+                                            <td><strong>@activity.Name</strong></td>
+                                            <td>
+                                                <span class="badge @(activity.Type?.ToLower() == "examen" ? "bg-danger" : activity.Type?.ToLower() == "parcial" ? "bg-warning" : "bg-info")">
+                                                    @activity.Type
+                                                </span>
+                                            </td>
+                                            <td>@(activity.Trimester ?? "N/A")</td>
+                                            <td>@TimeZoneService.ToLocalDisplayString(activity.DueDate, "dd/MM/yyyy")</td>
+                                            <td>@(activity.Subject?.Name ?? "N/A")</td>
+                                            <td>@(activity.Group?.Name ?? "N/A")</td>
+                                            <td>
+                                                <a href="@Url.Action("Details", new { id = activity.Id })" class="btn btn-sm btn-info" title="Ver detalles">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="@Url.Action("Edit", new { id = activity.Id })" class="btn btn-sm btn-warning" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="@Url.Action("Delete", new { id = activity.Id })" class="btn btn-sm btn-danger" title="Eliminar">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#activitiesTable').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+                }
+            });
+        });
+    </script>
+}

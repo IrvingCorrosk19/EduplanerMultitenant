@@ -1,0 +1,87 @@
+@model IEnumerable<SchoolManager.Models.TimeSlot>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Bloques horarios";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <h1>Bloques horarios</h1>
+            <p class="text-muted small mb-0">Ajuste las horas de cada bloque. El orden y las horas se usan en la tabla de horarios por docente.</p>
+        </div>
+    </section>
+    <section class="content">
+        <div class="container-fluid">
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show">
+                    @TempData["Success"]
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                </div>
+            }
+            <div class="card card-outline card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">Lista de bloques</h3>
+                    <div class="card-tools">
+                        <a href="@Url.Action("Create")" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus"></i> Nuevo bloque
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (Model == null || !Model.Any())
+                    {
+                        <p class="text-muted">No hay bloques horarios. Cree uno para poder armar el horario por docente.</p>
+                        <a href="@Url.Action("Create")" class="btn btn-primary">Crear primer bloque</a>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Orden</th>
+                                        <th>Nombre</th>
+                                        <th>Hora inicio</th>
+                                        <th>Hora fin</th>
+                                        <th>Estado</th>
+                                        <th style="width: 140px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var slot in Model)
+                                    {
+                                        <tr class="@(slot.IsActive ? "" : "table-secondary")">
+                                            <td>@slot.DisplayOrder</td>
+                                            <td>@slot.Name</td>
+                                            <td>@slot.StartTime.ToString("HH:mm")</td>
+                                            <td>@slot.EndTime.ToString("HH:mm")</td>
+                                            <td>
+                                                @if (slot.IsActive)
+                                                { <span class="badge badge-success">Activo</span> }
+                                                else
+                                                { <span class="badge badge-secondary">Inactivo</span> }
+                                            </td>
+                                            <td>
+                                                <a href="@Url.Action("Edit", new { id = slot.Id })" class="btn btn-sm btn-outline-primary" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <form asp-action="Delete" asp-route-id="@slot.Id" method="post" class="d-inline" onsubmit="return confirm('¿Desactivar o eliminar este bloque?');">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar/Desactivar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+</div>

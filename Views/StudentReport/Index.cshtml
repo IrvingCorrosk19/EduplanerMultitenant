@@ -1,0 +1,970 @@
+@model SchoolManager.Dtos.StudentReportDto
+@{
+    ViewData["Title"] = "Reporte del Estudiante";
+    Layout = "_AdminLayout";
+    var studentId = ViewBag.StudentId;
+}
+
+<style>
+    .portal-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: white;
+        padding: 2rem 2rem 1.5rem 2rem;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    .portal-header h3 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    .portal-header small {
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+    .info-block {
+        background: #f8fafc;
+        border-left: 4px solid #2563eb;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .info-item {
+        height: 100%;
+    }
+    .info-block .form-label {
+        display: block;
+        font-size: 0.95rem;
+        margin-bottom: 0.5rem;
+    }
+    .trimester-highlight {
+        border: 2px solid #2563eb !important;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        background: #fff;
+        color: #1e293b;
+        box-shadow: none;
+        transition: all 0.2s;
+        width: 100% !important;
+    }
+    .trimester-highlight:focus, .trimester-highlight:hover {
+        border-color: #1e40af !important;
+        background: #f0f6ff;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .trimester-helper {
+        font-size: 0.8rem;
+        color: #2563eb;
+        font-weight: 500;
+    }
+    .card {
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08);
+        border: none;
+        margin-bottom: 1.5rem;
+    }
+    .card-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: white;
+        border-radius: 1rem 1rem 0 0 !important;
+        font-weight: 600;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .card-header.bg-light {
+        background: #f1f5f9 !important;
+        color: #1e293b !important;
+    }
+    .table {
+        border-radius: 0.5rem;
+        overflow: hidden;
+        margin-bottom: 0;
+    }
+    .table thead th {
+        background-color: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+        text-align: center;
+        vertical-align: middle;
+        font-weight: 600;
+    }
+    .table tbody td {
+        text-align: center;
+        vertical-align: middle;
+    }
+    
+    /* Estilos para las pestañas */
+    .nav-tabs-custom {
+        border-bottom: 2px solid #e2e8f0;
+        gap: 0.5rem;
+    }
+    .nav-tabs-custom .nav-link {
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: #64748b;
+        font-weight: 500;
+        padding: 1rem 1.5rem;
+        transition: all 0.3s ease;
+        background: transparent;
+    }
+    .nav-tabs-custom .nav-link:hover {
+        color: #2563eb;
+        background: #f0f6ff;
+        border-radius: 0.5rem 0.5rem 0 0;
+        border-bottom-color: transparent;
+    }
+    .nav-tabs-custom .nav-link.active {
+        color: #2563eb;
+        font-weight: 600;
+        border-bottom-color: #2563eb;
+        background: transparent;
+    }
+    .tab-content {
+        padding-top: 1.5rem;
+    }
+    .nav-tabs-custom .nav-link .badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .nav-tabs-custom .nav-link:hover .badge {
+        transform: scale(1.1);
+        transition: transform 0.2s ease;
+    }
+</style>
+
+<div class="container-fluid">
+    <!-- ENCABEZADO AZUL -->
+    <div class="portal-header d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-person-vcard fs-2 text-white"></i>
+            <h3 class="mb-0">Portal para Padres</h3>
+        </div>
+        <div class="text-end">
+            <small>@TimeZoneService.GetTodayLongString()</small>
+        </div>
+    </div>
+
+    <!-- BLOQUE DE INFORMACIÓN DEL ESTUDIANTE -->
+    <div class="info-block mb-4">
+        <div class="row g-3">
+            <div class="col-lg-3 col-md-6">
+                <div class="info-item">
+                    <label class="form-label fw-bold mb-1" style="color: #1e293b;">Nombre</label>
+                    <p class="mb-0" style="color: #475569;">@Model.StudentName</p>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="info-item">
+                    <label class="form-label fw-bold mb-1" style="color: #1e293b;">Grado</label>
+                    <p class="mb-0" style="color: #475569;">@Model.Grade</p>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="info-item">
+                    <label for="trimester-select" class="form-label fw-bold mb-2" style="color: #1e293b;">Periodo Académico</label>
+                    @Html.DropDownList("Trimester",
+                        new SelectList(Model.AvailableTrimesters, "Trimester", "Trimester", Model.Trimester),
+                        new { @class = "form-select trimester-highlight", id = "trimester-select" })
+                    <small class="trimester-helper d-block mt-1">Selecciona el trimestre</small>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="info-item">
+                    <label for="subject-filter" class="form-label fw-bold mb-2" style="color: #1e293b;">Filtrar por Materia</label>
+                    <select class="form-select trimester-highlight" id="subject-filter">
+                        <option value="">Todas las materias</option>
+                        @foreach (var subject in Model.AvailableSubjects)
+                        {
+                            <option value="@subject">@subject</option>
+                        }
+                    </select>
+                    <small class="trimester-helper d-block mt-1">Filtra por materia específica</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="hidden" id="student-id" value="@Model.StudentId" />
+
+    <!-- PESTAÑAS DE NAVEGACIÓN -->
+    <ul class="nav nav-tabs nav-tabs-custom mb-4" id="studentReportTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="grades-tab" data-bs-toggle="tab" data-bs-target="#grades-panel" type="button" role="tab">
+                <i class="bi bi-journal-check me-2"></i>Calificaciones
+                <span class="badge bg-primary ms-2">@Model.Grades.Count()</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-panel" type="button" role="tab">
+                <i class="bi bi-exclamation-circle me-2"></i>Actividades Pendientes
+                @if (Model.PendingActivities.Any())
+                {
+                    <span class="badge bg-warning text-dark ms-2">@Model.PendingActivities.Count()</span>
+                }
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance-panel" type="button" role="tab">
+                <i class="bi bi-calendar3 me-2"></i>Asistencia
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="discipline-tab" data-bs-toggle="tab" data-bs-target="#discipline-panel" type="button" role="tab">
+                <i class="bi bi-exclamation-triangle me-2"></i>Reportes de Disciplina
+                @if (Model.DisciplineReports != null && Model.DisciplineReports.Any())
+                {
+                    <span class="badge bg-danger ms-2">@Model.DisciplineReports.Count()</span>
+                }
+            </button>
+        </li>
+    </ul>
+
+    <!-- CONTENIDO DE LAS PESTAÑAS -->
+    <div class="tab-content" id="studentReportTabContent">
+        
+        <!-- PESTAÑA 1: CALIFICACIONES -->
+        <div class="tab-pane fade show active" id="grades-panel" role="tabpanel">
+            <div class="card card-outline card-primary">
+                <div class="card-header">
+                    <i class="bi bi-journal-check me-2"></i> Calificaciones del Trimestre
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover table-bordered align-middle" id="grades-table">
+                        <thead style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white;">
+                            <tr>
+                                <th style="width: 20%; font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Materia</th>
+                                <th style="width: 25%; font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Tipo de Actividad</th>
+                                <th style="width: 35%; font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Actividad</th>
+                                <th style="width: 10%; font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2); text-align: center;">Nota</th>
+                                <th style="width: 10%; font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2); text-align: center;">Promedio</th>
+                            </tr>
+                        </thead>
+                        <tbody id="grades-table-body">
+                            @{
+                                // Agrupar por materia
+                                var gradesBySubject = Model.Grades
+                                    .Where(g => g.Value.HasValue)
+                                    .GroupBy(g => g.Subject)
+                                    .OrderBy(g => g.Key);
+
+                                decimal totalPromedios = 0;
+                                int materiaCount = 0;
+
+                                foreach (var subjectGroup in gradesBySubject)
+                                {
+                                    var materia = subjectGroup.Key;
+                                    
+                                    // Agrupar por tipo de actividad
+                                    var tiposActividad = new[] { 
+                                        new { Nombre = "Notas de Apreciación", Filtro = new Func<SchoolManager.Dtos.GradeDto, bool>(g => g.Type.ToLower().Contains("nota") || g.Type.ToLower().Contains("apreciación") || g.Type.ToLower().Contains("apreciacion")) },
+                                        new { Nombre = "Ejercicios Diarios", Filtro = new Func<SchoolManager.Dtos.GradeDto, bool>(g => g.Type.ToLower().Contains("ejercicio") || g.Type.ToLower().Contains("diario")) },
+                                        new { Nombre = "Examen Final", Filtro = new Func<SchoolManager.Dtos.GradeDto, bool>(g => g.Type.ToLower().Contains("examen") || g.Type.ToLower().Contains("final")) }
+                                    };
+
+                                    bool firstRowForSubject = true;
+                                    int totalRowsForSubject = 0;
+                                    List<decimal> promediosTipos = new List<decimal>();
+
+                                    // Primero contar filas y calcular promedios POR TIPO
+                                    foreach (var tipoActividad in tiposActividad)
+                                    {
+                                        var actividadesTipo = subjectGroup
+                                            .Where(tipoActividad.Filtro)
+                                            .OrderBy(g => g.ActivityName)
+                                            .ToList();
+                                        
+                                        if (actividadesTipo.Any())
+                                        {
+                                            totalRowsForSubject += actividadesTipo.Count;
+                                            // Calcular el promedio de este TIPO de actividad
+                                            var promedio = actividadesTipo.Average(g => g.Value.Value);
+                                            promediosTipos.Add(promedio);
+                                        }
+                                    }
+
+                                    // Si no hay actividades, mostrar mensaje
+                                    if (totalRowsForSubject == 0)
+                                    {
+                                        <tr>
+                                            <td><strong>@materia</strong></td>
+                                            <td colspan="3" class="text-center text-muted">Sin calificaciones</td>
+                                            <td class="text-center text-danger fw-bold">-</td>
+                                        </tr>
+                                        continue;
+                                    }
+
+                                    // Calcular promedio final (promedio de los promedios de cada tipo)
+                                    decimal? promedioFinal = promediosTipos.Any() ? (decimal?)promediosTipos.Average() : null;
+                                    
+                                    if (promedioFinal.HasValue)
+                                    {
+                                        totalPromedios += promedioFinal.Value;
+                                        materiaCount++;
+                                    }
+
+                                    // Ahora renderizar todas las filas
+                                    int rowIndexForSubject = 0;
+                                    
+                                    foreach (var tipoActividad in tiposActividad)
+                                    {
+                                        var actividadesTipo = subjectGroup
+                                            .Where(tipoActividad.Filtro)
+                                            .OrderBy(g => g.ActivityName)
+                                            .ToList();
+                                        
+                                        if (!actividadesTipo.Any()) continue;
+
+                                        bool firstRowForType = true;
+                                        decimal promedioTipo = actividadesTipo.Average(g => g.Value.Value);
+
+                                        foreach (var actividad in actividadesTipo)
+                                        {
+                                            <tr style="@(rowIndexForSubject % 2 == 0 ? "background-color: #f8f9fa;" : "")">
+                                                @if (firstRowForSubject)
+                                                {
+                                                    <td rowspan="@(totalRowsForSubject + 1)" style="vertical-align: middle; border-right: 2px solid #dee2e6;">
+                                                        <strong style="font-size: 1.05rem;">@materia</strong>
+                                                    </td>
+                                                    firstRowForSubject = false;
+                                                }
+                                                
+                                                @if (firstRowForType)
+                                                {
+                                                    <td rowspan="@actividadesTipo.Count" style="vertical-align: middle; background-color: #e3f2fd;" class="fw-bold">
+                                                        @tipoActividad.Nombre
+                                                    </td>
+                                                    firstRowForType = false;
+                                                }
+                                                
+                                                <td style="text-align: left; padding-left: 1rem;">@actividad.ActivityName</td>
+                                                <td class="text-center" style="font-weight: 600;">
+                                                    <span class="badge @(actividad.Value >= 3.0m ? "bg-success" : "bg-danger")">
+                                                        @actividad.Value.Value.ToString("0.0")
+                                                    </span>
+                                                </td>
+                                                
+                                                @if (actividadesTipo.Last() == actividad)
+                                                {
+                                                    <!-- Última fila del tipo: mostrar promedio del tipo -->
+                                                    <td style="vertical-align: middle; background-color: #e3f2fd;" class="text-center fw-bold">
+                                                        <span class="@(promedioTipo >= 3.0m ? "text-success" : "text-danger")">
+                                                            ⌀ @promedioTipo.ToString("0.0")
+                                                        </span>
+                                                    </td>
+                                                }
+                                                else
+                                                {
+                                                    <!-- Celda vacía para promedio -->
+                                                    <td></td>
+                                                }
+                                            </tr>
+                                            rowIndexForSubject++;
+                                        }
+                                    }
+                                    
+                                    <!-- Fila final para mostrar el promedio de la materia -->
+                                    <tr style="background-color: #fff3cd; border-top: 2px solid #2563eb;">
+                                        <td colspan="3" class="text-end fw-bold" style="font-size: 1.05rem;">PROMEDIO FINAL DE @materia.ToUpper():</td>
+                                        <td class="text-center fw-bold" style="font-size: 1.2rem;">
+                                            <span class="@(promedioFinal >= 3.0m ? "text-success" : "text-danger")">
+                                                @promedioFinal.Value.ToString("0.0")
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                        <tfoot class="table-dark">
+                            <tr>
+                                <td colspan="4" class="text-end" style="font-size: 1.1rem;"><strong>PROMEDIO GENERAL DEL TRIMESTRE:</strong></td>
+                                <td id="grades-average" class="text-center fw-bold" style="font-size: 1.2rem;">
+                                    @{
+                                        var promedioGeneral = materiaCount > 0 ? (totalPromedios / materiaCount).ToString("0.0") : "0.0";
+                                    }
+                                    <span class="@(materiaCount > 0 && (totalPromedios / materiaCount) >= 3.0m ? "text-success" : "text-danger")">@promedioGeneral</span>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA 2: ACTIVIDADES PENDIENTES -->
+        <div class="tab-pane fade" id="pending-panel" role="tabpanel">
+            <div class="card card-outline card-warning">
+                <div class="card-header">
+                    <i class="bi bi-exclamation-circle me-2"></i> Actividades Pendientes
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover table-bordered align-middle" id="pending-activities-table">
+                        <thead style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white;">
+                            <tr>
+                                <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Materia</th>
+                                <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Actividad</th>
+                                <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Fecha</th>
+                                <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Profesor</th>
+                                <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Archivo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pending-activities-table-body">
+                            @foreach (var group in Model.PendingActivities.GroupBy(a => (a.Type ?? "SinTipo").ToLower()))
+                            {
+                                <tr class="table-group-title">
+                                    <td colspan="5" class="text-warning fw-bold">@((group.Key[0].ToString().ToUpper() + group.Key.Substring(1)))</td>
+                                </tr>
+                                foreach (var activity in group)
+                                {
+                                    <tr>
+                                        <td>@activity.SubjectName</td>
+                                        <td>@activity.Name</td>
+                                        <td>@TimeZoneService.ToLocalDisplayString(activity.CreatedAt, "dd/MM/yyyy")</td>
+                                        <td>@activity.TeacherName</td>
+                                        <td class="text-center">
+                                            @if (!string.IsNullOrEmpty(activity.FileUrl))
+                                            {
+                                                <a href="@activity.FileUrl" target="_blank" class="btn btn-sm btn-outline-primary" title="Descargar archivo">
+                                                    <i class="bi bi-download"></i>
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA 3: ASISTENCIA -->
+        <div class="tab-pane fade" id="attendance-panel" role="tabpanel">
+            <div class="row">
+                <!-- Asistencia por Mes -->
+                <div class="col-md-6">
+                    <div class="card card-outline card-primary mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-calendar3 me-2"></i> Asistencia por Mes
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-hover table-bordered align-middle" id="attendance-month-table">
+                                <thead style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white;">
+                                    <tr>
+                                        <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Mes</th>
+                                        <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2); text-align: center;">Asistencias</th>
+                                        <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2); text-align: center;">Ausencias</th>
+                                        <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2); text-align: center;">Tardanzas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var a in Model.AttendanceByMonth)
+                                    {
+                                        <tr>
+                                            <td>@a.Month</td>
+                                            <td>@a.Present</td>
+                                            <td>@a.Absent</td>
+                                            <td>@a.Late</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Asistencia por Trimestre -->
+                <div class="col-md-6">
+                    <div class="card card-outline card-primary mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-calendar3 me-2"></i> Asistencia por Trimestre
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-hover table-bordered align-middle mb-4" id="attendance-trimester-table">
+                                <thead style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white;">
+                                    <tr>
+                                        <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Trimestre</th>
+                                        <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2); text-align: center;">Asistencias</th>
+                                        <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2); text-align: center;">Ausencias</th>
+                                        <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2); text-align: center;">Tardanzas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var a in Model.AttendanceByTrimester)
+                                    {
+                                        <tr>
+                                            <td>@a.Trimester</td>
+                                            <td>@a.Present</td>
+                                            <td>@a.Absent</td>
+                                            <td>@a.Late</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA 4: REPORTES DE DISCIPLINA -->
+        <div class="tab-pane fade" id="discipline-panel" role="tabpanel">
+            <div class="card card-outline card-danger mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-exclamation-triangle me-2"></i> Reportes de Disciplina
+                    </div>
+                    <button type="button" class="btn btn-light btn-sm" id="exportDisciplinePdf" title="Exportar expediente de disciplina en PDF">
+                        <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
+                    </button>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover table-bordered align-middle" id="discipline-table">
+                        <thead style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white;">
+                            <tr>
+                                <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Fecha</th>
+                                <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Hora</th>
+                                <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Tipo</th>
+                                <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Estado</th>
+                                <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Descripción</th>
+                                <th style="font-weight: 600; font-size: 0.95rem; padding: 1rem; border-color: rgba(255,255,255,0.2);">Profesor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.DisciplineReports != null && Model.DisciplineReports.Any())
+                            {
+                                foreach (var report in Model.DisciplineReports)
+                                {
+                                    <tr>
+                                        <td>@TimeZoneService.ToLocalDisplayString(report.Date, "dd/MM/yyyy")</td>
+                                        <td>@report.Time</td>
+                                        <td>@report.Type</td>
+                                        <td>@report.Status</td>
+                                        <td>@report.Description</td>
+                                        <td>@report.Teacher</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No hay reportes de disciplina registrados.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function groupBy(array, key) {
+            if (!array || !Array.isArray(array)) return {};
+            return array.reduce((result, currentItem) => {
+                if (!currentItem || !currentItem[key]) return result;
+                const keyValue = currentItem[key].toString().toLowerCase();
+                (result[keyValue] = result[keyValue] || []).push(currentItem);
+                return result;
+            }, {});
+        }
+        // Variable global para almacenar todas las calificaciones
+        let allGrades = @Html.Raw(Json.Serialize(Model.Grades));
+        
+        // Función para filtrar y mostrar calificaciones agrupadas por materia
+        function filterAndDisplayGrades(grades) {
+            const gradesTbody = $('#grades-table-body');
+            gradesTbody.empty();
+            
+            if (!grades || grades.length === 0) {
+                gradesTbody.append('<tr><td colspan="5" class="text-center text-muted">No hay calificaciones para mostrar con los filtros seleccionados.</td></tr>');
+                $('#grades-average').html('<span class="text-danger">0.0</span>');
+                $('#grades-tab .badge').text('0');
+                return;
+            }
+            
+            // Agrupar por materia
+            const groupedBySubject = {};
+            grades.forEach(g => {
+                if (!groupedBySubject[g.subject]) {
+                    groupedBySubject[g.subject] = [];
+                }
+                groupedBySubject[g.subject].push(g);
+            });
+            
+            let totalPromediosMaterias = 0;
+            let materiaCount = 0;
+            
+            // Procesar cada materia
+            Object.keys(groupedBySubject).forEach(subject => {
+                const subjectGrades = groupedBySubject[subject];
+                
+                // Definir tipos de actividad
+                const tiposActividad = [
+                    { 
+                        nombre: "Notas de Apreciación", 
+                        filtro: (g) => g.type.toLowerCase().includes('nota') || 
+                                     g.type.toLowerCase().includes('apreciación') || 
+                                     g.type.toLowerCase().includes('apreciacion')
+                    },
+                    { 
+                        nombre: "Ejercicios Diarios", 
+                        filtro: (g) => g.type.toLowerCase().includes('ejercicio') || 
+                                     g.type.toLowerCase().includes('diario')
+                    },
+                    { 
+                        nombre: "Examen Final", 
+                        filtro: (g) => g.type.toLowerCase().includes('examen') || 
+                                     g.type.toLowerCase().includes('final')
+                    }
+                ];
+                
+                let firstRowForSubject = true;
+                let totalRowsForSubject = 0;
+                let promediosTipos = [];
+                
+                // Contar filas y calcular promedios por tipo
+                tiposActividad.forEach(tipo => {
+                    const actividadesTipo = subjectGrades.filter(tipo.filtro).sort((a, b) => a.activityName.localeCompare(b.activityName));
+                    if (actividadesTipo.length > 0) {
+                        totalRowsForSubject += actividadesTipo.length;
+                        const promedio = actividadesTipo.reduce((sum, g) => sum + g.value, 0) / actividadesTipo.length;
+                        promediosTipos.push(promedio);
+                    }
+                });
+                
+                if (totalRowsForSubject === 0) {
+                    gradesTbody.append(`
+                        <tr>
+                            <td><strong>${subject}</strong></td>
+                            <td colspan="3" class="text-center text-muted">Sin calificaciones</td>
+                            <td class="text-center text-danger fw-bold">-</td>
+                        </tr>
+                    `);
+                    return;
+                }
+                
+                // Calcular promedio final
+                const promedioFinal = promediosTipos.length > 0 ? 
+                    promediosTipos.reduce((a, b) => a + b, 0) / promediosTipos.length : null;
+                
+                if (promedioFinal !== null) {
+                    totalPromediosMaterias += promedioFinal;
+                    materiaCount++;
+                }
+                
+                // Renderizar filas
+                let rowIndexForSubject = 0;
+                
+                tiposActividad.forEach(tipo => {
+                    const actividadesTipo = subjectGrades.filter(tipo.filtro).sort((a, b) => a.activityName.localeCompare(b.activityName));
+                    
+                    if (actividadesTipo.length === 0) return;
+                    
+                    let firstRowForType = true;
+                    const promedioTipo = actividadesTipo.reduce((sum, g) => sum + g.value, 0) / actividadesTipo.length;
+                    
+                    actividadesTipo.forEach((actividad, index) => {
+                        const isLastActivityOfType = index === actividadesTipo.length - 1;
+                        
+                        let rowHtml = `<tr style="${rowIndexForSubject % 2 === 0 ? 'background-color: #f8f9fa;' : ''}">`;
+                        
+                        // Materia (solo en la primera fila)
+                        if (firstRowForSubject) {
+                            rowHtml += `<td rowspan="${totalRowsForSubject + 1}" style="vertical-align: middle; border-right: 2px solid #dee2e6;"><strong style="font-size: 1.05rem;">${subject}</strong></td>`;
+                            firstRowForSubject = false;
+                        }
+                        
+                        // Tipo de actividad (solo en la primera fila del tipo)
+                        if (firstRowForType) {
+                            rowHtml += `<td rowspan="${actividadesTipo.length}" style="vertical-align: middle; background-color: #e3f2fd;" class="fw-bold">${tipo.nombre}</td>`;
+                            firstRowForType = false;
+                        }
+                        
+                        // Actividad y nota
+                        const badgeClass = actividad.value >= 3.0 ? 'bg-success' : 'bg-danger';
+                        rowHtml += `
+                            <td style="text-align: left; padding-left: 1rem;">${actividad.activityName}</td>
+                            <td class="text-center" style="font-weight: 600;">
+                                <span class="badge ${badgeClass}">${actividad.value.toFixed(1)}</span>
+                            </td>
+                        `;
+                        
+                        // Promedio
+                        if (isLastActivityOfType) {
+                            // Última fila del tipo: mostrar promedio del tipo
+                            const tipoClass = promedioTipo >= 3.0 ? 'text-success' : 'text-danger';
+                            rowHtml += `<td style="vertical-align: middle; background-color: #e3f2fd;" class="text-center fw-bold">
+                                <span class="${tipoClass}">⌀ ${promedioTipo.toFixed(1)}</span>
+                            </td>`;
+                        } else {
+                            // Celda vacía
+                            rowHtml += '<td></td>';
+                        }
+                        
+                        rowHtml += '</tr>';
+                        gradesTbody.append(rowHtml);
+                        rowIndexForSubject++;
+                    });
+                });
+                
+                // Fila final para mostrar el promedio de la materia
+                const finalClass = promedioFinal >= 3.0 ? 'text-success' : 'text-danger';
+                const finalRowHtml = `
+                    <tr style="background-color: #fff3cd; border-top: 2px solid #2563eb;">
+                        <td colspan="3" class="text-end fw-bold" style="font-size: 1.05rem;">PROMEDIO FINAL DE ${subject.toUpperCase()}:</td>
+                        <td class="text-center fw-bold" style="font-size: 1.2rem;">
+                            <span class="${finalClass}">${promedioFinal.toFixed(1)}</span>
+                        </td>
+                    </tr>
+                `;
+                gradesTbody.append(finalRowHtml);
+            });
+            
+            const promedioGeneral = materiaCount > 0 ? totalPromediosMaterias / materiaCount : 0;
+            const avgClass = promedioGeneral >= 3.0 ? 'text-success' : 'text-danger';
+            $('#grades-average').html(`<span class="${avgClass}" style="font-size: 1.2rem;">${promedioGeneral.toFixed(1)}</span>`);
+            $('#grades-tab .badge').text(grades.length);
+        }
+
+        $(document).ready(function () {
+            // Filtro por materia
+            $('#subject-filter').on('change', function () {
+                const selectedSubject = $(this).val();
+                
+                if (selectedSubject === '') {
+                    // Mostrar todas las materias
+                    filterAndDisplayGrades(allGrades);
+                } else {
+                    // Filtrar por materia específica
+                    const filteredGrades = allGrades.filter(g => g.subject === selectedSubject);
+                    filterAndDisplayGrades(filteredGrades);
+                }
+            });
+            
+            $('#trimester-select').on('change', function () {
+                const selectedTrimester = $(this).val();
+                const studentId = $('#student-id').val();
+
+                if (!selectedTrimester || !studentId) {
+                    alert("Falta seleccionar un trimestre o estudiante.");
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("GetTrimesterData", "StudentReport")',
+                    type: 'GET',
+                    data: {
+                        studentId: studentId,
+                        trimester: selectedTrimester
+                    },
+                    success: function (data) {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        console.log('grades:', data.grades);
+                        
+                        // Actualizar variable global con las nuevas calificaciones
+                        allGrades = data.grades;
+                        
+                        // Actualizar opciones del filtro de materias
+                        const subjectFilter = $('#subject-filter');
+                        const currentSubject = subjectFilter.val();
+                        subjectFilter.empty();
+                        subjectFilter.append('<option value="">Todas las materias</option>');
+                        
+                        const subjects = [...new Set(data.grades.map(g => g.subject))].sort();
+                        subjects.forEach(subject => {
+                            subjectFilter.append(`<option value="${subject}">${subject}</option>`);
+                        });
+                        
+                        // Restaurar selección si aún existe
+                        if (currentSubject && subjects.includes(currentSubject)) {
+                            subjectFilter.val(currentSubject);
+                        }
+                        
+                        // Filtrar y mostrar calificaciones
+                        const selectedSubject = subjectFilter.val();
+                        const gradesToShow = selectedSubject === '' ? data.grades : data.grades.filter(g => g.subject === selectedSubject);
+                        filterAndDisplayGrades(gradesToShow);
+
+                        // Asistencia por Trimestre
+                        const attTrimesterTbody = $('#attendance-trimester-table tbody');
+                        attTrimesterTbody.empty();
+                        data.attendanceByTrimester.forEach(a => {
+                            attTrimesterTbody.append(`
+                                <tr>
+                                    <td>${a.trimester}</td>
+                                    <td>${a.present}</td>
+                                    <td>${a.absent}</td>
+                                    <td>${a.late}</td>
+                                </tr>`);
+                        });
+
+                        // Asistencia por Mes
+                        const attMonthTbody = $('#attendance-month-table tbody');
+                        attMonthTbody.empty();
+                        data.attendanceByMonth.forEach(a => {
+                            attMonthTbody.append(`
+                                <tr>
+                                    <td>${a.month}</td>
+                                    <td>${a.present}</td>
+                                    <td>${a.absent}</td>
+                                    <td>${a.late}</td>
+                                </tr>`);
+                        });
+
+                        // Actividades Pendientes agrupadas por tipo
+                        const pendingTbody = $('#pending-activities-table-body');
+                        pendingTbody.empty();
+                        if (data.pendingActivities && data.pendingActivities.length > 0) {
+                            const groupedPending = groupBy(data.pendingActivities, 'type');
+                            Object.keys(groupedPending).forEach(type => {
+                                pendingTbody.append(`<tr class='table-group-title'><td colspan='5' class='text-warning fw-bold'>${type.charAt(0).toUpperCase() + type.slice(1)}</td></tr>`);
+                                groupedPending[type].forEach(a => {
+                                    const fecha = a.createdAt ? new Date(a.createdAt) : null;
+                                    const fechaStr = (fecha && !isNaN(fecha)) ? fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+                                    pendingTbody.append(`
+                                        <tr>
+                                            <td>${a.subjectName}</td>
+                                            <td>${a.name}</td>
+                                            <td>${fechaStr}</td>
+                                            <td>${a.teacherName}</td>
+                                            <td class="text-center">${a.fileUrl ? `<a href="${a.fileUrl}" target="_blank" class="btn btn-sm btn-outline-primary" title="Descargar archivo"><i class="bi bi-download"></i></a>` : '<span class="text-muted">-</span>'}</td>
+                                        </tr>`);
+                                });
+                            });
+                        } else {
+                            pendingTbody.append('<tr><td colspan="5" class="text-center text-muted">No hay actividades pendientes para mostrar.</td></tr>');
+                        }
+                        
+                        // Actualizar badge de actividades pendientes
+                        const pendingBadge = $('#pending-tab .badge');
+                        if (data.pendingActivities && data.pendingActivities.length > 0) {
+                            if (pendingBadge.length === 0) {
+                                $('#pending-tab').append(`<span class="badge bg-warning text-dark ms-2">${data.pendingActivities.length}</span>`);
+                            } else {
+                                pendingBadge.text(data.pendingActivities.length);
+                            }
+                        } else {
+                            pendingBadge.remove();
+                        }
+
+                        // Reportes de Disciplina
+                        const disciplineTbody = $('#discipline-table tbody');
+                        disciplineTbody.empty();
+                        if (data.disciplineReports && data.disciplineReports.length > 0) {
+                            data.disciplineReports.forEach(r => {
+                                let fecha = r.date ? new Date(r.date) : null;
+                                let fechaStr = (fecha && !isNaN(fecha)) ?
+                                    fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) :
+                                    'Sin fecha';
+                                let tipo = r.type || 'Sin tipo';
+                                disciplineTbody.append(`
+                                    <tr>
+                                        <td>${fechaStr}</td>
+                                        <td>${r.time || ''}</td>
+                                        <td>${tipo}</td>
+                                        <td>${r.status || ''}</td>
+                                        <td>${r.description || ''}</td>
+                                        <td>${r.teacher || ''}</td>
+                                    </tr>
+                                `);
+                            });
+                        } else {
+                            disciplineTbody.append(`
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No hay reportes de disciplina registrados.</td>
+                                </tr>
+                            `);
+                        }
+                        
+                        // Actualizar badge de disciplina
+                        const disciplineBadge = $('#discipline-tab .badge');
+                        if (data.disciplineReports && data.disciplineReports.length > 0) {
+                            if (disciplineBadge.length === 0) {
+                                $('#discipline-tab').append(`<span class="badge bg-danger ms-2">${data.disciplineReports.length}</span>`);
+                            } else {
+                                disciplineBadge.text(data.disciplineReports.length);
+                            }
+                        } else {
+                            disciplineBadge.remove();
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert("Error al obtener datos del servidor.");
+                    }
+                });
+            });
+        });
+
+        // Exportar expediente de disciplina en PDF
+        $('#exportDisciplinePdf').on('click', function() {
+            const studentId = '@Model.StudentId';
+            const studentName = '@Model.StudentName';
+            const grade = '@Model.Grade';
+            
+            // Verificar si hay reportes de disciplina
+            const disciplineRows = $('#discipline-table tbody tr');
+            if (disciplineRows.length === 0 || disciplineRows.text().includes('No hay reportes')) {
+                Swal.fire({
+                    title: 'Sin Reportes',
+                    text: 'No hay reportes de disciplina para exportar.',
+                    icon: 'info',
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#2563eb'
+                });
+                return;
+            }
+            
+            // Mostrar loading
+            Swal.fire({
+                title: 'Generando PDF...',
+                text: 'Por favor espere mientras se genera el expediente de disciplina.',
+                icon: 'info',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            // Llamar al endpoint de exportación
+            window.location.href = `/StudentReport/ExportDisciplinePdf?studentId=${studentId}&studentName=${encodeURIComponent(studentName)}&grade=${encodeURIComponent(grade)}`;
+            
+            // Cerrar el loading después de un tiempo
+            setTimeout(() => {
+                Swal.close();
+            }, 2000);
+        });
+
+        // Mostrar SweetAlert si no hay calificaciones
+        @if (TempData["ShowNoGradesAlert"] != null)
+        {
+            <text>
+            $(document).ready(function() {
+                Swal.fire({
+                    title: 'Sin Calificaciones',
+                    text: 'El estudiante no tiene calificaciones registradas. No se mostrarán datos en el reporte.',
+                    icon: 'info',
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#2563eb',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+            });
+            </text>
+        }
+    </script>
+}
+
+

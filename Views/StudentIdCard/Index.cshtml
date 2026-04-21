@@ -1,0 +1,595 @@
+@{
+    ViewData["Title"] = "Carnet Estudiantil";
+    Layout = "_SuperAdminLayout";
+}
+
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    .idcard-bulk-page {
+        font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+    }
+
+    .idcard-bulk-panel {
+        background: #f0f2f5;
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid #e5e7eb;
+    }
+
+    .idcard-bulk-filters .form-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .idcard-bulk-print-actions {
+        text-align: center;
+        margin-top: 0.5rem;
+        margin-bottom: 1.25rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.75rem;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .idcard-bulk-print-actions .btn-lg {
+        min-height: 48px;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+
+    .idcard-bulk-table-wrap {
+        background: #fff;
+        border-radius: 10px;
+        padding: 0.75rem;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    #studentsTable_wrapper .dataTables_filter input { border-radius: 6px; }
+    #studentsTable thead th { white-space: nowrap; vertical-align: middle; }
+    #studentsTable td { vertical-align: middle; }
+    .idcard-student-thumb {
+        width: 44px;
+        height: 44px;
+        object-fit: cover;
+        border: 1px solid #e5e7eb;
+        vertical-align: middle;
+        background: #f8f9fa;
+    }
+    .btn-xs { padding: .2rem .4rem; font-size: .75rem; line-height: 1.1; }
+    .dataTables_wrapper .dataTables_paginate .paginate_button { padding: .2em .6em; }
+
+    .print-loading-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 3000;
+        background: rgba(15, 23, 42, 0.42);
+        backdrop-filter: blur(2px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .print-loading-card {
+        width: min(90vw, 420px);
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.2);
+        padding: 1.25rem 1.4rem;
+        text-align: center;
+        font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+    }
+
+    .print-loading-spinner {
+        width: 50px;
+        height: 50px;
+        margin: 0 auto 0.85rem auto;
+        border-radius: 50%;
+        border: 4px solid #dbeafe;
+        border-top-color: #2563eb;
+        animation: spin-loading 0.9s linear infinite;
+    }
+
+    @@keyframes spin-loading {
+        to { transform: rotate(360deg); }
+    }
+</style>
+
+<div class="container-fluid idcard-bulk-page">
+    @Html.AntiForgeryToken()
+
+    <div class="row">
+        <div class="col-12 text-center mb-3">
+            <h2 class="mb-1"><i class="fas fa-id-card"></i> Carnet estudiantil</h2>
+            <p class="text-muted small mb-2">Generación e impresión masiva (mismo PDF que la vista individual)</p>
+            <a href="/id-card/settings" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-cog"></i> Configurar carnet
+            </a>
+        </div>
+    </div>
+
+    <div class="alert alert-info border-0 mx-auto mb-3" style="max-width:720px">
+        <i class="fas fa-file-pdf text-primary me-2"></i>
+        <strong>Imprimir masivo</strong> genera un solo PDF con los carnets seleccionados, usando el mismo proceso que <strong>Descargar PDF</strong> en cada estudiante (frente y reverso según configuración).
+        <br><small class="text-muted">Seleccione hasta 30 estudiantes, aplique filtros si lo necesita y pulse el botón principal. El logo en el PDF conserva sus colores originales.</small>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+            <div class="idcard-bulk-panel">
+                <div class="row g-2 mb-3 idcard-bulk-filters">
+                    <div class="col-md-3">
+                        <label for="filterGrade" class="form-label mb-1">Grado</label>
+                        <select id="filterGrade" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filterGroup" class="form-label mb-1">Grupo</label>
+                        <select id="filterGroup" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filterShift" class="form-label mb-1">Jornada</label>
+                        <select id="filterShift" class="form-select form-select-sm">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filterPrinted" class="form-label mb-1">Estado impresión</label>
+                        <select id="filterPrinted" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                            <option value="printed">Impresos</option>
+                            <option value="not_printed">No impresos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="idcard-bulk-print-actions">
+                    <button id="btnBulkPrint" type="button" class="btn btn-primary btn-lg">
+                        <i class="fas fa-file-pdf"></i> Imprimir masivo (selección)
+                    </button>
+                    <button id="btnSelectFiltered" type="button" class="btn btn-outline-primary">
+                        <i class="fas fa-check-double"></i> Seleccionar filtrados
+                    </button>
+                    <button id="btnSelectVisible" type="button" class="btn btn-outline-info">
+                        <i class="fas fa-list-check"></i> Seleccionar visibles
+                    </button>
+                    <button id="btnUnselectVisible" type="button" class="btn btn-outline-warning">
+                        <i class="fas fa-list"></i> Desmarcar visibles
+                    </button>
+                    <button id="btnUnselectPrinted" type="button" class="btn btn-outline-dark">
+                        <i class="fas fa-rotate-left"></i> Desmarcar impresos (pruebas)
+                    </button>
+                    <button id="btnClearSelection" type="button" class="btn btn-outline-secondary">
+                        <i class="fas fa-eraser"></i> Limpiar selección
+                    </button>
+                </div>
+                <p class="text-center text-muted small mb-3 mb-md-2">
+                    Límite: 30 estudiantes por operación.
+                    <span id="selectedCountLabel" class="fw-semibold text-body ms-1">Seleccionados: 0</span>
+                </p>
+
+                <div class="idcard-bulk-table-wrap">
+                    <table id="studentsTable" class="table table-bordered table-striped table-hover table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="selectAllStudents" title="Seleccionar página" /></th>
+                                <th class="text-center" title="Foto de perfil">Foto</th>
+                                <th>Estudiante</th>
+                                <th>Grado</th>
+                                <th>Grupo</th>
+                                <th>Jornada</th>
+                                <th>Estado impresión</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="printLoadingOverlay" class="print-loading-overlay d-none" aria-live="polite" aria-busy="true">
+    <div class="print-loading-card">
+        <div class="print-loading-spinner"></div>
+        <h5 class="mb-1">Procesando impresión masiva…</h5>
+        <p id="printLoadingMessage" class="mb-0 text-muted">Preparando documentos, por favor espere.</p>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script>
+$(function(){
+    const selectedStudentIds = new Set();
+    const printedByStudentId = new Map();
+    const table = $('#studentsTable').DataTable({
+        ajax: {
+            url: '/StudentIdCard/api/list-json',
+            data: function(d) {
+                d.grade = $('#filterGrade').val();
+                d.group = $('#filterGroup').val();
+                d.shift = $('#filterShift').val();
+                d.printed = $('#filterPrinted').val();
+            },
+            dataSrc: 'data',
+            xhrFields: { withCredentials: true },
+            error: function(xhr, err, msg) { console.error('[StudentIdCard] Ajax error:', xhr.status, msg, xhr.responseText?.substring(0,200)); }
+        },
+        columns: [
+            {
+                data: 'id',
+                title: '',
+                orderable: false,
+                searchable: false,
+                width: '35px',
+                render: function(data) {
+                    return `<input type="checkbox" class="student-check" value="${data}" ${selectedStudentIds.has(String(data)) ? 'checked' : ''} />`;
+                }
+            },
+            {
+                data: 'photoUrl',
+                title: '',
+                orderable: false,
+                searchable: false,
+                className: 'text-center',
+                width: '52px',
+                render: function(data) {
+                    var src = data
+                        ? '/File/GetUserPhoto?photoUrl=' + encodeURIComponent(data)
+                        : '/File/GetUserPhoto';
+                    return '<img src="' + src + '" class="rounded idcard-student-thumb" width="44" height="44" alt="" loading="lazy" />';
+                }
+            },
+            { data: 'fullName', title: 'Estudiante' },
+            { data: 'grade', title: 'Grado' },
+            { data: 'group', title: 'Grupo' },
+            { data: 'shift', title: 'Jornada' },
+            {
+                data: null,
+                title: 'Estado impresión',
+                orderable: false,
+                searchable: false,
+                render: function(data, type, row) {
+                    const badge = row.isPrinted
+                        ? '<span class="badge bg-success"><i class="fas fa-check-circle"></i> Impreso</span>'
+                        : '<span class="badge bg-secondary"><i class="fas fa-clock"></i> No impreso</span>';
+                    const btnText = row.isPrinted ? 'Marcar no impreso' : 'Marcar impreso';
+                    const btnClass = row.isPrinted ? 'btn-outline-secondary' : 'btn-outline-success';
+                    return `
+                        <div class="d-flex flex-column gap-1">
+                            ${badge}
+                            <button type="button" class="btn btn-xs ${btnClass} btn-toggle-print" data-student-id="${row.id}" data-is-printed="${row.isPrinted}">
+                                ${btnText}
+                            </button>
+                        </div>`;
+                }
+            },
+            {
+                data: 'id',
+                title: 'Acción',
+                orderable: false,
+                searchable: false,
+                render: function(data, type, row) {
+                    return `<a href="/StudentIdCard/ui/generate/${data}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-id-card"></i> Generar / ver carnet
+                            </a>`;
+                }
+            }
+        ],
+        language: {
+            url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+        },
+        responsive: true,
+        pageLength: 25,
+        drawCallback: function() {
+            const pageData = table.rows({ page: 'current' }).data().toArray();
+            pageData.forEach(row => {
+                printedByStudentId.set(String(row.id), !!row.isPrinted);
+            });
+
+            $('.student-check').each(function() {
+                const id = String($(this).val());
+                $(this).prop('checked', selectedStudentIds.has(id));
+            });
+            const pageChecks = $('.student-check');
+            const checkedOnPage = pageChecks.filter(':checked').length;
+            $('#selectAllStudents').prop('checked', pageChecks.length > 0 && checkedOnPage === pageChecks.length);
+            updateSelectedLabel();
+        }
+    });
+
+    function getSelectedIds() {
+        return Array.from(selectedStudentIds);
+    }
+
+    function updateSelectedLabel() {
+        const count = selectedStudentIds.size;
+        $('#selectedCountLabel').text(`Seleccionados: ${count}`);
+    }
+
+    function currentFilterParams() {
+        return {
+            grade: $('#filterGrade').val() || '',
+            group: $('#filterGroup').val() || '',
+            shift: $('#filterShift').val() || '',
+            printed: $('#filterPrinted').val() || ''
+        };
+    }
+
+    function showPrintLoading(message) {
+        $('#printLoadingMessage').text(message || 'Preparando documentos, por favor espere.');
+        $('#printLoadingOverlay').removeClass('d-none');
+    }
+
+    function hidePrintLoading() {
+        $('#printLoadingOverlay').addClass('d-none');
+    }
+
+    function fillSelect(selector, values) {
+        const current = $(selector).val() || '';
+        const firstOption = $(selector).find('option').first().clone();
+        $(selector).empty().append(firstOption);
+        (values || []).forEach(v => {
+            $(selector).append(new Option(v, v));
+        });
+        if (current) $(selector).val(current);
+    }
+
+    function loadFilters() {
+        $.ajax({
+            url: '/StudentIdCard/api/list-filters',
+            type: 'GET',
+            xhrFields: { withCredentials: true },
+            success: function(res) {
+                fillSelect('#filterGrade', res.grades);
+                fillSelect('#filterGroup', res.groups);
+                fillSelect('#filterShift', res.shifts);
+            },
+            error: function(xhr, err, msg) {
+                console.error('[StudentIdCard] Filter ajax error:', xhr.status, msg);
+            }
+        });
+    }
+
+    $('#filterGrade, #filterGroup, #filterShift, #filterPrinted').on('change', function() {
+        table.ajax.reload();
+    });
+
+    $('#selectAllStudents').on('change', function() {
+        const checked = $(this).is(':checked');
+        $('.student-check').each(function() {
+            const id = String($(this).val());
+            if (checked) selectedStudentIds.add(id);
+            else selectedStudentIds.delete(id);
+            $(this).prop('checked', checked);
+        });
+        updateSelectedLabel();
+    });
+
+    $(document).on('change', '.student-check', function() {
+        const id = String($(this).val());
+        if ($(this).is(':checked')) selectedStudentIds.add(id);
+        else selectedStudentIds.delete(id);
+        updateSelectedLabel();
+    });
+
+    $('#btnSelectFiltered').on('click', async function() {
+        const btn = $(this);
+        btn.prop('disabled', true);
+        const prev = btn.html();
+        btn.html('<i class="fas fa-spinner fa-spin"></i> Seleccionando...');
+        try {
+            const params = new URLSearchParams(currentFilterParams());
+            const res = await fetch('/StudentIdCard/api/list-ids?' + params.toString(), { credentials: 'same-origin' });
+            if (!res.ok) {
+                if (window.SchoolUi) window.SchoolUi.error('No se pudo aplicar el filtro', 'No obtuvimos la lista de estudiantes. Intente de nuevo.');
+                else alert('No se pudieron obtener estudiantes filtrados.');
+                return;
+            }
+            const data = await res.json();
+            selectedStudentIds.clear();
+            const filteredIds = (data.ids || []).map(id => String(id));
+            const limitedIds = filteredIds.slice(0, 30);
+            limitedIds.forEach(id => selectedStudentIds.add(id));
+            if (filteredIds.length > 30) {
+                if (window.SchoolUi) {
+                    window.SchoolUi.warning(
+                        'Límite de selección',
+                        `Hay ${filteredIds.length} estudiantes con el filtro actual. Por rendimiento solo se marcaron los primeros 30. Ajuste el filtro si necesita otro grupo.`);
+                } else alert(`Se encontraron ${filteredIds.length} estudiantes filtrados. Solo se seleccionaron los primeros 30.`);
+            }
+            table.ajax.reload(null, false);
+        } catch {
+            if (window.SchoolUi) window.SchoolUi.error('Sin conexión', 'No pudimos cargar la lista filtrada.');
+            else alert('Error de red al seleccionar filtrados.');
+        } finally {
+            btn.prop('disabled', false);
+            btn.html(prev);
+        }
+    });
+
+    $('#btnSelectVisible').on('click', function() {
+        $('.student-check').each(function() {
+            const id = String($(this).val());
+            selectedStudentIds.add(id);
+            $(this).prop('checked', true);
+        });
+        updateSelectedLabel();
+        const pageChecks = $('.student-check');
+        $('#selectAllStudents').prop('checked', pageChecks.length > 0);
+    });
+
+    $('#btnUnselectVisible').on('click', function() {
+        $('.student-check').each(function() {
+            const id = String($(this).val());
+            selectedStudentIds.delete(id);
+            $(this).prop('checked', false);
+        });
+        updateSelectedLabel();
+        $('#selectAllStudents').prop('checked', false);
+    });
+
+    $('#btnUnselectPrinted').on('click', function() {
+        let removed = 0;
+        selectedStudentIds.forEach(id => {
+            if (printedByStudentId.get(id) === true) {
+                selectedStudentIds.delete(id);
+                removed++;
+            }
+        });
+
+        $('.student-check').each(function() {
+            const id = String($(this).val());
+            $(this).prop('checked', selectedStudentIds.has(id));
+        });
+        const pageChecks = $('.student-check');
+        const checkedOnPage = pageChecks.filter(':checked').length;
+        $('#selectAllStudents').prop('checked', pageChecks.length > 0 && checkedOnPage === pageChecks.length);
+        updateSelectedLabel();
+
+        if (removed > 0) {
+            if (window.SchoolUi) {
+                window.SchoolUi.info('Selección actualizada', `Se quitaron ${removed} estudiante(s) que ya estaban marcados como impresos.`);
+            } else alert(`Se desmarcaron ${removed} estudiante(s) con estado Impreso.`);
+        } else {
+            if (window.SchoolUi) {
+                window.SchoolUi.info('Sin cambios', 'Ninguno de los seleccionados estaba marcado como impreso.');
+            } else alert('No había estudiantes impresos dentro de la selección actual.');
+        }
+    });
+
+    $('#btnClearSelection').on('click', function() {
+        selectedStudentIds.clear();
+        table.ajax.reload(null, false);
+    });
+
+    $('#btnBulkPrint').on('click', async function() {
+        const btn = $(this);
+        const token = $('input[name="__RequestVerificationToken"]').val();
+        const selectedIds = getSelectedIds();
+
+        if (selectedIds.length === 0) {
+            if (window.SchoolUi) {
+                window.SchoolUi.warning('Nadie seleccionado', 'Marque al menos un estudiante en la tabla para generar el PDF masivo.');
+            } else alert('Seleccione al menos un estudiante para imprimir.');
+            return;
+        }
+        if (selectedIds.length > 30) {
+            if (window.SchoolUi) {
+                window.SchoolUi.warning('Límite alcanzado', 'Solo puede incluir hasta 30 estudiantes por cada impresión masiva. Reduzca la selección.');
+            } else alert('Solo se permiten 30 estudiantes por impresión masiva.');
+            return;
+        }
+
+        const payload = {
+            grade: $('#filterGrade').val() || null,
+            group: $('#filterGroup').val() || null,
+            shift: $('#filterShift').val() || null,
+            studentIds: selectedIds
+        };
+
+        btn.prop('disabled', true);
+        const previousHtml = btn.html();
+        btn.html('<i class="fas fa-spinner fa-spin"></i> Generando...');
+        showPrintLoading(`Generando carnets para ${selectedIds.length} estudiante(s)...`);
+
+        try {
+            const response = await fetch('/StudentIdCard/api/print-bulk', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(payload)
+            });
+
+            const contentType = (response.headers.get('content-type') || '').toLowerCase();
+            if (!response.ok) {
+                if (contentType.includes('application/json')) {
+                    const json = await response.json();
+                    const m = json.message || 'No se pudo generar el PDF masivo.';
+                    if (window.SchoolUi) window.SchoolUi.error('Impresión masiva', m);
+                    else alert(m);
+                } else {
+                    const text = await response.text();
+                    const m = text || 'No se pudo generar el PDF masivo.';
+                    if (window.SchoolUi) window.SchoolUi.error('Impresión masiva', m.length > 500 ? m.substring(0, 500) + '…' : m);
+                    else alert(m);
+                }
+                return;
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'carnets-masivo.pdf';
+            document.body.appendChild(a);
+            showPrintLoading('Descargando PDF, casi listo...');
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            table.ajax.reload(null, false);
+            if (window.SchoolUi) window.SchoolUi.toastSuccess('PDF listo — revise su carpeta de descargas');
+        } catch (e) {
+            if (window.SchoolUi) {
+                window.SchoolUi.error('Sin conexión', 'No se pudo generar la impresión masiva. Compruebe su internet.');
+            } else alert('Error de red al generar la impresión masiva.');
+        } finally {
+            hidePrintLoading();
+            btn.prop('disabled', false);
+            btn.html(previousHtml);
+        }
+    });
+
+    $(document).on('click', '.btn-toggle-print', async function() {
+        const btn = $(this);
+        const studentId = btn.data('student-id');
+        const currentPrinted = String(btn.data('is-printed')).toLowerCase() === 'true';
+        const nextPrinted = !currentPrinted;
+        const token = $('input[name="__RequestVerificationToken"]').val();
+
+        btn.prop('disabled', true);
+        try {
+            const response = await fetch(`/StudentIdCard/api/print-status/${studentId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ isPrinted: nextPrinted })
+            });
+
+            if (!response.ok) {
+                const msg = await response.text();
+                const m = msg || 'No se pudo actualizar el estado de impresión.';
+                if (window.SchoolUi) window.SchoolUi.error('Estado de impresión', m.length > 400 ? m.substring(0, 400) + '…' : m);
+                else alert(m);
+                return;
+            }
+
+            table.ajax.reload(null, false);
+        } catch (e) {
+            if (window.SchoolUi) {
+                window.SchoolUi.error('Error de conexión', 'No pudimos guardar el estado. Intente otra vez.');
+            } else alert('Error de red al actualizar estado de impresión.');
+        } finally {
+            btn.prop('disabled', false);
+        }
+    });
+
+    loadFilters();
+});
+</script>
+}

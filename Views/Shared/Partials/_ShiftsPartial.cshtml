@@ -1,0 +1,98 @@
+@model IEnumerable<SchoolManager.Models.Shift>
+
+<div class="card card-outline card-primary">
+    <div class="card-header">
+        <h5 class="card-title fw-bold fs-3">
+            <i class="bi bi-clock text-primary me-2"></i>Gestión de Jornadas
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="search-bar">
+            <input type="text" id="searchShifts" placeholder="Buscar jornada por nombre..." autocomplete="off">
+        </div>
+        <div class="table-responsive">
+            <table id="shiftTable" class="table table-hover table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th class="text-center">Nombre de Jornada</th>
+                        <th class="text-center">Grupos Asignados</th>
+                        <th class="text-center" style="width: 150px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">
+                                <i class="bi bi-info-circle me-2"></i>
+                                No hay jornadas registradas. Use el formulario de abajo para agregar una nueva jornada.
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var shift in Model ?? Enumerable.Empty<SchoolManager.Models.Shift>())
+                    {
+                        <tr data-shift-id="@shift.Id" data-shift-name="@shift.Name">
+                            <td class="align-middle text-center">
+                                <span class="shift-name-text">
+                                    @if (!string.IsNullOrEmpty(shift.Name))
+                                    {
+                                        <span class="badge 
+                                            @(shift.Name.ToLower() == "mañana" || shift.Name.ToLower() == "manana" ? "bg-info" : 
+                                              shift.Name.ToLower() == "tarde" ? "bg-warning" : 
+                                              shift.Name.ToLower() == "noche" ? "bg-dark" : "bg-secondary") text-white px-3 py-2 fw-bold">
+                                            @shift.Name
+                                        </span>
+                                        @if (!string.IsNullOrEmpty(shift.Description))
+                                        {
+                                            <br />
+                                            <small class="text-muted">@shift.Description</small>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary text-white px-3 py-2">Sin definir</span>
+                                    }
+                                </span>
+                                <input type="text" class="form-control d-none shift-name-input" value="@shift.Name" autocomplete="off" />
+                                <textarea class="form-control d-none shift-description-input" placeholder="Descripción (opcional)">@shift.Description</textarea>
+                            </td>
+                            <td class="align-middle text-center">
+                                <span class="shift-groups-count" data-shift-id="@shift.Id">-</span>
+                            </td>
+                            <td class="align-middle text-center">
+                                <button class="btn btn-action btn-edit me-1 btn-edit-shift" title="Editar">
+                                    <i class="bi bi-pencil me-1"></i> Editar
+                                </button>
+                                <button class="btn btn-action btn-save d-none me-1 btn-save-shift" title="Guardar">
+                                    <i class="bi bi-check me-1"></i> Guardar
+                                </button>
+                                <button class="btn btn-action btn-delete btn-delete-shift" title="Eliminar">
+                                    <i class="bi bi-trash me-1"></i> Eliminar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-3">
+            <h6 class="mb-3">Agregar Nueva Jornada</h6>
+            <div class="row">
+                <div class="col-md-8">
+                    <input type="text" id="newShiftName" class="form-control mb-2" placeholder="Nombre de la jornada (ej: Mañana, Tarde, Noche)" autocomplete="off" />
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-primary w-100" onclick="createShift()">
+                        <i class="bi bi-plus-circle me-1"></i> Agregar Jornada
+                    </button>
+                </div>
+            </div>
+            <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Las jornadas aparecen aquí cuando tienen grupos asignados. Puede asignar jornadas a grupos desde la pestaña de <strong>Grupos</strong>.
+            </small>
+        </div>
+    </div>
+</div>
+

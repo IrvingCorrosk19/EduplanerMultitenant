@@ -1,0 +1,143 @@
+@model SchoolManager.ViewModels.CreateUserViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Nuevo Usuario";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-user-plus mr-2"></i>Nuevo Usuario</h3>
+                <small>Registre un nuevo usuario en el sistema</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Información del Usuario</h5>
+                </div>
+                <div class="card-body">
+                    <form id="createUserForm">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Name" class="form-label">Nombre *</label>
+                                    <input asp-for="Name" class="form-control" required />
+                                    <span asp-validation-for="Name" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="LastName" class="form-label">Apellido *</label>
+                                    <input asp-for="LastName" class="form-control" required />
+                                    <span asp-validation-for="LastName" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Email" class="form-label">Correo Electrónico *</label>
+                                    <input asp-for="Email" type="email" class="form-control" required />
+                                    <span asp-validation-for="Email" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="DocumentId" class="form-label">Documento de Identidad</label>
+                                    <input asp-for="DocumentId" class="form-control" />
+                                    <span asp-validation-for="DocumentId" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Role" class="form-label">Rol *</label>
+                                    <select asp-for="Role" class="form-select" required>
+                                        <option value="">Seleccione un rol</option>
+                                        @if (ViewBag.Roles != null)
+                                        {
+                                            @foreach (var item in (IEnumerable<SelectListItem>)ViewBag.Roles)
+                                            {
+                                                <option value="@item.Value">@item.Text</option>
+                                            }
+                                        }
+                                    </select>
+                                    <span asp-validation-for="Role" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="PasswordHash" class="form-label">Contraseña *</label>
+                                    <input asp-for="PasswordHash" type="password" class="form-control" required />
+                                    <span asp-validation-for="PasswordHash" class="text-danger"></span>
+                                    <small class="form-text text-muted">Mínimo 8 caracteres</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="DateOfBirth" class="form-label">Fecha de Nacimiento</label>
+                                    <input asp-for="DateOfBirth" type="date" class="form-control" />
+                                    <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="CellphonePrimary" class="form-label">Teléfono Principal</label>
+                                    <input asp-for="CellphonePrimary" class="form-control" />
+                                    <span asp-validation-for="CellphonePrimary" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="@Url.Action("Index")" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left mr-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save mr-2"></i>Crear Usuario
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function() {
+            $('#createUserForm').on('submit', function(e) {
+                e.preventDefault();
+                var formData = $(this).serialize();
+                $.ajax({
+                    url: '@Url.Action("CreateJson")',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.message) {
+                            window.location.href = '@Url.Action("Index")';
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Error: ' + (xhr.responseJSON?.message || 'Error al crear usuario'));
+                    }
+                });
+            });
+        });
+    </script>
+}

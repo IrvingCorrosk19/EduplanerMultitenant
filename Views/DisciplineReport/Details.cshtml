@@ -1,0 +1,126 @@
+@model SchoolManager.Models.DisciplineReport
+@using System.Text.Json
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Detalles de Reporte de Disciplina";
+
+    List<string>? disciplinaAccionesLista = null;
+    if (!string.IsNullOrWhiteSpace(Model.DisciplineActionsJson))
+    {
+        try
+        {
+            disciplinaAccionesLista = JsonSerializer.Deserialize<List<string>>(Model.DisciplineActionsJson);
+        }
+        catch
+        {
+            disciplinaAccionesLista = null;
+        }
+    }
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="portal-header">
+                <h3><i class="fas fa-info-circle mr-2"></i>Detalles de Reporte de Disciplina</h3>
+                <small>Información completa del reporte</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle mr-2"></i>Información del Reporte</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Fecha:</dt>
+                        <dd class="col-sm-8"><strong>@TimeZoneService.ToLocalDisplayString(Model.Date, "dd/MM/yyyy HH:mm")</strong></dd>
+
+                        <dt class="col-sm-4">Estudiante:</dt>
+                        <dd class="col-sm-8">@(Model.Student?.Name ?? "N/A")</dd>
+
+                        <dt class="col-sm-4">Docente:</dt>
+                        <dd class="col-sm-8">@(Model.Teacher?.Name ?? "N/A")</dd>
+
+                        <dt class="col-sm-4">Tipo:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-info">@Model.ReportType</span>
+                        </dd>
+
+                        <dt class="col-sm-4">Categoría:</dt>
+                        <dd class="col-sm-8">@(Model.Category ?? "N/A")</dd>
+
+                        <dt class="col-sm-4">Estado:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge @(Model.Status?.ToLower() == "resuelto" ? "bg-success" : "bg-warning")">
+                                @Model.Status
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-4">Acciones observadas:</dt>
+                        <dd class="col-sm-8">
+                            @if (disciplinaAccionesLista != null && disciplinaAccionesLista.Count > 0)
+                            {
+                                <ul class="mb-0 ps-3">
+                                    @foreach (var act in disciplinaAccionesLista)
+                                    {
+                                        <li>@act</li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No registradas</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-4">Descripción:</dt>
+                        <dd class="col-sm-8">
+                            <div class="alert alert-light">
+                                @(Model.Description ?? "Sin descripción")
+                            </div>
+                        </dd>
+
+                        @if (!string.IsNullOrEmpty(Model.Documents))
+                        {
+                            <dt class="col-sm-4">Documentos:</dt>
+                            <dd class="col-sm-8">
+                                <div id="documentsList"></div>
+                            </dd>
+                        }
+                    </dl>
+
+                    <div class="mt-4">
+                        <a href="@Url.Action("Index")" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left mr-2"></i>Volver
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        @if (!string.IsNullOrEmpty(Model.Documents))
+        {
+            <text>
+            try {
+                var documents = JSON.parse('@Html.Raw(Model.Documents)');
+                var documentsHtml = '<ul>';
+                documents.forEach(function(doc) {
+                    documentsHtml += '<li><a href="/uploads/discipline/' + doc.fileName + '" target="_blank">' + doc.originalName + '</a></li>';
+                });
+                documentsHtml += '</ul>';
+                $('#documentsList').html(documentsHtml);
+            } catch(e) {
+                $('#documentsList').html('<p class="text-muted">Error al cargar documentos</p>');
+            }
+            </text>
+        }
+    </script>
+}

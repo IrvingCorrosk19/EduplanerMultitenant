@@ -1,0 +1,102 @@
+﻿@model IEnumerable<SchoolManager.Models.Group>
+
+<div class="card card-outline card-primary">
+    <div class="card-header">
+        <h5 class="card-title fw-bold fs-3">
+            <i class="bi bi-people text-primary me-2"></i>Gestión de Grupos
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="search-bar">
+            <input type="text" id="searchGroups" placeholder="Buscar grupo por nombre o descripción..." autocomplete="off">
+        </div>
+        <div class="table-responsive">
+            <table id="groupTable" class="table table-hover table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th class="text-center">Nombre</th>
+                        <th class="text-center">Descripción</th>
+                        <th class="text-center">Jornada</th>
+                        <th class="text-center" style="width: 150px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var group in Model ?? Enumerable.Empty<SchoolManager.Models.Group>())
+                    {
+                        <tr data-id="@group.Id">
+                            <td class="align-middle text-center">
+                                <span class="group-name-text">@group.Name</span>
+                                <input type="text" class="form-control d-none group-name-input" value="@group.Name" autocomplete="off" />
+                            </td>
+                            <td class="align-middle text-center">
+                                <span class="group-description-text">@group.Description</span>
+                                <textarea class="form-control d-none group-description-input">@group.Description</textarea>
+                            </td>
+                            <td class="align-middle text-center">
+                                <span class="group-shift-text">
+                                    @{
+                                        // Usar ShiftNavigation (relación con catálogo) en lugar de Shift (string legacy)
+                                        var shiftName = group.ShiftNavigation?.Name ?? group.Shift ?? "";
+                                    }
+                                    @if (!string.IsNullOrEmpty(shiftName))
+                                    {
+                                        <span class="badge 
+                                            @(shiftName.ToLower() == "mañana" || shiftName.ToLower() == "manana" ? "bg-info" : 
+                                              shiftName.ToLower() == "tarde" ? "bg-warning" : 
+                                              shiftName.ToLower() == "noche" ? "bg-dark" : "bg-secondary")">
+                                            @shiftName
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Sin definir</span>
+                                    }
+                                </span>
+                                <select class="form-control d-none group-shift-input" data-shift-id="@(group.ShiftId?.ToString() ?? "")">
+                                    <option value="">Seleccione una jornada</option>
+                                    @* Las opciones se cargarán dinámicamente desde el catálogo de jornadas vía JavaScript *@
+                                </select>
+                            </td>
+                            <td class="align-middle text-center">
+                                <button class="btn btn-action btn-edit me-1 btn-edit-group" title="Editar">
+                                    <i class="bi bi-pencil me-1"></i> Editar
+                                </button>
+                                <button class="btn btn-action btn-save d-none me-1 btn-save-group" title="Guardar">
+                                    <i class="bi bi-check me-1"></i> Guardar
+                                </button>
+                                <button class="btn btn-action btn-delete btn-delete-group" title="Eliminar">
+                                    <i class="bi bi-trash me-1"></i> Eliminar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-3">
+            <h6 class="mb-3">Agregar Nuevo Grupo</h6>
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" id="newGroupName" class="form-control mb-2" placeholder="Nombre del grupo" autocomplete="off" />
+                </div>
+                <div class="col-md-3">
+                    <input type="text" id="newGroupDescription" class="form-control mb-2" placeholder="Descripción (opcional)" autocomplete="off" />
+                </div>
+                <div class="col-md-3">
+                    <select id="newGroupShift" class="form-control mb-2">
+                        <option value="">Seleccione jornada (opcional)</option>
+                        <option value="Mañana">Mañana</option>
+                        <option value="Tarde">Tarde</option>
+                        <option value="Noche">Noche</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" onclick="createGroup()">
+                        <i class="bi bi-plus-circle me-1"></i> Agregar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,236 @@
+﻿@model SchoolManager.ViewModels.AssignViewModel
+
+@{
+    ViewData["Title"] = "Asignación Académica";
+    Layout = "_AdminLayout";
+}
+
+<h2>Asignación Académica para: @Model.Teacher.Name</h2>
+
+<form id="assignForm">
+    <input type="hidden" name="UserId" value="@Model.Teacher.Id" />
+
+    <!-- CARD MATERIAS -->
+    <div class="card card-outline card-primary mb-4">
+        <div class="card-header">
+            <h5 class="card-title">Materias</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                @foreach (var subject in Model.Subjects)
+                {
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input subject-checkbox"
+                                   type="checkbox"
+                                   name="SubjectIds"
+                                   value="@subject.Id"
+                                   data-name="@subject.Name"
+                                   id="subject_@subject.Id" />
+                            <label class="form-check-label" for="subject_@subject.Id">@subject.Name</label>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- CARD GRADOS -->
+    <div class="card card-outline card-secondary mb-4">
+        <div class="card-header">
+            <h5 class="card-title">Niveles / Grados</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                @foreach (var grade in Model.Grades)
+                {
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input grade-checkbox"
+                                   type="checkbox"
+                                   name="GradeIds"
+                                   value="@grade.Id"
+                                   data-name="@grade.Name"
+                                   id="grade_@grade.Id" />
+                            <label class="form-check-label" for="grade_@grade.Id">@grade.Name</label>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- CARD GRUPOS -->
+    <div class="card card-outline card-info mb-4">
+        <div class="card-header">
+            <h5 class="card-title">Grupos</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                @foreach (var group in Model.Groups)
+                {
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input group-checkbox"
+                                   type="checkbox"
+                                   name="GroupIds"
+                                   value="@group.Id"
+                                   data-name="@group.Name"
+                                   id="group_@group.Id" />
+                            <label class="form-check-label" for="group_@group.Id">@group.Name</label>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="text-right">
+        <button type="submit" class="btn btn-primary">Guardar Asignación</button>
+        <a href="/AcademicAssignment/Index" class="btn btn-secondary">Cancelar</a>
+    </div>
+</form>
+
+<!-- RESULTADOS -->
+<div class="card card-outline card-success mt-4" id="resultCard" style="display:none;">
+    <div class="card-header">
+        <h5 class="card-title">Resultado de la Asignación</h5>
+    </div>
+    <div class="card-body">
+        <table id="assignmentTable" class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    <th>Materia</th>
+                    <th>Grado</th>
+                    <th>Grupo</th>
+                </tr>
+            </thead>
+            <tbody id="assignmentTableBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        $(document).ready(function () {
+            const table = $('#assignmentTable').DataTable({
+                language: {
+                    search: "Buscar:",
+                    lengthMenu: "Mostrar _MENU_ registros",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    },
+                    zeroRecords: "No se encontraron resultados",
+                    infoEmpty: "No hay registros disponibles",
+                    infoFiltered: "(filtrado de _MAX_ registros totales)"
+                }
+            });
+
+            // Solo una materia seleccionada
+            $('.subject-checkbox').on('change', function () {
+                if (this.checked) {
+                    $('.subject-checkbox').not(this).prop('checked', false).prop('disabled', true);
+                } else {
+                    $('.subject-checkbox').prop('disabled', false);
+                }
+            });
+
+            // Solo un grado seleccionado
+            $('.grade-checkbox').on('change', function () {
+                if (this.checked) {
+                    $('.grade-checkbox').not(this).prop('checked', false).prop('disabled', true);
+                } else {
+                    $('.grade-checkbox').prop('disabled', false);
+                }
+            });
+
+            // Guardar asignación
+            $('#assignForm').on('submit', function (e) {
+                e.preventDefault();
+
+                const subject = $('input.subject-checkbox:checked');
+                const grade = $('input.grade-checkbox:checked');
+                const groups = $('input.group-checkbox:checked');
+
+                if (!subject.length || !grade.length || !groups.length) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Campos incompletos',
+                        text: 'Debes seleccionar una materia, un grado y al menos un grupo.'
+                    });
+                    return;
+                }
+
+                const requestData = {
+                    userId: $('input[name="UserId"]').val(),
+                    subjectId: subject.val(),
+                    gradeId: grade.val(),
+                    groupIds: []
+                };
+
+                groups.each(function () {
+                    requestData.groupIds.push($(this).val());
+                });
+
+                $.ajax({
+                    url: '/AcademicAssignment/GuardarAsignacion',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestData),
+                    success: function (response) {
+                        if (!response.success || !response.groupNames || response.groupNames.length === 0) {
+                            Swal.fire({
+                                icon: 'info',
+                                title: 'Sin cambios',
+                                text: 'No se guardaron nuevas asignaciones. Ya existen esas combinaciones.'
+                            });
+                            return;
+                        }
+
+                        const tbody = $('#assignmentTableBody');
+
+                        response.groupNames.forEach(function (groupName) {
+                            table.row.add([
+                                response.subjectName,
+                                response.gradeName,
+                                groupName
+                            ]).draw();
+                        });
+
+                        $('#resultCard').show();
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Asignación guardada',
+                            text: response.message || 'La asignación se guardó correctamente.'
+                        });
+
+                        // Reset selección
+                        $('.form-check-input').prop('checked', false).prop('disabled', false);
+                    },
+                    error: function (xhr) {
+                        let message = "Ocurrió un error al guardar la asignación.";
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            message = xhr.responseJSON.message;
+                        }
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: message
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+}

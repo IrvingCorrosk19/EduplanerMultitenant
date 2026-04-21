@@ -1,0 +1,159 @@
+@model SchoolManager.ViewModels.SchoolAdminViewModel
+
+@{
+    ViewData["Title"] = "Crear Escuela con Administrador";
+    Layout = "_SuperAdminLayout";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow-lg">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">@ViewData["Title"]</h3>
+            </div>
+            <div class="card-body">
+                <form asp-action="CreateSchoolWithAdmin" method="post" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                    <div class="row">
+                        <!-- Sección de la Escuela -->
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header bg-info text-white">
+                                    <h4 class="mb-0"><i class="fas fa-school me-2"></i>Información de la Escuela</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="SchoolName" class="form-label"></label>
+                                        <input asp-for="SchoolName" class="form-control" autocomplete="off" />
+                                        <span asp-validation-for="SchoolName" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="form-group mb-3">
+                                        <label asp-for="SchoolAddress" class="form-label"></label>
+                                        <input asp-for="SchoolAddress" class="form-control" autocomplete="off" />
+                                        <span asp-validation-for="SchoolAddress" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="form-group mb-3">
+                                        <label asp-for="SchoolPhone" class="form-label"></label>
+                                        <input asp-for="SchoolPhone" class="form-control" autocomplete="off" />
+                                        <span asp-validation-for="SchoolPhone" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="form-group mb-3">
+                                        <label asp-for="PolicyNumber" class="form-label"></label>
+                                        <input asp-for="PolicyNumber" class="form-control" autocomplete="off"
+                                               placeholder="Ej: POL-2025-001 (opcional)" />
+                                        <small class="text-muted">Número de póliza institucional (seguro escolar u otro). Todos los estudiantes del colegio lo compartirán en su carnet.</small>
+                                    </div>
+
+                                    <div class="form-group mb-3">
+                                        <label asp-for="LogoFile" class="form-label"></label>
+                                        <div class="input-group">
+                                            <input type="file" asp-for="LogoFile" class="form-control" accept="image/*" 
+                                                   onchange="previewImage(this, 'logoPreview')" />
+                                        </div>
+                                        <div class="mt-2">
+                                            <img id="logoPreview" src="#" alt="Vista previa del logo" 
+                                                 style="max-width: 200px; max-height: 200px; display: none;" 
+                                                 class="img-thumbnail" />
+                                        </div>
+                                        <span asp-validation-for="LogoFile" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sección del Administrador -->
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header bg-success text-white">
+                                    <h4 class="mb-0"><i class="fas fa-user-shield me-2"></i>Información del Administrador</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label asp-for="AdminName" class="form-label"></label>
+                                                <input asp-for="AdminName" class="form-control" autocomplete="off" />
+                                                <span asp-validation-for="AdminName" class="text-danger"></span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label asp-for="AdminLastName" class="form-label"></label>
+                                                <input asp-for="AdminLastName" class="form-control" autocomplete="off" />
+                                                <span asp-validation-for="AdminLastName" class="text-danger"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group mb-3">
+                                        <label asp-for="AdminEmail" class="form-label"></label>
+                                        <input asp-for="AdminEmail" class="form-control" autocomplete="off" />
+                                        <span asp-validation-for="AdminEmail" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="form-group mb-3">
+                                        <label asp-for="AdminPassword" class="form-label"></label>
+                                        <input asp-for="AdminPassword" class="form-control" autocomplete="new-password" />
+                                        <span asp-validation-for="AdminPassword" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="form-group mb-3">
+                                        <label asp-for="ConfirmPassword" class="form-label"></label>
+                                        <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" />
+                                        <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group text-center mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save me-2"></i>Crear Escuela y Administrador
+                        </button>
+                        <a asp-action="ListSchools" class="btn btn-secondary btn-lg ms-2">
+                            <i class="fas fa-arrow-left me-2"></i>Volver a la lista
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        function previewImage(input, previewId) {
+            const preview = document.getElementById(previewId);
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+
+        // Animación al hacer hover sobre las cards
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px)';
+                this.style.transition = 'transform 0.3s ease';
+            });
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+} 

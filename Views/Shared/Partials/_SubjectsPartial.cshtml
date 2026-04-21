@@ -1,0 +1,91 @@
+﻿@model IEnumerable<SchoolManager.Models.Subject>
+
+<div class="card card-outline card-primary">
+    <div class="card-header">
+        <h5 class="card-title fw-bold fs-3">
+            <i class="bi bi-book text-primary me-2"></i>Gestión de Materias
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="search-bar">
+            <input type="text" id="searchSubjects" placeholder="Buscar materia por nombre o descripción..." autocomplete="off">
+        </div>
+        <div class="table-responsive">
+            <table id="subjectTable" class="table table-hover table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th class="text-center">Nombre</th>
+                        <th class="text-center">Descripción</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-center" style="width: 200px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var subject in Model ?? Enumerable.Empty<SchoolManager.Models.Subject>())
+                    {
+                        <tr data-id="@subject.Id" data-active="@((subject.Status ?? false).ToString().ToLower())">
+                            <td class="align-middle text-center">
+                                <span class="subject-name-text">@subject.Name</span>
+                                <input type="text" class="form-control d-none subject-name-input" value="@subject.Name" autocomplete="off" />
+                            </td>
+                            <td class="align-middle text-center">
+                                <span class="subject-description-text">@subject.Description</span>
+                                <textarea class="form-control d-none subject-description-input">@subject.Description</textarea>
+                            </td>
+                            <td class="align-middle text-center">
+                                @if (subject.Status ?? false)
+                                {
+                                    <span class="badge bg-success subject-status-badge">Activa</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary subject-status-badge">Inactiva</span>
+                                }
+                            </td>
+                            <td class="align-middle text-center">
+                                <button class="btn btn-action btn-edit me-1 btn-edit-subject" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-action btn-save d-none me-1 btn-save-subject" title="Guardar">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                                @if (subject.Status ?? false)
+                                {
+                                    <button class="btn btn-action btn-warning me-1 btn-toggle-subject" title="Desactivar">
+                                        <i class="bi bi-pause-circle"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-action btn-success me-1 btn-toggle-subject" title="Activar">
+                                        <i class="bi bi-play-circle"></i>
+                                    </button>
+                                }
+                                <button class="btn btn-action btn-delete btn-delete-subject" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-3">
+            <h6 class="mb-3">Agregar Nueva Materia</h6>
+            <div class="row">
+                <div class="col-md-5">
+                    <input type="text" id="newSubjectName" class="form-control mb-2" placeholder="Nombre de la materia" autocomplete="off" />
+                </div>
+                <div class="col-md-5">
+                    <input type="text" id="newSubjectDescription" class="form-control mb-2" placeholder="Descripción (opcional)" autocomplete="off" />
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" onclick="createSubject()">
+                        <i class="bi bi-plus-circle me-1"></i> Agregar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

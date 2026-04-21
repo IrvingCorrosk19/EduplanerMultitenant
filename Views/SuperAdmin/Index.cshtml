@@ -1,0 +1,103 @@
+@{
+    ViewData["Title"] = "Panel de Super Administrador";
+    Layout = "_SuperAdminLayout";
+}
+
+<div class="row">
+    <!-- Tarjeta de Escuelas -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100 border-primary">
+            <div class="card-header bg-info text-white">
+                <h3 class="mb-0"><i class="fas fa-school me-2"></i>Gestión de Escuelas</h3>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Administra las escuelas registradas en el sistema, sus administradores y configuraciones.</p>
+                <div class="d-grid gap-2">
+                    <a asp-action="CreateSchoolWithAdmin" class="btn btn-primary">
+                        <i class="fas fa-plus-circle me-2"></i>Crear Nueva Escuela
+                    </a>
+                    <a asp-action="ListSchools" class="btn btn-outline-primary">
+                        <i class="fas fa-list me-2"></i>Ver Lista de Escuelas
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Tarjeta de Configuración -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h3 class="mb-0"><i class="fas fa-cogs me-2"></i>Configuración del Sistema</h3>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Configura los parámetros generales del sistema y gestiona las preferencias globales.</p>
+                <div class="d-grid gap-2">
+                    <a asp-action="SystemSettings" class="btn btn-warning">
+                        <i class="fas fa-sliders-h me-2"></i>Configuración General
+                    </a>
+                    <a asp-action="Backup" class="btn btn-outline-warning">
+                        <i class="fas fa-database me-2"></i>Respaldo del Sistema
+                    </a>
+                    <a asp-action="EmailApiSettings" class="btn btn-success">
+                        <i class="fas fa-paper-plane me-2"></i>Correo API (Resend) — contraseñas masivas
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Directorio de estudiantes -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100 border-success">
+            <div class="card-header bg-success text-white">
+                <h3 class="mb-0"><i class="fas fa-user-graduate me-2"></i>Estudiantes</h3>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Consulta estudiantes de todas las escuelas: cédula, nivel, grupo, jornada y filtros de búsqueda.</p>
+                <div class="d-grid gap-2">
+                    <a asp-action="StudentDirectory" class="btn btn-success">
+                        <i class="fas fa-list me-2"></i>Directorio de estudiantes
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjeta de Reportes -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100 border-danger">
+            <div class="card-header bg-danger text-white">
+                <h3 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Reportes y Estadísticas</h3>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Visualiza reportes y estadísticas del sistema, incluyendo actividad de usuarios y uso de recursos.</p>
+                <div class="d-grid gap-2">
+                    <a asp-action="SystemStats" class="btn btn-danger">
+                        <i class="fas fa-chart-line me-2"></i>Estadísticas del Sistema
+                    </a>
+                    <a asp-action="ActivityLog" class="btn btn-outline-danger">
+                        <i class="fas fa-history me-2"></i>Registro de Actividad
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Animación al hacer hover sobre las cards
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px)';
+                this.style.transition = 'transform 0.3s ease';
+            });
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+} 

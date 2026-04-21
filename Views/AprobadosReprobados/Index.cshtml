@@ -1,0 +1,437 @@
+@model SchoolManager.ViewModels.AprobadosReprobadosFiltroViewModel
+@{
+    ViewData["Title"] = "Cuadro de Aprobados y Reprobados";
+    Layout = "_AdminLayout";
+    var trimestres = ViewBag.TrimestresDisponibles as List<string>;
+    var niveles = ViewBag.NivelesDisponibles as List<string>;
+    var currentUser = ViewBag.CurrentUser as SchoolManager.Models.User;
+}
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="bi bi-bar-chart-fill"></i> Cuadro de Aprobados y Reprobados por Grado
+            </h2>
+            <p class="text-muted">Reporte estadístico de aprobación y reprobación por trimestre</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filtros del Reporte</h5>
+        </div>
+        <div class="card-body">
+            <form id="filtro-form">
+                @Html.AntiForgeryToken()
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Trimestre:</strong> <span class="text-danger">*</span></label>
+                            <select class="form-select" id="trimestre" name="Trimestre" required>
+                                <option value="">-- Seleccione un trimestre --</option>
+                                @if (trimestres != null)
+                                {
+                                    foreach (var trimestre in trimestres)
+                                    {
+                                        <option value="@trimestre">@trimestre</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Nivel Educativo:</strong> <span class="text-danger">*</span></label>
+                            <select class="form-select" id="nivelEducativo" name="NivelEducativo" required>
+                                <option value="">-- Seleccione un nivel --</option>
+                                @if (niveles != null)
+                                {
+                                    foreach (var nivel in niveles)
+                                    {
+                                        <option value="@nivel">@nivel</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Grado (Opcional):</strong></label>
+                            <select class="form-select" id="gradoEspecifico" name="GradoEspecifico">
+                                <option value="">Todos los grados</option>
+                            </select>
+                            <small class="text-muted">Seleccione primero el nivel educativo</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros Adicionales -->
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Especialidad (Opcional):</strong></label>
+                            <select class="form-select" id="especialidadId" name="EspecialidadId">
+                                <option value="">Todas las especialidades</option>
+                                @if (ViewBag.EspecialidadesDisponibles != null)
+                                {
+                                    foreach (var especialidad in ViewBag.EspecialidadesDisponibles)
+                                    {
+                                        <option value="@especialidad.Item1">@especialidad.Item2</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Área (Opcional):</strong></label>
+                            <select class="form-select" id="areaId" name="AreaId">
+                                <option value="">Todas las áreas</option>
+                                @if (ViewBag.AreasDisponibles != null)
+                                {
+                                    foreach (var area in ViewBag.AreasDisponibles)
+                                    {
+                                        <option value="@area.Item1">@area.Item2</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Materia (Opcional):</strong></label>
+                            <select class="form-select" id="materiaId" name="MateriaId">
+                                <option value="">Todas las materias</option>
+                                @if (ViewBag.MateriasDisponibles != null)
+                                {
+                                    foreach (var materia in ViewBag.MateriasDisponibles)
+                                    {
+                                        <option value="@materia.Item1">@materia.Item2</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-file-earmark-bar-graph"></i> Generar Reporte
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-lg" id="btn-limpiar">
+                            <i class="bi bi-arrow-clockwise"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Área del reporte -->
+    <div id="reporte-container" style="display: none;">
+        <div class="card">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Reporte Generado</h5>
+                <div>
+                    <button type="button" class="btn btn-light btn-sm" onclick="window.print()">
+                        <i class="bi bi-printer"></i> Imprimir
+                    </button>
+                    <a href="#" id="btn-exportar-pdf" class="btn btn-light btn-sm" title="Descargar reporte en PDF">
+                        <i class="bi bi-file-pdf"></i> Exportar PDF
+                    </a>
+                    <button type="button" class="btn btn-light btn-sm" id="btn-vista-previa">
+                        <i class="bi bi-eye"></i> Vista Completa
+                    </button>
+                </div>
+            </div>
+            <div class="card-body" id="reporte-content">
+                <!-- Aquí se cargará el reporte dinámicamente -->
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Actualizar grados según nivel educativo
+            $('#nivelEducativo').change(function () {
+                const nivel = $(this).val();
+                const gradoSelect = $('#gradoEspecifico');
+                
+                gradoSelect.html('<option value="">Todos los grados</option>');
+                
+                if (nivel === 'Premedia') {
+                    gradoSelect.append('<option value="7°">7°</option>');
+                    gradoSelect.append('<option value="8°">8°</option>');
+                    gradoSelect.append('<option value="9°">9°</option>');
+                } else if (nivel === 'Media') {
+                    gradoSelect.append('<option value="10°">10°</option>');
+                    gradoSelect.append('<option value="11°">11°</option>');
+                    gradoSelect.append('<option value="12°">12°</option>');
+                }
+            });
+
+            // Actualizar materias cuando cambia el área o especialidad
+            $('#areaId, #especialidadId').change(function () {
+                actualizarMaterias();
+            });
+
+            function actualizarMaterias() {
+                const areaId = $('#areaId').val();
+                const especialidadId = $('#especialidadId').val();
+                const materiaSelect = $('#materiaId');
+
+                $.ajax({
+                    url: '/AprobadosReprobados/ObtenerMaterias',
+                    type: 'GET',
+                    data: { areaId, especialidadId },
+                    success: function (response) {
+                        materiaSelect.html('<option value="">Todas las materias</option>');
+                        if (response.success && response.data) {
+                            response.data.forEach(function (materia) {
+                                materiaSelect.append(`<option value="${materia.id}">${materia.nombre}</option>`);
+                            });
+                        }
+                    },
+                    error: function () {
+                        console.error('Error al cargar materias');
+                    }
+                });
+            }
+
+            // Generar reporte
+            $('#filtro-form').submit(function (e) {
+                e.preventDefault();
+                
+                const trimestre = $('#trimestre').val();
+                const nivelEducativo = $('#nivelEducativo').val();
+                const gradoEspecifico = $('#gradoEspecifico').val();
+                const especialidadId = $('#especialidadId').val();
+                const areaId = $('#areaId').val();
+                const materiaId = $('#materiaId').val();
+                
+                if (!trimestre || !nivelEducativo) {
+                    Swal.fire('Error', 'Debe seleccionar trimestre y nivel educativo', 'error');
+                    return;
+                }
+                
+                // Mostrar loading
+                Swal.fire({
+                    title: 'Generando reporte...',
+                    text: 'Por favor espere',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                $.ajax({
+                    url: '@Url.Action("GenerarReporte", "AprobadosReprobados")',
+                    type: 'POST',
+                    timeout: 90000,
+                    data: {
+                        Trimestre: trimestre,
+                        NivelEducativo: nivelEducativo,
+                        GradoEspecifico: gradoEspecifico,
+                        EspecialidadId: especialidadId || null,
+                        AreaId: areaId || null,
+                        MateriaId: materiaId || null,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        Swal.close();
+                        if (response.success) {
+                            mostrarReporte(response.data);
+                            $('#reporte-container').slideDown();
+                        } else {
+                            Swal.fire('Error', response.message, 'error');
+                        }
+                    },
+                    error: function (xhr, status) {
+                        Swal.close();
+                        if (status === 'timeout') {
+                            Swal.fire('Tiempo agotado', 'El reporte está tardando demasiado. Intente de nuevo o filtre por un grado o grupo específico.', 'warning');
+                        } else {
+                            Swal.fire('Error', 'No se pudo generar el reporte', 'error');
+                        }
+                    }
+                });
+            });
+
+            // Limpiar filtros
+            $('#btn-limpiar').click(function () {
+                $('#filtro-form')[0].reset();
+                $('#gradoEspecifico').html('<option value="">Todos los grados</option>');
+                $('#materiaId').html('<option value="">Todas las materias</option>');
+                $('#reporte-container').slideUp();
+            });
+
+            // Vista previa completa
+            $(document).on('click', '#btn-vista-previa', function () {
+                const trimestre = $('#trimestre').val();
+                const nivelEducativo = $('#nivelEducativo').val();
+                const gradoEspecifico = $('#gradoEspecifico').val();
+                const especialidadId = $('#especialidadId').val();
+                const areaId = $('#areaId').val();
+                const materiaId = $('#materiaId').val();
+                
+                let url = '@Url.Action("VistaPrevia", "AprobadosReprobados")' +
+                    '?trimestre=' + encodeURIComponent(trimestre) +
+                    '&nivelEducativo=' + encodeURIComponent(nivelEducativo);
+                    
+                if (gradoEspecifico) url += '&grado=' + encodeURIComponent(gradoEspecifico);
+                if (especialidadId) url += '&especialidadId=' + encodeURIComponent(especialidadId);
+                if (areaId) url += '&areaId=' + encodeURIComponent(areaId);
+                if (materiaId) url += '&materiaId=' + encodeURIComponent(materiaId);
+                
+                window.open(url, '_blank');
+            });
+
+            // Exportar PDF (mismos filtros que el reporte generado)
+            $(document).on('click', '#btn-exportar-pdf', function (e) {
+                e.preventDefault();
+                const trimestre = $('#trimestre').val();
+                const nivelEducativo = $('#nivelEducativo').val();
+                if (!trimestre || !nivelEducativo) {
+                    Swal.fire('Aviso', 'Seleccione trimestre y nivel educativo antes de exportar.', 'warning');
+                    return;
+                }
+                let url = '@Url.Action("ExportarPdf", "AprobadosReprobados")' +
+                    '?trimestre=' + encodeURIComponent(trimestre) +
+                    '&nivelEducativo=' + encodeURIComponent(nivelEducativo);
+                const gradoEspecifico = $('#gradoEspecifico').val();
+                const especialidadId = $('#especialidadId').val();
+                const areaId = $('#areaId').val();
+                const materiaId = $('#materiaId').val();
+                if (gradoEspecifico) url += '&grado=' + encodeURIComponent(gradoEspecifico);
+                if (especialidadId) url += '&especialidadId=' + encodeURIComponent(especialidadId);
+                if (areaId) url += '&areaId=' + encodeURIComponent(areaId);
+                if (materiaId) url += '&materiaId=' + encodeURIComponent(materiaId);
+                window.location.href = url;
+            });
+
+            function mostrarReporte(data) {
+                let html = `
+                    <div class="text-center mb-4">
+                        <h4>${data.institutoNombre}</h4>
+                        <h5>CUADRO DE APROBADOS Y REPROBADOS POR GRADO DEL TRIMESTRE</h5>
+                        <p><strong>Profesor(a) Coordinador(a):</strong> ${data.profesorCoordinador}</p>
+                        <p><strong>Trimestre:</strong> ${data.trimestre} | <strong>Año Lectivo:</strong> ${data.anoLectivo} | <strong>Nivel:</strong> ${data.nivelEducativo}</p>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr class="text-center">
+                                    <th rowspan="2">Grado</th>
+                                    <th rowspan="2">Grupo</th>
+                                    <th rowspan="2">Total<br>Estudiantes</th>
+                                    <th colspan="2">Aprobados</th>
+                                    <th colspan="2">Reprobados</th>
+                                    <th colspan="2">Reprobados hasta<br>la fecha</th>
+                                    <th colspan="2">Sin<br>Calificaciones</th>
+                                    <th colspan="2">Retirados por<br>Matrícula</th>
+                                </tr>
+                                <tr class="text-center">
+                                    <th>Total</th>
+                                    <th>%</th>
+                                    <th>Total</th>
+                                    <th>%</th>
+                                    <th>Total</th>
+                                    <th>%</th>
+                                    <th>Total</th>
+                                    <th>%</th>
+                                    <th>Total</th>
+                                    <th>%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                if (!data.estadisticas || data.estadisticas.length === 0) {
+                    html += `
+                        <tr>
+                            <td colspan="13" class="text-center py-4 text-muted">
+                                <p class="mb-0"><strong>No hay datos para los filtros seleccionados.</strong></p>
+                                <p class="mb-0 small">Para que aparezcan filas: los grupos deben tener <strong>grado</strong> asignado (Media: 10°, 11°, 12°; Premedia: 7°, 8°, 9°) y las actividades deben estar asociadas al trimestre elegido (ej. 3T).</p>
+                                <p class="mb-0 small">Si usa la base de datos en la nube, ejecute el script <code>Scripts/FixDatosParaReporteAprobados.sql</code> en esa base (ajustando el <code>school_id</code> si es distinto).</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+                (data.estadisticas || []).forEach(function(est) {
+                    html += `
+                        <tr>
+                            <td class="text-center"><strong>${est.grado}</strong></td>
+                            <td class="text-center">${est.grupo}</td>
+                            <td class="text-center"><strong>${est.totalEstudiantes}</strong></td>
+                            <td class="text-center text-success"><strong>${est.aprobados}</strong></td>
+                            <td class="text-center">${est.porcentajeAprobados.toFixed(2)}%</td>
+                            <td class="text-center text-danger"><strong>${est.reprobados}</strong></td>
+                            <td class="text-center">${est.porcentajeReprobados.toFixed(2)}%</td>
+                            <td class="text-center text-warning"><strong>${est.reprobadosHastaLaFecha}</strong></td>
+                            <td class="text-center">${est.porcentajeReprobadosHastaLaFecha.toFixed(2)}%</td>
+                            <td class="text-center text-info"><strong>${est.sinCalificaciones}</strong></td>
+                            <td class="text-center">${est.porcentajeSinCalificaciones.toFixed(2)}%</td>
+                            <td class="text-center text-secondary"><strong>${est.retirados}</strong></td>
+                            <td class="text-center">${est.porcentajeRetirados.toFixed(2)}%</td>
+                        </tr>
+                    `;
+                });
+                
+                // Totales
+                const totales = data.totalesGenerales;
+                html += `
+                            <tr class="table-primary">
+                                <td colspan="2" class="text-center"><strong>TOTALES</strong></td>
+                                <td class="text-center"><strong>${totales.totalEstudiantes}</strong></td>
+                                <td class="text-center text-success"><strong>${totales.totalAprobados}</strong></td>
+                                <td class="text-center"><strong>${totales.porcentajeAprobados.toFixed(2)}%</strong></td>
+                                <td class="text-center text-danger"><strong>${totales.totalReprobados}</strong></td>
+                                <td class="text-center"><strong>${totales.porcentajeReprobados.toFixed(2)}%</strong></td>
+                                <td class="text-center text-warning"><strong>${totales.totalReprobadosHastaLaFecha}</strong></td>
+                                <td class="text-center"><strong>${totales.porcentajeReprobadosHastaLaFecha.toFixed(2)}%</strong></td>
+                                <td class="text-center text-info"><strong>${totales.totalSinCalificaciones}</strong></td>
+                                <td class="text-center"><strong>${totales.porcentajeSinCalificaciones.toFixed(2)}%</strong></td>
+                                <td class="text-center text-secondary"><strong>${totales.totalRetirados}</strong></td>
+                                <td class="text-center"><strong>${totales.porcentajeRetirados.toFixed(2)}%</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="text-end mt-3">
+                    <p class="text-muted"><small>Fecha de generación: ${new Date(data.fechaGeneracion).toLocaleString('es-PA')}</small></p>
+                </div>
+                `;
+                
+                $('#reporte-content').html(html);
+            }
+        });
+    </script>
+}
+

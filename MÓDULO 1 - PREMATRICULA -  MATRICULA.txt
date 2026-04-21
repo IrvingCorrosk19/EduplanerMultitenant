@@ -1,0 +1,61 @@
+🧩 MÓDULO 1: MATRÍCULA Y PREMATRÍCULA
+🎯 Objetivo
+Gestionar de forma integral los procesos de pre-matrícula y matrícula, permitiendo que los acudientes realicen la preinscripción en línea y que el sistema valide automáticamente condiciones académicas, cupos disponibles y pagos registrados.
+👥 Roles Involucrados
+Administrador / Coordinador Académico:
+Define las fechas del período de pre-matrícula (“Desde” / “Hasta”).
+Configura la cantidad máxima de estudiantes por grupo.
+Supervisa asignaciones y confirma matrículas.
+Acudiente:
+Realiza la pre-matrícula en línea (si el estudiante cumple requisitos).
+Consulta el estado del proceso y de los pagos.
+Encargado de Contabilidad:
+Registra los pagos realizados.
+Ingresa el número de recibo correspondiente a cada estudiante.
+Valida el pago y autoriza la activación de la matrícula.
+Docente / Secretaría:
+Consulta listados de estudiantes pre-matriculados o matriculados por grupo.
+⚙️ Flujo Principal
+1. Configuración Inicial (Administrador)
+Define el período de pre-matrícula (fecha inicio / fecha fin).
+Establece el cupo máximo de estudiantes por grupo o materia.
+Habilita o desactiva la asignación automática por turno.
+Durante el período activo, los acudientes pueden acceder a la opción de pre-matrícula; fuera del rango, se muestra el mensaje “El período de pre-matrícula no está disponible”.
+2. Prematrícula (Acudiente)
+Solo pueden acceder estudiantes con hasta 3 materias fracasadas (validación automática).
+El acudiente selecciona el estudiante, consulta grupos disponibles y envía la solicitud.
+El sistema verifica:
+Cupos disponibles en el grupo.
+Condición académica del estudiante.
+Si cumple → estado “Prematriculado”.
+Si no cumple → mensaje “El estudiante no puede participar en la pre-matrícula por exceder el límite de materias reprobadas”.
+3. Asignación Automática de Grupo
+El sistema asigna al estudiante manteniendo el mismo turno (mañana/tarde).
+Si el grupo alcanza su cupo máximo, el sistema bloquea nuevas asignaciones y notifica al administrador.
+El administrador puede reasignar manualmente o aumentar cupos.
+4. Registro de Pago (Contabilidad)
+Al pagar en caja, el encargado de contabilidad:
+Busca al estudiante o código de pre-matrícula.
+Registra el monto pagado y número de recibo oficial.
+Cambia el estado del pago a “Confirmado”.
+El sistema guarda la relación entre estudiante y número de recibo.
+Una vez confirmado el pago, el sistema activa automáticamente la matrícula.
+5. Matrícula Final
+Al validarse el pago:
+El estado pasa a “Matriculado”.
+Se genera el comprobante de matrícula.
+Se actualiza el registro académico del estudiante para el nuevo año o período.
+Se notifica al acudiente mediante la plataforma y correo electrónico.
+🔗 Integraciones
+Módulo de Pagos: sincronización de estado de pago y número de recibo.
+Control Académico: validación de materias reprobadas.
+Comunicación Interna: notificaciones automáticas al acudiente.
+🧠 Requerimientos Técnicos
+Tabla de configuración de período de pre-matrícula (fecha_inicio, fecha_fin, estado).
+Campo “Cupo máximo” editable por grupo/materia.
+Validación dinámica de fechas y cupos.
+Registro de pagos con campos:
+id_estudiante, monto, fecha_pago, numero_recibo, estado_pago.
+Control de estados: Pendiente, Prematriculado, Pagado, Matriculado, Rechazado.
+Sistema de notificaciones automáticas (correo + panel).
+Control de acceso por rol (Administrador, Contabilidad, Acudiente, Docente).

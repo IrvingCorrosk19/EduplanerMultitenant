@@ -1,0 +1,204 @@
+@inject SchoolManager.Services.Interfaces.ICurrentUserService CurrentUserService
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    var currentUser = await CurrentUserService.GetCurrentUserAsync();
+    var userSchool = await CurrentUserService.GetCurrentUserSchoolAsync();
+    var schoolToShow = ViewBag.SelectedSchool as SchoolManager.Models.School ?? userSchool;
+    var schoolsDropdown = ViewBag.Schools as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-home mr-2"></i>
+                        Bienvenido al Dashboard
+                    </h3>
+                </div>
+                <div class="card-body">
+                    @if (currentUser != null)
+                    {
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-user mr-2"></i>Información del Usuario</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>Nombre:</strong></td>
+                                            <td>@currentUser.Name @currentUser.LastName</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Email:</strong></td>
+                                            <td>@currentUser.Email</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Rol:</strong></td>
+                                            <td>
+                                                <span class="badge badge-primary">
+                                                    @{
+                                                        string rolEnEspanol = currentUser.Role switch
+                                                        {
+                                                            "superadmin" => "Super Administrador",
+                                                            "admin" => "Administrador",
+                                                            "teacher" => "Docente",
+                                                            "student" => "Estudiante",
+                                                            "director" => "Director",
+                                                            _ => currentUser.Role
+                                                        };
+                                                    }
+                                                    @rolEnEspanol
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Estado:</strong></td>
+                                            <td>
+                                                <span class="badge badge-@(currentUser.Status == "active" ? "success" : "warning")">
+                                                    @(currentUser.Status == "active" ? "Activo" : "Inactivo")
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        @if (currentUser.LastLogin.HasValue)
+                                        {
+                                            <tr>
+                                                <td><strong>Último Login:</strong></td>
+                                                <td>@TimeZoneService.ToLocalDisplayString(currentUser.LastLogin, "dd/MM/yyyy HH:mm")</td>
+                                            </tr>
+                                        }
+                                    </table>
+                                </div>
+                                
+       @* Mostrar especialidades solo si es docente *@
+       @if (currentUser.Role?.ToLower() == "teacher")
+       {
+           <div class="mt-4">
+               <h5><i class="fas fa-graduation-cap mr-2"></i>Especialidades Docentes</h5>
+               <div class="row">
+                   <div class="col-12">
+                       <div class="d-flex flex-wrap gap-2">
+                           @if (currentUser.Disciplina == true)
+                           {
+                               <span class="badge badge-primary">
+                                   <i class="fas fa-balance-scale mr-1"></i>Disciplina
+                               </span>
+                           }
+                           @if (currentUser.Orientacion == true)
+                           {
+                               <span class="badge badge-info">
+                                   <i class="fas fa-compass mr-1"></i>Orientación
+                               </span>
+                           }
+                           @if (currentUser.Disciplina != true && currentUser.Orientacion != true)
+                           {
+                               <span class="badge badge-secondary">
+                                   <i class="fas fa-info-circle mr-1"></i>Sin especialidades asignadas
+                               </span>
+                           }
+                       </div>
+                   </div>
+               </div>
+           </div>
+       }
+       
+       @* Mostrar información de inclusión para todos los usuarios *@
+       @if (currentUser.Inclusion == "si")
+       {
+           <div class="mt-4">
+               <h5><i class="fas fa-heart mr-2"></i>Información de Inclusión</h5>
+               <div class="row">
+                   <div class="col-12">
+                       <span class="badge badge-success">
+                           <i class="fas fa-heart mr-1"></i>Estudiante con necesidades especiales
+                       </span>
+                   </div>
+               </div>
+           </div>
+       }
+                            </div>
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-school mr-2"></i>Información de la Escuela</h5>
+                                @if (schoolToShow != null)
+                                {
+                                    <div class="text-center mb-3">
+                                        @if (!string.IsNullOrEmpty(schoolToShow.LogoUrl))
+                                        {
+                                            @if (schoolToShow.LogoUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <img src="@schoolToShow.LogoUrl" alt="Logo de @schoolToShow.Name" class="img-fluid rounded" style="max-height: 100px;">
+                                            }
+                                            else
+                                            {
+                                                <img src="/File/GetSchoolLogo?logoUrl=@schoolToShow.LogoUrl" alt="Logo de @schoolToShow.Name" class="img-fluid rounded" style="max-height: 100px;">
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-school fa-3x text-muted"></i>
+                                        }
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-borderless">
+                                            <tr>
+                                                <td><strong>Escuela:</strong></td>
+                                                <td>@schoolToShow.Name</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Dirección:</strong></td>
+                                                <td>@schoolToShow.Address</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Teléfono:</strong></td>
+                                                <td>@schoolToShow.Phone</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    @if (userSchool == null && ViewBag.SelectedSchool != null)
+                                    {
+                                        <p class="small text-muted mb-0 mt-2">
+                                            <a href="@Url.Action("Index", "Home")">Cambiar escuela</a>
+                                        </p>
+                                    }
+                                }
+                                else if (schoolsDropdown != null && schoolsDropdown.Any())
+                                {
+                                    <p class="text-muted mb-2">Seleccione una escuela para ver su información.</p>
+                                    <form method="get" action="@Url.Action("Index", "Home")" class="d-flex flex-wrap gap-2 align-items-end">
+                                        <div class="flex-grow-1" style="min-width: 200px;">
+                                            <select name="schoolId" class="form-select" required>
+                                                <option value="">-- Seleccione una escuela --</option>
+                                                @foreach (Microsoft.AspNetCore.Mvc.Rendering.SelectListItem item in schoolsDropdown)
+                                                {
+                                                    <option value="@item.Value">@item.Text</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-arrow-right mr-1"></i> Ver escuela
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                                        No se encontró información de la escuela asociada.
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle mr-2"></i>
+                            No se pudo obtener la información del usuario.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

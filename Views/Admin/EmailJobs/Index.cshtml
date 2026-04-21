@@ -1,0 +1,163 @@
+@model IReadOnlyList<SchoolManager.ViewModels.EmailJobListItemViewModel>
+@using SchoolManager.ViewModels
+@{
+    ViewData["Title"] = "Lotes de Correo";
+    Layout = "_AdminLayout";
+    var summary = (EmailJobSummaryViewModel)ViewBag.Summary;
+    var isSuper = (bool)ViewBag.IsSuper;
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1><i class="fas fa-envelope-open-text mr-2"></i>Lotes de Correo</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Inicio</a></li>
+                        <li class="breadcrumb-item active">Lotes de Correo</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            @* Tarjetas de métricas *@
+            <div class="row">
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-info elevation-1"><i class="fas fa-paper-plane"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Lotes hoy</span>
+                            <span class="info-box-number">@summary.JobsToday</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-success elevation-1"><i class="fas fa-check-circle"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Enviados hoy</span>
+                            <span class="info-box-number">@summary.SentToday</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-danger elevation-1"><i class="fas fa-times-circle"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Fallidos hoy</span>
+                            <span class="info-box-number">@summary.FailedToday</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-warning elevation-1"><i class="fas fa-clock"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Pendientes</span>
+                            <span class="info-box-number">@summary.PendingNow</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-dark elevation-1"><i class="fas fa-skull-crossbones"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Dead Letter</span>
+                            <span class="info-box-number">@summary.DeadLetterNow</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-teal elevation-1"><i class="fas fa-percentage"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Tasa éxito</span>
+                            <span class="info-box-number">
+                                @(summary.SuccessRatePct < 0 ? "—" : $"{summary.SuccessRatePct}%")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Tabla de lotes *@
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-list mr-2"></i>Historial de lotes</h3>
+                    <div class="card-tools">
+                        <button class="btn btn-sm btn-outline-secondary" id="btnRefresh" title="Actualizar">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body table-responsive p-0">
+                    <table id="tblJobs" class="table table-hover table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>Estado</th>
+                                <th>Solicitado</th>
+                                <th>Creado por</th>
+                                @if (isSuper) { <th>Escuela</th> }
+                                <th class="text-center">Total</th>
+                                <th class="text-center">Enviados</th>
+                                <th class="text-center">Fallidos</th>
+                                <th class="text-center">Progreso</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var j in Model)
+                            {
+                                <tr>
+                                    <td><span class="@j.StatusBadgeCss">@j.Status</span></td>
+                                    <td data-order="@j.RequestedAt.Ticks">
+                                        @j.RequestedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                    </td>
+                                    <td>@j.CreatedByName</td>
+                                    @if (isSuper) { <td>@(j.SchoolName ?? "—")</td> }
+                                    <td class="text-center">@j.TotalItems</td>
+                                    <td class="text-center text-success fw-bold">@j.SentCount</td>
+                                    <td class="text-center text-danger fw-bold">@j.FailedCount</td>
+                                    <td class="text-center" style="min-width:90px">
+                                        @if (j.ProgressPct < 0)
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                        else
+                                        {
+                                            <div class="progress progress-xs">
+                                                <div class="progress-bar bg-success" style="width:@j.ProgressPct%"></div>
+                                            </div>
+                                            <small>@j.ProgressPct%</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        <a href="@Url.Action("Details", "EmailJobs", new { jobId = j.JobId })"
+                                           class="btn btn-xs btn-default">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/js/emailJobs.js" asp-append-version="true"></script>
+    <script>
+        EmailJobs.initIndex('@Url.Action("Index", "EmailJobs")');
+    </script>
+}

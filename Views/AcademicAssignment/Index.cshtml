@@ -1,0 +1,108 @@
+﻿@model List<SchoolManager.Models.User>
+
+@{
+    ViewData["Title"] = "Asignación Académica";
+    Layout = "_AdminLayout";
+}
+
+<div class="card card-outline card-primary">
+    <div class="card-header">
+        <h3 class="card-title">Docentes</h3>
+        <div class="card-tools">
+            <a href="@Url.Action("Upload", "AcademicAssignment")" class="btn btn-success btn-sm">
+                <i class="fas fa-upload"></i> Cargar Excel
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Leyenda del formato Excel -->
+        <div class="alert alert-info">
+            <h5><i class="icon fas fa-info"></i> Formato del archivo Excel</h5>
+            <p>El archivo Excel debe tener las siguientes columnas en este orden:</p>
+            <div class="row">
+                <div class="col-md-6">
+                    <ul class="mb-0">
+                        <li><strong>Email Docente:</strong> Correo electrónico del profesor</li>
+                        <li><strong>Nombre:</strong> Nombre del profesor</li>
+                        <li><strong>Apellido:</strong> Apellido del profesor</li>
+                        <li><strong>Documento ID:</strong> Número de documento de identidad</li>
+                        <li><strong>Fecha Nacimiento:</strong> Fecha de nacimiento (formato: DD/MM/YYYY)</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <ul class="mb-0">
+                        <li><strong>Especialidad:</strong> Especialidad académica</li>
+                        <li><strong>Área:</strong> Área de conocimiento</li>
+                        <li><strong>Materia:</strong> Nombre de la materia</li>
+                        <li><strong>Grado:</strong> Nombre del grado</li>
+                        <li><strong>Grupo:</strong> Nombre del grupo</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <table id="teachersTable" class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th style="width: 120px;">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null)
+                {
+                    foreach (var teacher in Model)
+                    {
+                        <tr>
+                            <td>@teacher.Name</td>
+                            <td>@teacher.Email</td>
+                            <td>
+                                <a href="@Url.Action("Assign", "AcademicAssignment", new { id = teacher.Id })"
+                                   class="btn btn-sm btn-primary">
+                                    Asignar
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: white;">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <div class="mt-2">Procesando...</div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet" />
+
+    <script>
+        $(document).ready(function () {
+            $('#teachersTable').DataTable({
+                language: {
+                    search: "Buscar:",
+                    lengthMenu: "Mostrar _MENU_ registros",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ docentes",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    },
+                    zeroRecords: "No se encontraron resultados",
+                    infoEmpty: "No hay registros disponibles",
+                    infoFiltered: "(filtrado de _MAX_ registros totales)"
+                }
+            });
+        });
+    </script>
+}

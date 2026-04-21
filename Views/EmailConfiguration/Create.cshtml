@@ -1,0 +1,124 @@
+@model SchoolManager.Dtos.EmailConfigurationCreateDto
+@{
+    ViewData["Title"] = "Crear Configuración de Email";
+    Layout = "_AdminLayout";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-envelope me-2"></i>
+                        Crear Configuración de Email
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Create" method="post">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <input type="hidden" asp-for="SchoolId" />
+
+                                <div class="mb-3">
+                                    <label asp-for="SmtpServer" class="form-label"></label>
+                                    <input asp-for="SmtpServer" class="form-control" placeholder="smtp.gmail.com" />
+                                    <span asp-validation-for="SmtpServer" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="SmtpPort" class="form-label"></label>
+                                    <input asp-for="SmtpPort" class="form-control" type="number" min="1" max="65535" />
+                                    <span asp-validation-for="SmtpPort" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="SmtpUsername" class="form-label"></label>
+                                    <input asp-for="SmtpUsername" class="form-control" placeholder="usuario@ejemplo.com" />
+                                    <span asp-validation-for="SmtpUsername" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="SmtpPassword" class="form-label"></label>
+                                    <input asp-for="SmtpPassword" class="form-control" type="password" />
+                                    <span asp-validation-for="SmtpPassword" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="FromEmail" class="form-label"></label>
+                                    <input asp-for="FromEmail" class="form-control" type="email" placeholder="noreply@escuela.com" />
+                                    <span asp-validation-for="FromEmail" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="FromName" class="form-label"></label>
+                                    <input asp-for="FromName" class="form-control" placeholder="Escuela ABC" />
+                                    <span asp-validation-for="FromName" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input asp-for="SmtpUseSsl" class="form-check-input" type="checkbox" />
+                                        <label asp-for="SmtpUseSsl" class="form-check-label"></label>
+                                    </div>
+                                    <span asp-validation-for="SmtpUseSsl" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input asp-for="SmtpUseTls" class="form-check-input" type="checkbox" />
+                                        <label asp-for="SmtpUseTls" class="form-check-label"></label>
+                                    </div>
+                                    <span asp-validation-for="SmtpUseTls" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                                        <label asp-for="IsActive" class="form-check-label"></label>
+                                    </div>
+                                    <span asp-validation-for="IsActive" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Configuraciones comunes:</strong>
+                                    <ul class="mb-0 mt-2">
+                                        <li><strong>Gmail:</strong> smtp.gmail.com, puerto 587, SSL habilitado</li>
+                                        <li><strong>Outlook:</strong> smtp-mail.outlook.com, puerto 587, TLS habilitado</li>
+                                        <li><strong>Yahoo:</strong> smtp.mail.yahoo.com, puerto 587, SSL habilitado</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a asp-action="Index" class="btn btn-secondary">
+                                        <i class="fas fa-arrow-left me-1"></i>
+                                        Volver
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-1"></i>
+                                        Crear Configuración
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

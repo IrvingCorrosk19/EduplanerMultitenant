@@ -1,0 +1,118 @@
+@model List<SchoolManager.Dtos.TeacherWorkPlanListDto>
+@{
+    ViewData["Title"] = "Plan de Trabajo Trimestral";
+    Layout = "_AdminLayout";
+    var isAdmin = ViewBag.IsAdmin as bool? ?? false;
+}
+
+<div class="container-fluid">
+    <div class="portal-header d-flex justify-content-between align-items-center mb-4" style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 1.5rem 2rem; border-radius: 1rem;">
+        <div class="d-flex align-items-center gap-2">
+            <i class="fas fa-chalkboard-teacher fa-2x"></i>
+            <div>
+                <h3 class="mb-0">Plan de Trabajo Trimestral</h3>
+                <small class="opacity-90">@(isAdmin ? "Visualización de planes (solo lectura para administrador)" : "Cree y gestione su planificación por trimestre")</small>
+            </div>
+        </div>
+        @if (!isAdmin)
+        {
+            <a href="@Url.Action("Create")" class="btn btn-light btn-sm">
+                <i class="fas fa-plus me-1"></i> Crear Plan
+            </a>
+        }
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show">
+            <i class="fas fa-exclamation-triangle me-2"></i>@TempData["Warning"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-times-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            @if (Model == null || !Model.Any())
+            {
+                <p class="text-muted mb-0">@(isAdmin ? "No hay planes de trabajo registrados en la escuela." : "Aún no tiene planes. Use «Crear Plan» para agregar su primera planificación trimestral.")</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                @if (isAdmin) { <th>Docente</th> }
+                                <th>Materia</th>
+                                <th>Grado</th>
+                                <th>Grupo</th>
+                                <th>Año lectivo</th>
+                                <th>Trimestre</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model)
+                            {
+                                <tr>
+                                    @if (isAdmin) { <td>@p.TeacherName</td> }
+                                    <td>@p.SubjectName</td>
+                                    <td>@p.GradeLevelName</td>
+                                    <td>@p.GroupName</td>
+                                    <td>@p.AcademicYearName</td>
+                                    <td>@(p.Trimester == 1 ? "I" : p.Trimester == 2 ? "II" : "III")</td>
+                                    <td>
+                                        <span class="badge @(p.Status == "Approved" ? "bg-success" : p.Status == "Submitted" ? "bg-info" : "bg-secondary")">@p.Status</span>
+                                    </td>
+                                    <td>@p.CreatedAt.ToString("dd/MM/yyyy")</td>
+                                    <td>
+                                        <a href="@Url.Action("DownloadPdf", new { id = p.Id })" class="btn btn-sm btn-outline-primary" title="Generar PDF">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </a>
+                                        @if (!isAdmin)
+                                        {
+                                            <a href="@Url.Action("Edit", new { id = p.Id })" class="btn btn-sm btn-outline-secondary" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form asp-action="Delete" asp-route-id="@p.Id" method="post" class="d-inline" onsubmit="return confirm('¿Eliminar este plan?');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                            @if (p.Status == "Draft")
+                                            {
+                                                <form asp-action="Submit" asp-route-id="@p.Id" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-outline-info" title="Enviar a revisión">
+                                                        <i class="fas fa-paper-plane"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

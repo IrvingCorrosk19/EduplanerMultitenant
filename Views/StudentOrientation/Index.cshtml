@@ -1,0 +1,582 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Mis Reportes de Orientación";
+    var studentInfo = ViewData["StudentInfo"] as dynamic;
+}
+
+<style>
+    :root {
+        --primary-color: #2563eb;
+        --secondary-color: #475569;
+        --success-color: #22c55e;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+        --info-color: #06b6d4;
+        --light-bg: #f8fafc;
+        --border-color: #e2e8f0;
+        --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+        background-color: var(--light-bg);
+    }
+
+    .student-portal {
+        padding: 1.5rem 0;
+    }
+
+    .portal-header {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--card-shadow);
+    }
+
+    .portal-header h3 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+
+    .portal-header small {
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+
+    .card {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 1.5rem;
+        background: white;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        color: white;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1.25rem;
+        border-radius: 1rem 1rem 0 0 !important;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .report-item {
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        background: white;
+        transition: all 0.3s ease;
+    }
+
+    .report-item:hover {
+        box-shadow: var(--card-shadow);
+        transform: translateY(-2px);
+    }
+
+    .report-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .report-date {
+        background: var(--info-color);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .report-type {
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .report-type.academico {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .report-type.disciplinario {
+        background: var(--warning-color);
+        color: white;
+    }
+
+    .report-type.personal {
+        background: var(--success-color);
+        color: white;
+    }
+
+    .report-type.conductual {
+        background: var(--danger-color);
+        color: white;
+    }
+
+    .report-status {
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .report-status.resuelto {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .report-status.pendiente {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .report-status.en-proceso {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .report-description {
+        margin: 1rem 0;
+        padding: 1rem;
+        background: var(--light-bg);
+        border-radius: 0.5rem;
+        border-left: 4px solid var(--info-color);
+    }
+
+    .document-list {
+        margin-top: 1rem;
+    }
+
+    .document-item {
+        display: inline-flex;
+        align-items: center;
+        background: var(--light-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        margin: 0.25rem;
+        text-decoration: none;
+        color: var(--secondary-color);
+        transition: all 0.3s ease;
+    }
+
+    .document-item:hover {
+        background: var(--info-color);
+        color: white;
+        text-decoration: none;
+    }
+
+    .document-item i {
+        margin-right: 0.5rem;
+    }
+
+    .loading-spinner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 2rem;
+    }
+
+    .no-reports {
+        text-align: center;
+        padding: 3rem;
+        color: var(--secondary-color);
+    }
+
+    .no-reports i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: var(--border-color);
+    }
+
+    .filters-section {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--card-shadow);
+    }
+
+    .filter-group {
+        display: flex;
+        gap: 1rem;
+        align-items: end;
+        flex-wrap: wrap;
+    }
+
+    .form-control, .form-select {
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--info-color);
+        box-shadow: 0 0 0 0.2rem rgba(6, 182, 212, 0.25);
+    }
+
+    .btn-filter {
+        background: var(--info-color);
+        border: none;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-filter:hover {
+        background: #0891b2;
+        transform: translateY(-1px);
+    }
+
+    .stats-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: var(--card-shadow);
+    }
+
+    .stats-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--info-color);
+    }
+
+    .stats-label {
+        color: var(--secondary-color);
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+    }
+
+    @@media (max-width: 768px) {
+        .report-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .filter-group {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
+</style>
+
+<div class="student-portal">
+    <!-- Header del Portal -->
+    <div class="portal-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h3><i class="fas fa-compass me-2"></i>Mis Reportes de Orientación</h3>
+                <small>Consulta tus reportes de orientación escolar y documentos relacionados</small>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="stats-card">
+                            <div class="stats-number" id="total-reports">-</div>
+                            <div class="stats-label">Total Reportes</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stats-card">
+                            <div class="stats-number" id="pending-reports">-</div>
+                            <div class="stats-label">Pendientes</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-section">
+        <h5 class="mb-3"><i class="fas fa-filter me-2"></i>Filtros</h5>
+        <div class="filter-group">
+            <div class="flex-grow-1">
+                <label class="form-label">Tipo de Reporte</label>
+                <select id="filter-type" class="form-select">
+                    <option value="">Todos los tipos</option>
+                    <option value="Académico">Académico</option>
+                    <option value="Disciplinario">Disciplinario</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Conductual">Conductual</option>
+                </select>
+            </div>
+            <div class="flex-grow-1">
+                <label class="form-label">Estado</label>
+                <select id="filter-status" class="form-select">
+                    <option value="">Todos los estados</option>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="En Proceso">En Proceso</option>
+                    <option value="Resuelto">Resuelto</option>
+                </select>
+            </div>
+            <div class="flex-grow-1">
+                <label class="form-label">Fecha Desde</label>
+                <input type="date" id="filter-date-from" class="form-control">
+            </div>
+            <div class="flex-grow-1">
+                <label class="form-label">Fecha Hasta</label>
+                <input type="date" id="filter-date-to" class="form-control">
+            </div>
+            <div>
+                <button type="button" id="btn-filter" class="btn btn-filter">
+                    <i class="fas fa-search me-1"></i>Filtrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Reportes -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>Reportes de Orientación
+            </h5>
+        </div>
+        <div class="card-body">
+            <div id="loading-reports" class="loading-spinner" style="display: none;">
+                <div class="spinner-border text-info" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <span class="ms-2">Cargando reportes...</span>
+            </div>
+            
+            <div id="no-reports" class="no-reports" style="display: none;">
+                <i class="fas fa-inbox"></i>
+                <h5>No hay reportes disponibles</h5>
+                <p>No se encontraron reportes de orientación para mostrar.</p>
+            </div>
+            
+            <div id="reports-container">
+                <!-- Los reportes se cargarán aquí dinámicamente -->
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let allReports = [];
+        let filteredReports = [];
+
+        $(document).ready(function() {
+            loadReports();
+            
+            // Eventos de filtros
+            $('#btn-filter').on('click', applyFilters);
+            $('#filter-type, #filter-status, #filter-date-from, #filter-date-to').on('change', applyFilters);
+        });
+
+        async function loadReports() {
+            try {
+                $('#loading-reports').show();
+                $('#reports-container').empty();
+                $('#no-reports').hide();
+
+                const response = await fetch('/StudentOrientation/GetMyReports');
+                const result = await response.json();
+
+                if (result.success) {
+                    allReports = result.data || [];
+                    filteredReports = [...allReports];
+                    displayReports();
+                    updateStats();
+                } else {
+                    showError('Error al cargar los reportes: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Error al cargar los reportes');
+            } finally {
+                $('#loading-reports').hide();
+            }
+        }
+
+        function displayReports() {
+            const container = $('#reports-container');
+            container.empty();
+
+            if (filteredReports.length === 0) {
+                $('#no-reports').show();
+                return;
+            }
+
+            // Ordenar por fecha descendente
+            filteredReports.sort((a, b) => new Date(b.date.split('/').reverse().join('-')) - new Date(a.date.split('/').reverse().join('-')));
+
+            filteredReports.forEach(report => {
+                const reportHtml = createReportHtml(report);
+                container.append(reportHtml);
+            });
+        }
+
+        function createReportHtml(report) {
+            const typeClass = getTypeClass(report.type);
+            const statusClass = getStatusClass(report.status);
+            const documentsHtml = createDocumentsHtml(report.documents);
+
+            return `
+                <div class="report-item">
+                    <div class="report-header">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="report-date">
+                                <i class="fas fa-calendar me-1"></i>
+                                ${report.date} ${report.time}
+                            </div>
+                            <div class="report-type ${typeClass}">
+                                ${report.type}
+                            </div>
+                            <div class="report-status ${statusClass}">
+                                ${report.status}
+                            </div>
+                        </div>
+                        <div class="ms-auto">
+                            <small class="text-muted">
+                                <i class="fas fa-user me-1"></i>
+                                ${report.teacher || 'N/A'}
+                            </small>
+                        </div>
+                    </div>
+                    
+                    ${report.category ? `
+                        <div class="mb-2">
+                            <strong>Categoría:</strong> ${report.category}
+                        </div>
+                    ` : ''}
+                    
+                    ${report.subjectName ? `
+                        <div class="mb-2">
+                            <strong>Materia:</strong> ${report.subjectName}
+                        </div>
+                    ` : ''}
+                    
+                    ${report.description ? `
+                        <div class="report-description">
+                            <strong>Descripción:</strong><br>
+                            ${report.description}
+                        </div>
+                    ` : ''}
+                    
+                    ${documentsHtml ? `
+                        <div class="document-list">
+                            <strong>Documentos adjuntos:</strong><br>
+                            ${documentsHtml}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function createDocumentsHtml(documentsJson) {
+            if (!documentsJson) return '';
+
+            try {
+                const documents = JSON.parse(documentsJson);
+                if (!Array.isArray(documents) || documents.length === 0) return '';
+
+                return documents.map(doc => {
+                    const docObj = typeof doc === 'string' ? JSON.parse(doc) : doc;
+                    const fileName = docObj.fileName || 'Documento';
+                    const savedName = docObj.savedName || '';
+                    
+                    return `
+                        <a href="/StudentOrientation/DownloadDocument?reportId=${allReports.find(r => r.documents === documentsJson)?.id}&fileName=${encodeURIComponent(fileName)}" 
+                           class="document-item" target="_blank">
+                            <i class="fas fa-file-pdf"></i>
+                            ${fileName}
+                        </a>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error parsing documents:', error);
+                return '';
+            }
+        }
+
+        function getTypeClass(type) {
+            switch(type?.toLowerCase()) {
+                case 'académico': return 'academico';
+                case 'disciplinario': return 'disciplinario';
+                case 'personal': return 'personal';
+                case 'conductual': return 'conductual';
+                default: return 'academico';
+            }
+        }
+
+        function getStatusClass(status) {
+            switch(status?.toLowerCase()) {
+                case 'resuelto': return 'resuelto';
+                case 'pendiente': return 'pendiente';
+                case 'en proceso': return 'en-proceso';
+                default: return 'pendiente';
+            }
+        }
+
+        function applyFilters() {
+            const typeFilter = $('#filter-type').val();
+            const statusFilter = $('#filter-status').val();
+            const dateFromFilter = $('#filter-date-from').val();
+            const dateToFilter = $('#filter-date-to').val();
+
+            filteredReports = allReports.filter(report => {
+                // Filtro por tipo
+                if (typeFilter && report.type !== typeFilter) return false;
+
+                // Filtro por estado
+                if (statusFilter && report.status !== statusFilter) return false;
+
+                // Filtro por fecha
+                if (dateFromFilter) {
+                    const reportDate = new Date(report.date.split('/').reverse().join('-'));
+                    const fromDate = new Date(dateFromFilter);
+                    if (reportDate < fromDate) return false;
+                }
+
+                if (dateToFilter) {
+                    const reportDate = new Date(report.date.split('/').reverse().join('-'));
+                    const toDate = new Date(dateToFilter);
+                    if (reportDate > toDate) return false;
+                }
+
+                return true;
+            });
+
+            displayReports();
+        }
+
+        function updateStats() {
+            $('#total-reports').text(allReports.length);
+            
+            const pendingCount = allReports.filter(r => 
+                r.status?.toLowerCase() === 'pendiente' || r.status?.toLowerCase() === 'en proceso'
+            ).length;
+            
+            $('#pending-reports').text(pendingCount);
+        }
+
+        function showError(message) {
+            $('#reports-container').html(`
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${message}
+                </div>
+            `);
+        }
+    </script>
+}
