@@ -22,15 +22,22 @@ namespace SchoolManager.Services
             _logger = logger;
         }
 
-        public async Task<List<DisciplineReport>> GetAllAsync() =>
-            await _context.DisciplineReports.ToListAsync();
+        public async Task<List<DisciplineReport>> GetAllAsync()
+        {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            if (schoolId == null) return new List<DisciplineReport>();
+            return await _context.DisciplineReports
+                .Where(r => r.SchoolId == schoolId)
+                .ToListAsync();
+        }
 
         public async Task<DisciplineReport?> GetByIdAsync(Guid? id)
         {
-            if (!id.HasValue)
-                return null;
-            
-            return await _context.DisciplineReports.FindAsync(id.Value);
+            if (!id.HasValue) return null;
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            var report = await _context.DisciplineReports.FindAsync(id.Value);
+            if (report == null || report.SchoolId != schoolId) return null;
+            return report;
         }
 
         public async Task CreateAsync(DisciplineReport report)
@@ -49,28 +56,30 @@ namespace SchoolManager.Services
 
         public async Task DeleteAsync(Guid id)
         {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
             var report = await _context.DisciplineReports.FindAsync(id);
-            if (report != null)
-            {
-                _context.DisciplineReports.Remove(report);
-                await _context.SaveChangesAsync();
-            }
+            if (report == null || report.SchoolId != schoolId) return;
+            _context.DisciplineReports.Remove(report);
+            await _context.SaveChangesAsync();
         }
 
         public async Task<List<DisciplineReport>> GetByStudentAsync(Guid studentId)
         {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
             return await _context.DisciplineReports
-                .Where(r => r.StudentId == studentId)
+                .Where(r => r.StudentId == studentId && r.SchoolId == schoolId)
                 .ToListAsync();
         }
 
         public async Task<List<DisciplineReport>> GetFilteredAsync(DateTime? fechaInicio, DateTime? fechaFin, Guid? gradoId, Guid? groupId = null, Guid? studentId = null)
         {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
             var query = _context.DisciplineReports
                 .Include(r => r.Student)
                 .Include(r => r.Teacher)
                 .Include(r => r.Group)
                 .Include(r => r.GradeLevel)
+                .Where(r => r.SchoolId == schoolId)
                 .AsQueryable();
 
             // Filtros obligatorios
@@ -110,9 +119,7 @@ namespace SchoolManager.Services
 
         public async Task<List<DisciplineReportDto>> GetByStudentDtoAsync(Guid studentId, string trimester = null)
         {
-            // Obtener school_id del usuario autenticado
-            var currentUser = await _currentUserService.GetCurrentUserAsync();
-            var schoolId = currentUser?.SchoolId;
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
 
             var query = _context.DisciplineReports
                 .Include(r => r.Teacher)
@@ -162,9 +169,7 @@ namespace SchoolManager.Services
 
         public async Task<List<DisciplineReportDto>> GetByCounselorAsync(Guid counselorId, string trimester = null)
         {
-            // Obtener school_id del usuario autenticado
-            var currentUser = await _currentUserService.GetCurrentUserAsync();
-            var schoolId = currentUser?.SchoolId;
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
 
             // Obtener los grupos donde el usuario es consejero
             var counselorGroups = await _context.CounselorAssignments
@@ -245,8 +250,9 @@ namespace SchoolManager.Services
         {
             try
             {
+                var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
                 var report = await _context.DisciplineReports.FindAsync(reportId);
-                if (report == null)
+                if (report == null || report.SchoolId != schoolId)
                 {
                     return false;
                 }

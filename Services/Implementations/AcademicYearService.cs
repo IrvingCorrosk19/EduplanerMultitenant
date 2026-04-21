@@ -60,9 +60,10 @@ public class AcademicYearService : IAcademicYearService
     {
         try
         {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
             return await _context.AcademicYears
                 .Include(ay => ay.School)
-                .FirstOrDefaultAsync(ay => ay.Id == id);
+                .FirstOrDefaultAsync(ay => ay.Id == id && ay.SchoolId == schoolId);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
@@ -106,8 +107,12 @@ public class AcademicYearService : IAcademicYearService
 
     public async Task<AcademicYear> UpdateAsync(AcademicYear academicYear)
     {
-        academicYear.UpdatedAt = DateTime.UtcNow;
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        var existing = await _context.AcademicYears.FindAsync(academicYear.Id);
+        if (existing == null || existing.SchoolId != schoolId)
+            throw new InvalidOperationException("Año académico no encontrado o no pertenece a su institución.");
 
+        academicYear.UpdatedAt = DateTime.UtcNow;
         _context.AcademicYears.Update(academicYear);
         await _context.SaveChangesAsync();
 

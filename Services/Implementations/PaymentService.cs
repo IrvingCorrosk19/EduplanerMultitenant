@@ -10,34 +10,39 @@ public class PaymentService : IPaymentService
     private readonly SchoolDbContext _context;
     private readonly ILogger<PaymentService> _logger;
     private readonly IPrematriculationService _prematriculationService;
+    private readonly ICurrentUserService _currentUserService;
 
     public PaymentService(
         SchoolDbContext context,
         ILogger<PaymentService> logger,
-        IPrematriculationService prematriculationService)
+        IPrematriculationService prematriculationService,
+        ICurrentUserService currentUserService)
     {
         _context = context;
         _logger = logger;
         _prematriculationService = prematriculationService;
+        _currentUserService = currentUserService;
     }
 
     public async Task<Payment?> GetByIdAsync(Guid id)
     {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
         return await _context.Payments
             .Include(p => p.Prematriculation)
             .Include(p => p.RegisteredByUser)
             .Include(p => p.School)
             .Include(p => p.PaymentConcept)
             .Include(p => p.Student)
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .FirstOrDefaultAsync(p => p.Id == id && p.SchoolId == schoolId);
     }
 
     public async Task<Payment?> GetByReceiptNumberAsync(string receiptNumber)
     {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
         return await _context.Payments
             .Include(p => p.Prematriculation)
             .Include(p => p.RegisteredByUser)
-            .FirstOrDefaultAsync(p => p.ReceiptNumber == receiptNumber);
+            .FirstOrDefaultAsync(p => p.ReceiptNumber == receiptNumber && p.SchoolId == schoolId);
     }
 
     public async Task<List<PaymentDto>> GetByPrematriculationAsync(Guid prematriculationId)
@@ -319,8 +324,9 @@ public class PaymentService : IPaymentService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
         var payment = await _context.Payments.FindAsync(id);
-        if (payment == null)
+        if (payment == null || payment.SchoolId != schoolId)
             return false;
 
         // No permitir eliminar pagos confirmados

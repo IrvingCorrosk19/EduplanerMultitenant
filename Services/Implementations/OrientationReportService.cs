@@ -20,15 +20,22 @@ namespace SchoolManager.Services
             _currentUserService = currentUserService;
         }
 
-        public async Task<List<OrientationReport>> GetAllAsync() =>
-            await _context.OrientationReports.ToListAsync();
+        public async Task<List<OrientationReport>> GetAllAsync()
+        {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            if (schoolId == null) return new List<OrientationReport>();
+            return await _context.OrientationReports
+                .Where(r => r.SchoolId == schoolId)
+                .ToListAsync();
+        }
 
         public async Task<OrientationReport?> GetByIdAsync(Guid? id)
         {
-            if (!id.HasValue)
-                return null;
-            
-            return await _context.OrientationReports.FindAsync(id.Value);
+            if (!id.HasValue) return null;
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            var report = await _context.OrientationReports.FindAsync(id.Value);
+            if (report == null || report.SchoolId != schoolId) return null;
+            return report;
         }
 
         public async Task CreateAsync(OrientationReport report)
@@ -47,28 +54,30 @@ namespace SchoolManager.Services
 
         public async Task DeleteAsync(Guid id)
         {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
             var report = await _context.OrientationReports.FindAsync(id);
-            if (report != null)
-            {
-                _context.OrientationReports.Remove(report);
-                await _context.SaveChangesAsync();
-            }
+            if (report == null || report.SchoolId != schoolId) return;
+            _context.OrientationReports.Remove(report);
+            await _context.SaveChangesAsync();
         }
 
         public async Task<List<OrientationReport>> GetByStudentAsync(Guid studentId)
         {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
             return await _context.OrientationReports
-                .Where(r => r.StudentId == studentId)
+                .Where(r => r.StudentId == studentId && r.SchoolId == schoolId)
                 .ToListAsync();
         }
 
         public async Task<List<OrientationReport>> GetFilteredAsync(DateTime? fechaInicio, DateTime? fechaFin, Guid? gradoId, Guid? groupId = null, Guid? studentId = null)
         {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
             var query = _context.OrientationReports
                 .Include(r => r.Student)
                 .Include(r => r.Teacher)
                 .Include(r => r.Group)
                 .Include(r => r.GradeLevel)
+                .Where(r => r.SchoolId == schoolId)
                 .AsQueryable();
 
             // Filtros obligatorios
@@ -108,9 +117,7 @@ namespace SchoolManager.Services
 
         public async Task<List<OrientationReportDto>> GetByStudentDtoAsync(Guid studentId, string trimester = null)
         {
-            // Obtener school_id del usuario autenticado
-            var currentUser = await _currentUserService.GetCurrentUserAsync();
-            var schoolId = currentUser?.SchoolId;
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
 
             var query = _context.OrientationReports
                 .Include(r => r.Teacher)
@@ -157,9 +164,7 @@ namespace SchoolManager.Services
 
         public async Task<List<OrientationReportDto>> GetByCounselorAsync(Guid counselorId, string trimester = null)
         {
-            // Obtener school_id del usuario autenticado
-            var currentUser = await _currentUserService.GetCurrentUserAsync();
-            var schoolId = currentUser?.SchoolId;
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
 
             // Obtener los grupos donde el usuario es consejero
             var counselorGroups = await _context.CounselorAssignments

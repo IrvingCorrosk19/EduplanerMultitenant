@@ -9,22 +9,26 @@ public class PaymentConceptService : IPaymentConceptService
 {
     private readonly SchoolDbContext _context;
     private readonly ILogger<PaymentConceptService> _logger;
+    private readonly ICurrentUserService _currentUserService;
 
     public PaymentConceptService(
         SchoolDbContext context,
-        ILogger<PaymentConceptService> logger)
+        ILogger<PaymentConceptService> logger,
+        ICurrentUserService currentUserService)
     {
         _context = context;
         _logger = logger;
+        _currentUserService = currentUserService;
     }
 
     public async Task<PaymentConcept?> GetByIdAsync(Guid id)
     {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
         return await _context.PaymentConcepts
             .Include(pc => pc.CreatedByUser)
             .Include(pc => pc.UpdatedByUser)
             .Include(pc => pc.School)
-            .FirstOrDefaultAsync(pc => pc.Id == id);
+            .FirstOrDefaultAsync(pc => pc.Id == id && pc.SchoolId == schoolId);
     }
 
     public async Task<List<PaymentConceptDto>> GetAllAsync(Guid schoolId)
@@ -74,8 +78,9 @@ public class PaymentConceptService : IPaymentConceptService
 
     public async Task<PaymentConcept> UpdateAsync(Guid id, PaymentConceptCreateDto dto, Guid updatedBy)
     {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
         var concept = await _context.PaymentConcepts.FindAsync(id);
-        if (concept == null)
+        if (concept == null || concept.SchoolId != schoolId)
             throw new Exception("Concepto de pago no encontrado");
 
         concept.Name = dto.Name;
@@ -96,8 +101,9 @@ public class PaymentConceptService : IPaymentConceptService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
         var concept = await _context.PaymentConcepts.FindAsync(id);
-        if (concept == null)
+        if (concept == null || concept.SchoolId != schoolId)
             return false;
 
         // Verificar si hay pagos asociados

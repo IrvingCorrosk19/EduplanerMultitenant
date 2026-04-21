@@ -294,8 +294,13 @@ public class UserService : IUserService
                         .ThenInclude(sa => sa.Specialty)
                 .ToListAsync();
         }
-        public async Task<User?> GetByIdAsync(Guid id) =>
-        await _context.Users.FindAsync(id);
+        public async Task<User?> GetByIdAsync(Guid id)
+        {
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            var user = await _context.Users.FindAsync(id);
+            if (user == null || user.SchoolId != schoolId) return null;
+            return user;
+        }
 
     public async Task CreateAsync(User user, List<Guid> subjectIds, List<Guid> groupIds, List<Guid> gradeLevelIds)
     {
@@ -336,17 +341,18 @@ public class UserService : IUserService
 
 public async Task DeleteAsync(Guid id)
 {
-        await using var transaction = await _context.Database.BeginTransactionAsync(); // �� INICIO TRANSACCIÓN
+        await using var transaction = await _context.Database.BeginTransactionAsync();
 
     try
     {
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
         var user = await _context.Users
             .Include(u => u.Subjects)
             .Include(u => u.Groups)
             .Include(u => u.Grades)
             .FirstOrDefaultAsync(u => u.Id == id);
 
-        if (user == null)
+        if (user == null || user.SchoolId != schoolId)
             throw new InvalidOperationException($"No se encontró el usuario con ID: {id}");
 
         // Validar el rol usando enum
