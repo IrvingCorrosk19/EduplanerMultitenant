@@ -63,16 +63,20 @@ public class ClubParentsController : Controller
         return Ok(new { grades, groups });
     }
 
-    /// <summary>GET /ClubParents/Api/Students — Lista estudiantes con filtros opcionales gradeId, groupId. Si el usuario no tiene escuela asignada, devuelve noSchool: true.</summary>
+    /// <summary>GET /ClubParents/Api/Students — Lista estudiantes con filtros opcionales gradeId, groupId, search, cedula. Si el usuario no tiene escuela asignada, devuelve noSchool: true.</summary>
     [HttpGet("Api/Students")]
-    public async Task<IActionResult> GetStudents([FromQuery] Guid? gradeId, [FromQuery] Guid? groupId)
+    public async Task<IActionResult> GetStudents(
+        [FromQuery] Guid? gradeId,
+        [FromQuery] Guid? groupId,
+        [FromQuery] string? search = null,
+        [FromQuery] string? cedula = null)
     {
         try
         {
             var userId = await _currentUserService.GetCurrentUserIdAsync();
             var school = await _currentUserService.GetCurrentUserSchoolAsync();
-            _logger.LogInformation("[ClubParents] GetStudents called UserId={UserId} SchoolId={SchoolId} SchoolName={SchoolName} gradeId={GradeId} groupId={GroupId}",
-                userId, school?.Id, school?.Name ?? "(null)", gradeId, groupId);
+            _logger.LogInformation("[ClubParents] GetStudents called UserId={UserId} SchoolId={SchoolId} SchoolName={SchoolName} gradeId={GradeId} groupId={GroupId} search={Search} cedula={Cedula}",
+                userId, school?.Id, school?.Name ?? "(null)", gradeId, groupId, search, cedula);
 
             if (school == null)
             {
@@ -80,7 +84,7 @@ public class ClubParentsController : Controller
                 return Ok(new { data = Array.Empty<ClubParentsStudentDto>(), noSchool = true, message = "Su usuario no tiene una escuela asignada. Asigne la escuela en Usuarios para ver los estudiantes." });
             }
 
-            var list = await _service.GetStudentsAsync(gradeId, groupId);
+            var list = await _service.GetStudentsAsync(gradeId, groupId, search, cedula);
             _logger.LogInformation("[ClubParents] GetStudents returning {Count} students for SchoolId={SchoolId}", list.Count, school.Id);
             return Ok(new { data = list });
         }

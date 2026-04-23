@@ -28,7 +28,11 @@ public class ClubParentsPaymentService : IClubParentsPaymentService
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<ClubParentsStudentDto>> GetStudentsAsync(Guid? gradeId = null, Guid? groupId = null)
+    public async Task<IReadOnlyList<ClubParentsStudentDto>> GetStudentsAsync(
+        Guid? gradeId = null,
+        Guid? groupId = null,
+        string? search = null,
+        string? cedula = null)
     {
         var school = await _currentUserService.GetCurrentUserSchoolAsync();
         if (school == null)
@@ -45,6 +49,33 @@ public class ClubParentsPaymentService : IClubParentsPaymentService
             .Where(u => u.SchoolId == school.Id
                 || u.StudentAssignments.Any(sa => sa.IsActive && sa.Grade.SchoolId == school.Id));
 
+        var searchTerm = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        if (searchTerm != null)
+        {
+            var likePattern = "%" + searchTerm + "%";
+            var digitsOnly = new string(searchTerm.Where(char.IsDigit).ToArray());
+            query = query.Where(u =>
+                EF.Functions.ILike(u.Name, likePattern)
+                || EF.Functions.ILike(u.LastName, likePattern)
+                || EF.Functions.ILike(u.Name + " " + u.LastName, likePattern)
+                || EF.Functions.ILike(u.Email, likePattern)
+                || (u.DocumentId != null && EF.Functions.ILike(u.DocumentId, likePattern))
+                || (digitsOnly.Length > 0 && u.DocumentId != null
+                    && u.DocumentId.Replace(".", "").Replace("-", "").Replace(" ", "").Contains(digitsOnly)));
+        }
+
+        var cedulaFilter = string.IsNullOrWhiteSpace(cedula) ? null : cedula.Trim();
+        if (cedulaFilter != null)
+        {
+            var likeCed = "%" + cedulaFilter + "%";
+            var digitsOnlyCed = new string(cedulaFilter.Where(char.IsDigit).ToArray());
+            query = query.Where(u =>
+                u.DocumentId != null
+                && (EF.Functions.ILike(u.DocumentId, likeCed)
+                    || (digitsOnlyCed.Length > 0
+                        && u.DocumentId!.Replace(".", "").Replace("-", "").Replace(" ", "").Contains(digitsOnlyCed))));
+        }
+
         if (gradeId.HasValue || groupId.HasValue)
         {
             query = query.Where(u => u.StudentAssignments.Any(sa =>
@@ -59,6 +90,7 @@ public class ClubParentsPaymentService : IClubParentsPaymentService
             {
                 u.Id,
                 FullName = u.Name + " " + u.LastName,
+                u.DocumentId,
                 Grade = u.StudentAssignments.Where(sa => sa.IsActive).Select(sa => sa.Grade.Name).FirstOrDefault() ?? "Sin asignar",
                 Group = u.StudentAssignments.Where(sa => sa.IsActive).Select(sa => sa.Group.Name).FirstOrDefault() ?? "Sin asignar"
             })
@@ -81,6 +113,7 @@ public class ClubParentsPaymentService : IClubParentsPaymentService
             {
                 Id = x.Id,
                 FullName = x.FullName ?? "",
+                DocumentId = x.DocumentId,
                 Grade = x.Grade ?? "Sin asignar",
                 Group = x.Group ?? "Sin asignar",
                 CarnetStatus = access?.CarnetStatus ?? CarnetPendiente,
