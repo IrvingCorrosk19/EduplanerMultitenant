@@ -13,7 +13,12 @@ public partial class TeacherAssignment
 
     public DateTime? CreatedAt { get; set; }
 
+    /// <summary>Denormalizado desde subject_assignments (o grupo) para multi-tenant.</summary>
+    public Guid SchoolId { get; set; }
+
     public virtual SubjectAssignment SubjectAssignment { get; set; } = null!;
 
     public virtual User Teacher { get; set; } = null!;
+
+    public virtual School School { get; set; } = null!;
 }

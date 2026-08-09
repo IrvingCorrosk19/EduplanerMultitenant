@@ -58,7 +58,7 @@
                 <p class="mb-0 mt-2 opacity-75">Actualiza tu contraseña de forma segura</p>
             </div>
             <div class="card-body p-4">
-                <form  menos unos id="changePasswordForm" novalidate>
+                <form id="changePasswordForm" novalidate>
                     <div class="mb-3 position-relative">
                         <label for="CurrentPassword" class="form-label">
                             <i class="fas fa-key me-1"></i> Contraseña Actual
@@ -229,13 +229,13 @@
                             Swal.fire({
                                 icon: 'success',
                                 title: '¡Contraseña Actualizada!',
-                                text: 'Tu contraseña ha sido cambiada exitosamente. Por favor, inicia sesión nuevamente.',
+                                text: 'Tu contraseña ha sido cambiada exitosamente. Serás redirigido al inicio de sesión.',
                                 confirmButtonColor: '#10b981',
-                                confirmButtonText: 'Entendido'
+                                confirmButtonText: 'Entendido',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false
                             }).then(() => {
-                                form.reset();
-                                form.classList.remove('was-validated');
-                                $('#passwordStrength').text('').removeClass('strength-weak strength-medium strength-strong');
+                                window.location.href = response.redirect || '/Auth/Login';
                             });
                         } else {
                             let errorTitle = 'Error al Cambiar Contraseña';

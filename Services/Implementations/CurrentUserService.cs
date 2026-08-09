@@ -10,11 +10,21 @@ namespace SchoolManager.Services.Implementations
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly SchoolDbContext _context;
+        private readonly ILogger<CurrentUserService> _logger;
 
-        public CurrentUserService(IHttpContextAccessor httpContextAccessor, SchoolDbContext context)
+        // Request-scoped cache: el DbContext es scoped, así que este campo vive exactamente
+        // una request. Evita múltiples round-trips a DB por la misma identidad en la misma request.
+        private User? _cachedUser;
+        private bool _userLoaded;
+
+        public CurrentUserService(
+            IHttpContextAccessor httpContextAccessor,
+            SchoolDbContext context,
+            ILogger<CurrentUserService> logger)
         {
             _httpContextAccessor = httpContextAccessor;
             _context = context;
+            _logger = logger;
         }
 
         public async Task<Guid?> GetCurrentUserIdAsync()
@@ -36,11 +46,37 @@ namespace SchoolManager.Services.Implementations
 
         public async Task<User?> GetCurrentUserAsync()
         {
-            var userId = await GetCurrentUserIdAsync();
-            if (userId == null)
-                return null;
+            if (_userLoaded)
+                return _cachedUser;
 
-            return await _context.Users.FindAsync(userId.Value);
+            var userId = await GetCurrentUserIdAsync();
+            if (userId != null)
+            {
+                // IgnoreQueryFilters es intencional: cargamos al usuario actual por su propio ID
+                // (proveniente del claim JWT firmado), independientemente de su school. El superadmin
+                // no tiene school_id y sería invisible si se aplicara el GQF normal.
+                _cachedUser = await _context.Users
+                    .IgnoreQueryFilters()
+                    .Where(u => u.Id == userId.Value)
+                    .FirstOrDefaultAsync();
+
+                // I-07: detectar drift entre claim JWT y valor real en DB
+                if (_cachedUser != null)
+                {
+                    var jwtClaim = _httpContextAccessor.HttpContext?.User?.FindFirst("school_id")?.Value;
+                    if (Guid.TryParse(jwtClaim, out var jwtSchool)
+                        && _cachedUser.SchoolId.HasValue
+                        && _cachedUser.SchoolId.Value != jwtSchool)
+                    {
+                        _logger.LogWarning(
+                            "I-07 SchoolId drift: userId={UserId} JWT={JwtSchool} DB={DbSchool}. Token stale o school reasignada.",
+                            userId, jwtSchool, _cachedUser.SchoolId.Value);
+                    }
+                }
+            }
+
+            _userLoaded = true;
+            return _cachedUser;
         }
 
         public async Task<bool> IsAuthenticatedAsync()
@@ -59,7 +95,7 @@ namespace SchoolManager.Services.Implementations
             if (user == null || user.SchoolId == null)
                 return null;
 
-            return await _context.Schools.FindAsync(user.SchoolId.Value);
+            return await _context.Schools.Where(x => x.Id == user.SchoolId.Value).FirstOrDefaultAsync();
         }
     }
-} 
+}

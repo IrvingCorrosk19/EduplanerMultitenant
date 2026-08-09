@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using SchoolManager.Dtos;
 using SchoolManager.Models;
@@ -40,6 +40,7 @@ public class PrematriculationPeriodController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(PrematriculationPeriodDto dto)
     {
         if (!ModelState.IsValid)
@@ -69,7 +70,7 @@ public class PrematriculationPeriodController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al crear período de prematrícula");
-            ModelState.AddModelError("", "Error al crear el período de prematrícula: " + ex.Message);
+            ModelState.AddModelError("", "Error al crear el período de prematrícula. Intente nuevamente.");
             return View(dto);
         }
     }
@@ -95,6 +96,7 @@ public class PrematriculationPeriodController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(PrematriculationPeriodDto dto)
     {
         if (!ModelState.IsValid)
@@ -124,12 +126,13 @@ public class PrematriculationPeriodController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al actualizar período de prematrícula");
-            ModelState.AddModelError("", "Error al actualizar el período: " + ex.Message);
+            ModelState.AddModelError("", "Error al actualizar el período. Intente nuevamente.");
             return View(dto);
         }
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(Guid id)
     {
         var deleted = await _periodService.DeleteAsync(id);

@@ -14,19 +14,22 @@ namespace SchoolManager.Services
         private readonly IDocumentStorageService _documentStorage;
         private readonly ITrimesterService _trimesterService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly ILogger<ActivityService> _logger;
 
         public ActivityService(
             SchoolDbContext context,
             IFileStorage fileStorage,
             IDocumentStorageService documentStorage,
             ITrimesterService trimesterService,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            ILogger<ActivityService> logger)
         {
             _context = context;
             _fileStorage = fileStorage;
             _documentStorage = documentStorage;
             _trimesterService = trimesterService;
             _currentUserService = currentUserService;
+            _logger = logger;
         }
 
         /* ────────────────────────────────────────
@@ -37,11 +40,11 @@ namespace SchoolManager.Services
         {
             try
             {
-                Console.WriteLine($"[ActivityService] Iniciando creación de actividad: {dto.Name}");
-                
+                _logger.LogInformation("[ActivityService] Iniciando creación de actividad");
+
             // Validar trimestre activo
             await _trimesterService.ValidateTrimesterActiveAsync(dto.TrimesterCode);
-                Console.WriteLine($"[ActivityService] Trimestre validado: {dto.TrimesterCode}");
+                _logger.LogDebug("[ActivityService] Trimestre validado: {TrimesterCode}", dto.TrimesterCode);
 
             // Obtener la escuela del usuario logueado
             var currentUserSchool = await _currentUserService.GetCurrentUserSchoolAsync();
@@ -49,7 +52,7 @@ namespace SchoolManager.Services
             {
                 throw new InvalidOperationException("No se pudo determinar la escuela del usuario actual.");
             }
-                Console.WriteLine($"[ActivityService] Escuela obtenida: {currentUserSchool.Name}");
+                _logger.LogDebug("[ActivityService] Escuela obtenida: {SchoolId}", currentUserSchool.Id);
 
             // Buscar el trimestre por código y escuela
             var trimestre = await _context.Trimesters
@@ -59,7 +62,7 @@ namespace SchoolManager.Services
             {
                 throw new InvalidOperationException($"No se encontró el trimestre '{dto.TrimesterCode}' para la escuela actual.");
             }
-                Console.WriteLine($"[ActivityService] Trimestre encontrado: {trimestre.Name}");
+                _logger.LogDebug("[ActivityService] Trimestre encontrado: {TrimesterId}", trimestre.Id);
 
             var activity = new Activity
             {
@@ -79,28 +82,27 @@ namespace SchoolManager.Services
             // Configurar campos de auditoría
             await AuditHelper.SetAuditFieldsForCreateAsync(activity, _currentUserService);
 
-                Console.WriteLine($"[ActivityService] Actividad creada con ID: {activity.Id}");
-                Console.WriteLine($"[ActivityService] DueDate: {activity.DueDate}");
+                _logger.LogDebug("[ActivityService] Actividad creada con ID: {ActivityId}, DueDate: {DueDate}", activity.Id, activity.DueDate);
 
             if (!string.IsNullOrWhiteSpace(dto.PersistedTeacherGradebookFileName))
             {
                 activity.PdfUrl = dto.PersistedTeacherGradebookFileName;
-                Console.WriteLine($"[ActivityService] Documento TeacherGradebook persistido: {activity.PdfUrl}");
+                _logger.LogDebug("[ActivityService] Documento TeacherGradebook persistido para actividad: {ActivityId}", activity.Id);
             }
             else if (dto.Pdf is { Length: > 0 })
             {
                 var path = $"activities/{activity.Id}/{dto.Pdf.FileName}";
                 await using var stream = dto.Pdf.OpenReadStream();
                 activity.PdfUrl = await _fileStorage.SaveAsync(path, stream);
-                Console.WriteLine($"[ActivityService] PDF guardado en: {activity.PdfUrl}");
+                _logger.LogDebug("[ActivityService] PDF guardado para actividad: {ActivityId}", activity.Id);
             }
 
             _context.Activities.Add(activity);
             await _context.SaveChangesAsync();
-                Console.WriteLine($"[ActivityService] Actividad guardada exitosamente en la base de datos");
+                _logger.LogInformation("[ActivityService] Actividad guardada exitosamente en la base de datos: {ActivityId}", activity.Id);
 
-            var subject = await _context.Subjects.FindAsync(dto.SubjectId);
-            var group = await _context.Groups.FindAsync(dto.GroupId);
+            var subject = await _context.Subjects.Where(x => x.Id == dto.SubjectId).FirstOrDefaultAsync();
+            var group = await _context.Groups.Where(x => x.Id == dto.GroupId).FirstOrDefaultAsync();
 
                 var result = new ActivityDto
             {
@@ -114,13 +116,12 @@ namespace SchoolManager.Services
                 PdfUrl = _documentStorage.ToPublicDownloadUrl(activity.PdfUrl)
             };
 
-                Console.WriteLine($"[ActivityService] Actividad creada exitosamente: {result.Name}");
+                _logger.LogInformation("[ActivityService] Actividad creada exitosamente: {ActivityId}", result.Id);
                 return result;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ActivityService] ERROR al crear actividad: {ex.Message}");
-                Console.WriteLine($"[ActivityService] Stack trace: {ex.StackTrace}");
+                _logger.LogError(ex, "[ActivityService] Error al crear actividad");
                 throw; // Re-lanzar la excepción para que el controlador la maneje
             }
         }
@@ -129,10 +130,10 @@ namespace SchoolManager.Services
         {
             try
             {
-                Console.WriteLine($"[ActivityService] Iniciando actualización de actividad: {dto.ActivityId}");
+                _logger.LogInformation("[ActivityService] Iniciando actualización de actividad: {ActivityId}", dto.ActivityId);
                 
                 // Buscar la actividad existente
-                var activity = await _context.Activities.FindAsync(dto.ActivityId);
+                var activity = await _context.Activities.Where(x => x.Id == dto.ActivityId).FirstOrDefaultAsync();
                 if (activity == null)
                 {
                     throw new InvalidOperationException($"No se encontró la actividad con ID: {dto.ActivityId}");
@@ -140,7 +141,7 @@ namespace SchoolManager.Services
 
                 // Validar trimestre activo
                 await _trimesterService.ValidateTrimesterActiveAsync(dto.TrimesterCode);
-                Console.WriteLine($"[ActivityService] Trimestre validado: {dto.TrimesterCode}");
+                _logger.LogDebug("[ActivityService] Trimestre validado en actualización: {TrimesterCode}", dto.TrimesterCode);
 
                 // Obtener la escuela del usuario logueado
                 var currentUserSchool = await _currentUserService.GetCurrentUserSchoolAsync();
@@ -174,7 +175,7 @@ namespace SchoolManager.Services
                     if (_documentStorage.IsPersistedTeacherGradebookFileName(activity.PdfUrl))
                         await _documentStorage.TryDeleteTeacherGradebookFileAsync(activity.PdfUrl).ConfigureAwait(false);
                     activity.PdfUrl = dto.PersistedTeacherGradebookFileName;
-                    Console.WriteLine($"[ActivityService] Documento TeacherGradebook actualizado: {activity.PdfUrl}");
+                    _logger.LogDebug("[ActivityService] Documento TeacherGradebook actualizado para actividad: {ActivityId}", activity.Id);
                 }
                 else if (dto.Pdf is { Length: > 0 })
                 {
@@ -183,7 +184,7 @@ namespace SchoolManager.Services
                     var path = $"activities/{activity.Id}/{dto.Pdf.FileName}";
                     await using var stream = dto.Pdf.OpenReadStream();
                     activity.PdfUrl = await _fileStorage.SaveAsync(path, stream);
-                    Console.WriteLine($"[ActivityService] PDF actualizado en: {activity.PdfUrl}");
+                    _logger.LogDebug("[ActivityService] PDF actualizado para actividad: {ActivityId}", activity.Id);
                 }
 
                 // Configurar campos de auditoría para actualización
@@ -191,10 +192,10 @@ namespace SchoolManager.Services
 
                 _context.Activities.Update(activity);
                 await _context.SaveChangesAsync();
-                Console.WriteLine($"[ActivityService] Actividad actualizada exitosamente en la base de datos");
+                _logger.LogInformation("[ActivityService] Actividad actualizada exitosamente en la base de datos: {ActivityId}", activity.Id);
 
-                var subject = await _context.Subjects.FindAsync(dto.SubjectId);
-                var group = await _context.Groups.FindAsync(dto.GroupId);
+                var subject = await _context.Subjects.Where(x => x.Id == dto.SubjectId).FirstOrDefaultAsync();
+                var group = await _context.Groups.Where(x => x.Id == dto.GroupId).FirstOrDefaultAsync();
 
                 var result = new ActivityDto
                 {
@@ -208,13 +209,12 @@ namespace SchoolManager.Services
                     PdfUrl = _documentStorage.ToPublicDownloadUrl(activity.PdfUrl)
                 };
 
-                Console.WriteLine($"[ActivityService] Actividad actualizada exitosamente: {result.Name}");
+                _logger.LogInformation("[ActivityService] Actividad actualizada exitosamente: {ActivityId}", result.Id);
                 return result;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ActivityService] ERROR al actualizar actividad: {ex.Message}");
-                Console.WriteLine($"[ActivityService] Stack trace: {ex.StackTrace}");
+                _logger.LogError(ex, "[ActivityService] Error al actualizar actividad: {ActivityId}", dto.ActivityId);
                 throw; // Re-lanzar la excepción para que el controlador la maneje
             }
         }
@@ -273,7 +273,7 @@ namespace SchoolManager.Services
 
         public async Task UploadPdfAsync(Guid activityId, string fileName, Stream content)
         {
-            var activity = await _context.Activities.FindAsync(activityId)
+            var activity = await _context.Activities.Where(x => x.Id == activityId).FirstOrDefaultAsync()
                 ?? throw new InvalidOperationException("Actividad no encontrada.");
 
             // Validar trimestre activo antes de subir PDF
@@ -293,7 +293,7 @@ namespace SchoolManager.Services
             await _context.Activities.ToListAsync();
 
         public async Task<Activity?> GetByIdAsync(Guid id) =>
-            await _context.Activities.FindAsync(id);
+            await _context.Activities.Where(x => x.Id == id).FirstOrDefaultAsync();
 
         public async Task UpdateAsync(Activity activity)
         {
@@ -337,7 +337,7 @@ namespace SchoolManager.Services
 
         public async Task DeleteAsync(Guid id)
         {
-            var entity = await _context.Activities.FindAsync(id);
+            var entity = await _context.Activities.Where(x => x.Id == id).FirstOrDefaultAsync();
             if (entity is null) return;
 
             // Validar trimestre activo antes de eliminar

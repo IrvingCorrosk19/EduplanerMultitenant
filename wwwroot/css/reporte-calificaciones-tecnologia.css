@@ -1,0 +1,230 @@
+/* Formato oficial — Calificaciones de Tecnología (plantilla MEDUCA / Excel) */
+
+.reporte-tecnologia-body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    color: #000;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+}
+
+.reporte-tecnologia-toolbar {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 1000;
+    display: flex;
+    gap: 6px;
+}
+
+.reporte-tecnologia-toolbar button {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    padding: 6px 12px;
+    border: 1px solid #333;
+    background: #f0f0f0;
+    cursor: pointer;
+}
+
+#printArea {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 13.5in;
+    margin: 0 auto;
+    padding: 0.15in 0.2in 0.25in;
+    background: #fff;
+}
+
+.rt-header {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    margin-bottom: 4pt;
+}
+
+.rt-header-logo {
+    display: table-cell;
+    width: 1.1in;
+    vertical-align: middle;
+    text-align: left;
+}
+
+.rt-header-logo img {
+    max-width: 1in;
+    max-height: 1in;
+    object-fit: contain;
+}
+
+.rt-header-text {
+    display: table-cell;
+    vertical-align: middle;
+    text-align: center;
+    padding: 0 0.1in;
+}
+
+.rt-header-text .line {
+    display: block;
+    line-height: 1.25;
+    font-size: 11pt;
+}
+
+.rt-header-text .line.instituto {
+    font-weight: bold;
+    font-size: 11pt;
+}
+
+.rt-meta {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6pt 0 4pt;
+    font-size: 10pt;
+}
+
+.rt-meta td {
+    border: none;
+    padding: 2pt 4pt;
+    vertical-align: bottom;
+}
+
+.rt-meta .meta-consejero {
+    width: 38%;
+    text-align: left;
+}
+
+.rt-meta .meta-asignatura {
+    width: 34%;
+    text-align: center;
+    font-weight: bold;
+}
+
+.rt-meta .meta-grupo {
+    width: 28%;
+    text-align: right;
+}
+
+.rt-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 9pt;
+}
+
+.rt-tabla th,
+.rt-tabla td {
+    border: 1px solid #000;
+    padding: 1pt 2pt;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.rt-tabla thead th {
+    font-weight: bold;
+    background: #fff;
+    color: #000;
+}
+
+.rt-col-num {
+    width: 4%;
+}
+
+.rt-col-nombre {
+    width: 22%;
+    text-align: left !important;
+    padding-left: 4pt !important;
+    font-weight: bold;
+}
+
+.rt-col-nota {
+    width: 4.2%;
+}
+
+.rt-col-trim-label {
+    width: 4.2%;
+}
+
+.rt-col-promedio {
+    width: 5%;
+    font-weight: bold;
+}
+
+.rt-tabla tbody td.rt-col-nombre {
+    font-weight: normal;
+}
+
+.rt-tabla tbody tr {
+    height: 15pt;
+}
+
+.rt-tabla thead tr.rt-head-row {
+    height: 105pt;
+}
+
+.vertical-header {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    text-align: center;
+    vertical-align: middle;
+    font-weight: bold;
+    font-size: 8.5pt;
+    line-height: 1;
+    padding: 2pt 0 !important;
+    letter-spacing: 0;
+}
+
+.vertical-header.trimestre-label {
+    font-size: 8.5pt;
+}
+
+.th-numero,
+.th-nombre {
+    writing-mode: horizontal-tb;
+    transform: none;
+    vertical-align: middle;
+    height: auto;
+}
+
+.th-nombre {
+    text-align: center;
+    font-size: 9pt;
+    padding: 4pt !important;
+}
+
+.th-numero {
+    font-size: 9pt;
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    .reporte-tecnologia-body {
+        background: #fff;
+    }
+
+    #printArea {
+        max-width: none;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+    }
+
+    .rt-tabla {
+        page-break-inside: auto;
+    }
+
+    .rt-tabla thead {
+        display: table-header-group;
+    }
+
+    .rt-tabla tr {
+        page-break-inside: avoid;
+    }
+
+    .rt-header-logo img {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

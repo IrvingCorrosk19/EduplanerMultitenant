@@ -12,15 +12,15 @@ public static class PostgresConnectionResolver
     {
         var fromConfig = configuration.GetConnectionString("DefaultConnection");
         if (!string.IsNullOrWhiteSpace(fromConfig))
-            return fromConfig;
+            return EnsurePooling(fromConfig);
 
         var fromEnv = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
         if (!string.IsNullOrWhiteSpace(fromEnv))
-            return fromEnv;
+            return EnsurePooling(fromEnv);
 
         var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
         if (!string.IsNullOrWhiteSpace(databaseUrl))
-            return ConvertDatabaseUrlToNpgsql(databaseUrl);
+            return EnsurePooling(ConvertDatabaseUrlToNpgsql(databaseUrl));
 
         return null;
     }
@@ -52,7 +52,36 @@ public static class PostgresConnectionResolver
         if (needsSsl)
             sb.Append("SSL Mode=Require;Trust Server Certificate=true;");
 
+        // Pool de conexiones enterprise (Npgsql defaults son bajos para SaaS multi-tenant)
+        sb.Append("Pooling=true;Minimum Pool Size=2;Maximum Pool Size=100;Timeout=30;Connection Idle Lifetime=300;");
+
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Enriquece una cadena Npgsql con parámetros de pool si aún no están definidos.
+    /// No altera Host/Database/credenciales.
+    /// </summary>
+    public static string EnsurePooling(string connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return connectionString;
+
+        var csb = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        if (!connectionString.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase)
+            && !connectionString.Contains("MaxPoolSize", StringComparison.OrdinalIgnoreCase))
+        {
+            csb.MaxPoolSize = Math.Max(csb.MaxPoolSize, 100);
+        }
+        if (!connectionString.Contains("Minimum Pool Size", StringComparison.OrdinalIgnoreCase)
+            && !connectionString.Contains("MinPoolSize", StringComparison.OrdinalIgnoreCase))
+        {
+            csb.MinPoolSize = Math.Max(csb.MinPoolSize, 2);
+        }
+        csb.Pooling = true;
+        if (csb.Timeout < 15)
+            csb.Timeout = 30;
+        return csb.ConnectionString;
     }
 
     private static bool IsLocalHost(string host) =>

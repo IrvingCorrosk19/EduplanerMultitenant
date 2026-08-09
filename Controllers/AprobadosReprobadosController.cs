@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Services.Interfaces;
 using SchoolManager.ViewModels;
@@ -70,6 +70,7 @@ namespace SchoolManager.Controllers
 
         // POST: AprobadosReprobados/GenerarReporte
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> GenerarReporte(AprobadosReprobadosFiltroViewModel filtro)
         {
             try
@@ -111,7 +112,7 @@ namespace SchoolManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generando reporte");
-                return Json(new { success = false, message = $"Error: {ex.Message}" });
+                return Json(new { success = false, message = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -119,6 +120,7 @@ namespace SchoolManager.Controllers
         /// Prepara datos para que el reporte muestre filas (actividades 3T + grados en grupos). Solo Admin/Director.
         /// </summary>
         [HttpPost]
+        [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,Director,admin,director")]
         public async Task<IActionResult> PrepararDatosParaReporte()
         {
@@ -135,7 +137,7 @@ namespace SchoolManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error preparando datos para reporte");
-                return Json(new { success = false, message = $"Error: {ex.Message}" });
+                return Json(new { success = false, message = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -336,6 +338,121 @@ namespace SchoolManager.Controllers
             {
                 _logger.LogError(ex, "Error obteniendo materias");
                 return Json(new { success = false, message = "Error al obtener materias" });
+            }
+        }
+
+        private static bool IsTeacherRole(string? role) =>
+            string.Equals(role, "teacher", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, "docente", StringComparison.OrdinalIgnoreCase);
+
+        private static Guid? GetTeacherScopeId(Models.User? user) =>
+            user != null && IsTeacherRole(user.Role) ? user.Id : null;
+
+        [HttpGet]
+        public async Task<IActionResult> ObtenerNivelesFiltro()
+        {
+            try
+            {
+                var currentUser = await _currentUserService.GetCurrentUserAsync();
+                if (currentUser?.SchoolId == null)
+                    return Json(new { success = false, message = "No se pudo obtener la información de la escuela" });
+
+                var niveles = await _aprobadosReprobadosService.ObtenerNivelesFiltroAsync(
+                    currentUser.SchoolId.Value, GetTeacherScopeId(currentUser));
+
+                return Json(new
+                {
+                    success = true,
+                    data = niveles.Select(n => new { id = n.Id, nombre = n.Nombre })
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error obteniendo niveles filtro");
+                return Json(new { success = false, message = "Error al obtener niveles" });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ObtenerMateriasFiltro(string? nivelEducativo)
+        {
+            try
+            {
+                var currentUser = await _currentUserService.GetCurrentUserAsync();
+                if (currentUser?.SchoolId == null)
+                    return Json(new { success = false, message = "No se pudo obtener la información de la escuela" });
+
+                if (string.IsNullOrWhiteSpace(nivelEducativo))
+                    return Json(new { success = false, message = "Seleccione primero un grado/nivel" });
+
+                var materias = await _aprobadosReprobadosService.ObtenerMateriasFiltroAsync(
+                    currentUser.SchoolId.Value, nivelEducativo, GetTeacherScopeId(currentUser));
+
+                return Json(new { success = true, data = materias.Select(m => new { id = m.Id, nombre = m.Nombre }) });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error obteniendo materias filtro");
+                return Json(new { success = false, message = "Error al obtener materias" });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ObtenerGruposFiltro(Guid materiaId, string? nivelEducativo)
+        {
+            try
+            {
+                var currentUser = await _currentUserService.GetCurrentUserAsync();
+                if (currentUser?.SchoolId == null)
+                    return Json(new { success = false, message = "No se pudo obtener la información de la escuela" });
+
+                if (string.IsNullOrWhiteSpace(nivelEducativo))
+                    return Json(new { success = false, message = "Seleccione primero un grado/nivel" });
+
+                var grupos = await _aprobadosReprobadosService.ObtenerGruposFiltroAsync(
+                    currentUser.SchoolId.Value, materiaId, nivelEducativo, GetTeacherScopeId(currentUser));
+
+                return Json(new
+                {
+                    success = true,
+                    data = grupos.Select(g => new
+                    {
+                        subjectId = g.SubjectId,
+                        groupId = g.GroupId,
+                        gradeLevelId = g.GradeLevelId,
+                        nombre = g.Nombre
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error obteniendo grupos filtro");
+                return Json(new { success = false, message = "Error al obtener grupos" });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ObtenerAsignacionesCombo()
+        {
+            try
+            {
+                var currentUser = await _currentUserService.GetCurrentUserAsync();
+                if (currentUser?.SchoolId == null)
+                    return Json(new { success = false, message = "No se pudo obtener la información de la escuela" });
+
+                var asignaciones = await _aprobadosReprobadosService.ObtenerAsignacionesComboAsync(
+                    currentUser.SchoolId.Value, GetTeacherScopeId(currentUser));
+
+                return Json(new
+                {
+                    success = true,
+                    data = asignaciones.Select(a => new { value = a.Value, text = a.Text })
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error obteniendo asignaciones combo");
+                return Json(new { success = false, message = "Error al obtener asignaciones" });
             }
         }
     }

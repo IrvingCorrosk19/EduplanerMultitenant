@@ -465,26 +465,37 @@
                     <input asp-for="Email" 
                            class="form-control-modern" 
                            type="email"
+                           id="loginEmail"
                            placeholder="tu.correo@ejemplo.com" 
                            autocomplete="username" 
                            required />
-                            <span asp-validation-for="Email" class="text-danger"></span>
-                        </div>
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
 
-                @if (ViewBag.TenantSchools is List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> tenantSchools && tenantSchools.Count > 0)
-                {
-                    <div class="form-group-modern">
-                        <label asp-for="SchoolId">Institución <span class="fw-normal text-muted">(opcional)</span></label>
-                        <select asp-for="SchoolId" class="form-control-modern" style="appearance: auto;">
-                            <option value="">— Mismo correo en varios colegios: elija su escuela —</option>
-                            @foreach (var item in tenantSchools)
-                            {
-                                <option value="@item.Value">@item.Text</option>
-                            }
-                        </select>
-                        <small class="text-muted d-block mt-1" style="font-size: 0.8rem;">Si el sistema le indicó que hay varias cuentas con su correo, seleccione su colegio antes de iniciar sesión.</small>
-                    </div>
+                @{
+                    var showSchoolSelector = ViewBag.TenantSchools is List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ts && ts.Count > 1;
                 }
+                <div class="form-group-modern" id="schoolSelectorGroup" style="@(showSchoolSelector ? null : "display:none;")">
+                    <label asp-for="SchoolId">Institución</label>
+                    <select asp-for="SchoolId" id="loginSchoolId" class="form-control-modern" style="appearance: auto;">
+                        <option value="">— Seleccione su colegio —</option>
+                        @if (ViewBag.TenantSchools is List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> tenantSchools)
+                        {
+                            foreach (var item in tenantSchools)
+                            {
+                                if (item.Selected)
+                                {
+                                    <option value="@item.Value" selected="selected">@item.Text</option>
+                                }
+                                else
+                                {
+                                    <option value="@item.Value">@item.Text</option>
+                                }
+                            }
+                        }
+                    </select>
+                    <small class="text-muted d-block mt-1" style="font-size: 0.8rem;">Su correo está registrado en más de un colegio. Elija la institución.</small>
+                </div>
                         
                 <!-- Input de Contraseña -->
                 <div class="form-group-modern">
@@ -544,6 +555,88 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             
+            // ===== Resolución inteligente de institución por correo =====
+            const emailInput = document.getElementById('loginEmail');
+            const schoolGroup = document.getElementById('schoolSelectorGroup');
+            const schoolSelect = document.getElementById('loginSchoolId');
+            let resolveTimer = null;
+            let lastResolvedEmail = '';
+
+            function hideSchoolSelector() {
+                if (!schoolGroup || !schoolSelect) return;
+                schoolGroup.style.display = 'none';
+                schoolSelect.innerHTML = '<option value="">— Seleccione su colegio —</option>';
+                schoolSelect.value = '';
+                schoolSelect.removeAttribute('required');
+            }
+
+            function showSchoolSelector(schools) {
+                if (!schoolGroup || !schoolSelect) return;
+                const previous = schoolSelect.value;
+                schoolSelect.innerHTML = '<option value="">— Seleccione su colegio —</option>';
+                schools.forEach(function (s) {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = s.name;
+                    if (previous && previous.toLowerCase() === String(s.id).toLowerCase()) {
+                        opt.selected = true;
+                    }
+                    schoolSelect.appendChild(opt);
+                });
+                schoolGroup.style.display = '';
+                schoolSelect.setAttribute('required', 'required');
+            }
+
+            async function resolveSchoolsForEmail() {
+                if (!emailInput || !schoolGroup) return;
+                const email = (emailInput.value || '').trim();
+                if (!email || email.indexOf(String.fromCharCode(64)) < 0) {
+                    hideSchoolSelector();
+                    lastResolvedEmail = '';
+                    return;
+                }
+                if (email.toLowerCase() === lastResolvedEmail) return;
+                lastResolvedEmail = email.toLowerCase();
+
+                try {
+                    const url = '@Url.Action("ResolveLoginSchools", "Auth")?email=' + encodeURIComponent(email);
+                    const res = await fetch(url, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                        credentials: 'same-origin'
+                    });
+                    if (!res.ok) {
+                        hideSchoolSelector();
+                        return;
+                    }
+                    const data = await res.json();
+                    if (data && data.requiresSelection && Array.isArray(data.schools) && data.schools.length > 1) {
+                        showSchoolSelector(data.schools);
+                    } else {
+                        hideSchoolSelector();
+                    }
+                } catch (err) {
+                    hideSchoolSelector();
+                }
+            }
+
+            if (emailInput) {
+                emailInput.addEventListener('blur', function () {
+                    resolveSchoolsForEmail();
+                });
+                emailInput.addEventListener('change', function () {
+                    resolveSchoolsForEmail();
+                });
+                emailInput.addEventListener('input', function () {
+                    if (resolveTimer) clearTimeout(resolveTimer);
+                    resolveTimer = setTimeout(resolveSchoolsForEmail, 450);
+                });
+                // Si el navegador autocompletó el correo al cargar
+                if ((emailInput.value || '').trim()) {
+                    resolveSchoolsForEmail();
+                }
+            }
+
             // ===== Toggle para mostrar/ocultar contraseña =====
             const togglePassword = document.getElementById('togglePassword');
             const passwordInput = document.getElementById('passwordInput');
@@ -657,7 +750,7 @@
             Swal.fire({
                 icon: 'success',
                 title: '¡Éxito!',
-                text: '@TempData["Success"]',
+                text: @Json.Serialize(TempData["Success"]?.ToString()),
                 confirmButtonText: 'Continuar',
                 confirmButtonColor: '#10b981',
                 background: '#fff',

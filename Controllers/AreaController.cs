@@ -1,7 +1,9 @@
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Models;
 using SchoolManager.Services.Interfaces;
 
+[Authorize(Roles = "Director,Inspector,secretaria,admin,superadmin")]
 public class AreaController : Controller
 {
     private readonly IAreaService _areaService;
@@ -18,6 +20,7 @@ public class AreaController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create([FromBody] Area area)
     {
         if (string.IsNullOrWhiteSpace(area.Name))
@@ -38,11 +41,12 @@ public class AreaController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al crear el área: " + ex.Message });
+            return Json(new { success = false, message = "Error al crear el área. Intente nuevamente." });
         }
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit([FromBody] Area area)
     {
         if (string.IsNullOrWhiteSpace(area.Name))
@@ -63,11 +67,12 @@ public class AreaController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al actualizar el área: " + ex.Message });
+            return Json(new { success = false, message = "Error al actualizar el área. Intente nuevamente." });
         }
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleActive([FromBody] ToggleActiveRequest request)
     {
         if (request.Id == Guid.Empty)
@@ -92,11 +97,12 @@ public class AreaController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al cambiar el estado: " + ex.Message });
+            return Json(new { success = false, message = "Error al cambiar el estado. Intente nuevamente." });
         }
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete([FromBody] DeleteAreaRequest request)
     {
         if (request.Id == Guid.Empty)
@@ -111,11 +117,11 @@ public class AreaController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return Json(new { success = false, message = ex.Message });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente." });
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al eliminar el área: " + ex.Message });
+            return Json(new { success = false, message = "Error al eliminar el área. Intente nuevamente." });
         }
     }
 }

@@ -80,6 +80,12 @@
                                 <p>Estudiantes</p>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a href="/SuperAdmin/StaffDirectory" class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "StaffDirectory" ? "active" : "")">
+                                <i class="nav-icon fas fa-id-badge"></i>
+                                <p>Personal</p>
+                            </a>
+                        </li>
                         <li class="nav-header">CONFIGURACIÓN</li>
                         <li class="nav-item">
                             <a href="/SuperAdmin/EmailApiSettings" class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "EmailApiSettings" ? "active" : "")">
@@ -91,6 +97,18 @@
                             <a href="/StudentIdCard/ui" class="nav-link">
                                 <i class="nav-icon fas fa-id-card"></i>
                                 <p>Carnet Estudiantil</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/InstitutionalCredential/ui" class="nav-link">
+                                <i class="nav-icon fas fa-address-card"></i>
+                                <p>Credencial Institucional</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/StaffInstitutionalProfile" class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "StaffInstitutionalProfile" ? "active" : "")">
+                                <i class="nav-icon fas fa-user-tie"></i>
+                                <p>Mi perfil institucional</p>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -188,5 +206,28 @@
     <script src="~/js/ui-messages.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
+
+    @Html.AntiForgeryToken()
+    <script>
+        (function () {
+            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            const token = tokenInput ? tokenInput.value : '';
+            if (!token) return;
+            const _fetch = window.fetch;
+            window.fetch = function (url, options) {
+                options = options || {};
+                options.headers = options.headers || {};
+                const method = (options.method || 'GET').toUpperCase();
+                if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+                    if (options.headers instanceof Headers) options.headers.set('RequestVerificationToken', token);
+                    else options.headers['RequestVerificationToken'] = token;
+                }
+                return _fetch(url, options);
+            };
+            if (typeof $ !== 'undefined' && $.ajaxSetup) {
+                $.ajaxSetup({ beforeSend: function (xhr, s) { if (['POST','PUT','DELETE','PATCH'].includes((s.type||'GET').toUpperCase())) xhr.setRequestHeader('RequestVerificationToken', token); } });
+            }
+        })();
+    </script>
 </body>
-</html> 
+</html>

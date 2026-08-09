@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Application.Interfaces;
+using SchoolManager.Constants;
 using SchoolManager.Infrastructure.Services;
 using SchoolManager.Models;
 using SchoolManager.Services.Interfaces;
@@ -56,6 +57,7 @@ public class AcademicAssignmentController : Controller
 
     // Carga masiva desde archivo Excel
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveAssignmentsFromExcel([FromBody] List<AssignmentInputModel> asignaciones)
     {
         if (asignaciones == null || !asignaciones.Any())
@@ -147,7 +149,7 @@ public class AcademicAssignmentController : Controller
                             LastName = apellidoProfesor,
                             DocumentId = documentoProfesor,
                             DateOfBirth = fechaNacimiento,
-                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword(DefaultTemporaryPassword.Generate()),
                             Role = "teacher", // Usar minúscula para coincidir con la restricción CHECK
                             SchoolId = user.SchoolId,
                             Status = "active",
@@ -369,6 +371,7 @@ public class AcademicAssignmentController : Controller
 
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateAssignments(Guid userId, List<Guid> subjectIds, List<Guid> groupIds, List<Guid> gradeLevelIds)
     {
         var user = await _userService.GetByIdWithRelationsAsync(userId);
@@ -426,6 +429,7 @@ public class AcademicAssignmentController : Controller
     }
 
     [HttpPost, ActionName("Delete")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         await _teacherAssignmentService.DeleteAsync(id);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SchoolManager.Dtos;
 using SchoolManager.Interfaces;
 using SchoolManager.Models;
@@ -18,61 +19,71 @@ namespace SchoolManager.Services
         private readonly ICurrentUserService _currentUserService;
         private readonly IAcademicYearService _academicYearService;
         private readonly IDocumentStorageService _documentStorage;
+        private readonly ILogger<StudentActivityScoreService> _logger;
 
         public StudentActivityScoreService(
             SchoolDbContext context,
             ITrimesterService trimesterService,
             ICurrentUserService currentUserService,
             IAcademicYearService academicYearService,
-            IDocumentStorageService documentStorage)
+            IDocumentStorageService documentStorage,
+            ILogger<StudentActivityScoreService> logger)
         {
             _context = context;
             _trimesterService = trimesterService;
             _currentUserService = currentUserService;
             _academicYearService = academicYearService;
             _documentStorage = documentStorage;
+            _logger = logger;
         }
 
         /* ------------ 1. Guardar / actualizar notas ------------ */
         public async Task SaveAsync(IEnumerable<StudentActivityScoreCreateDto> scores)
         {
-            foreach (var dto in scores)
+            var list = scores?.ToList() ?? new List<StudentActivityScoreCreateDto>();
+            if (list.Count == 0)
+                return;
+
+            // Validar cada trimestre distinto una sola vez (evita N llamadas repetidas)
+            foreach (var trimester in list.Select(s => s.Trimester).Distinct(StringComparer.OrdinalIgnoreCase))
+                await _trimesterService.ValidateTrimesterActiveAsync(trimester);
+
+            var studentIds = list.Select(s => s.StudentId).Distinct().ToList();
+            var activityIds = list.Select(s => s.ActivityId).Distinct().ToList();
+
+            var existing = await _context.StudentActivityScores
+                .Where(s => studentIds.Contains(s.StudentId) && activityIds.Contains(s.ActivityId))
+                .ToListAsync();
+            var map = existing.ToDictionary(s => (s.StudentId, s.ActivityId));
+
+            var currentUserSchool = await _currentUserService.GetCurrentUserSchoolAsync();
+            var activeAcademicYear = currentUserSchool != null
+                ? await _academicYearService.GetActiveAcademicYearAsync(currentUserSchool.Id)
+                : null;
+
+            foreach (var dto in list)
             {
-                // Validar trimestre activo
-                await _trimesterService.ValidateTrimesterActiveAsync(dto.Trimester);
-
-                var entity = await _context.StudentActivityScores
-                    .FirstOrDefaultAsync(s => s.StudentId == dto.StudentId &&
-                                              s.ActivityId == dto.ActivityId);
-
-                if (entity is null)
+                if (map.TryGetValue((dto.StudentId, dto.ActivityId), out var entity))
                 {
-                    // MEJORADO: Obtener año académico activo para la nueva nota
-                    var currentUserSchool = await _currentUserService.GetCurrentUserSchoolAsync();
-                    var activeAcademicYear = currentUserSchool != null
-                        ? await _academicYearService.GetActiveAcademicYearAsync(currentUserSchool.Id)
-                        : null;
-
+                    entity.Score = dto.Score;
+                    await AuditHelper.SetAuditFieldsForUpdateAsync(entity, _currentUserService);
+                }
+                else
+                {
                     var newScore = new StudentActivityScore
                     {
                         Id = Guid.NewGuid(),
                         StudentId = dto.StudentId,
                         ActivityId = dto.ActivityId,
                         Score = dto.Score,
-                        AcademicYearId = activeAcademicYear?.Id // Asignar año académico si existe
+                        AcademicYearId = activeAcademicYear?.Id
                     };
-                    
-                    // Configurar campos de auditoría y SchoolId
+
                     await AuditHelper.SetAuditFieldsForCreateAsync(newScore, _currentUserService);
                     await AuditHelper.SetSchoolIdAsync(newScore, _currentUserService);
-                    
+
                     _context.StudentActivityScores.Add(newScore);
-                }
-                else
-                {
-                    entity.Score = dto.Score;
-                    // Configurar campos de auditoría para actualización
-                    await AuditHelper.SetAuditFieldsForUpdateAsync(entity, _currentUserService);
+                    map[(dto.StudentId, dto.ActivityId)] = newScore;
                 }
             }
             await _context.SaveChangesAsync();
@@ -94,6 +105,7 @@ namespace SchoolManager.Services
 
             /* 2.1 Cabeceras: actividades del docente en ese grupo, trimestre, materia y grado */
             var headers = await _context.Activities
+                .AsNoTracking()
                 .Where(a => a.TeacherId == teacherId &&
                             a.GroupId == groupId &&
                             a.Trimester == trimesterCode &&
@@ -126,8 +138,9 @@ namespace SchoolManager.Services
 
             /* 2.2 Estudiantes asignados a ese grupo (StudentAssignments), restringidos a la institución */
             var studentIds = await _context.StudentAssignments
+                .AsNoTracking()
                 .Where(sa => sa.GroupId == groupId)
-                .Join(_context.Users.Where(u => u.SchoolId == schoolId),
+                .Join(_context.Users.AsNoTracking().Where(u => u.SchoolId == schoolId),
                     sa => sa.StudentId,
                     u => u.Id,
                     (sa, u) => u.Id)
@@ -135,12 +148,14 @@ namespace SchoolManager.Services
                 .ToListAsync();
 
             var students = await _context.Students
+                .AsNoTracking()
                 .Where(s => studentIds.Contains(s.Id) && (s.SchoolId == null || s.SchoolId == schoolId))
                 .Select(s => new { s.Id, s.Name })
                 .ToListAsync();
 
             /* 2.3 Notas existentes */
             var scores = await _context.StudentActivityScores
+                .AsNoTracking()
                 .Where(s => activityIds.Contains(s.ActivityId) && (s.SchoolId == null || s.SchoolId == schoolId))
                 .ToListAsync();
 
@@ -335,10 +350,7 @@ namespace SchoolManager.Services
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                // Manejamos el error
-                Console.WriteLine("❌ Error guardando notas en bloque:");
-                Console.WriteLine($"Mensaje: {ex.Message}");
-                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                _logger.LogError(ex, "Error guardando notas en bloque (SaveBulkFromNotasAsync)");
                 throw new Exception($"Error al guardar las notas: {ex.Message}", ex);
             }
         }

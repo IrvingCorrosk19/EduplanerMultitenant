@@ -45,6 +45,21 @@ namespace SchoolManager.Services.Interfaces
         /// </summary>
         Task<List<(Guid Id, string Nombre)>> ObtenerMateriasAsync(Guid schoolId, Guid? areaId = null, Guid? especialidadId = null);
 
+        /// <summary>Grados/niveles académicos con asignaciones del usuario (para informes institucionales).</summary>
+        Task<List<AprobadosReprobadosNivelFiltroDto>> ObtenerNivelesFiltroAsync(Guid schoolId, Guid? teacherScopeId = null);
+
+        /// <summary>Materias del grado seleccionado (informes institucionales).</summary>
+        Task<List<(Guid Id, string Nombre)>> ObtenerMateriasFiltroAsync(
+            Guid schoolId, string? nivelGradeLevelId = null, Guid? teacherScopeId = null);
+
+        /// <summary>Grupos de la materia en el grado seleccionado (informes institucionales).</summary>
+        Task<List<AprobadosReprobadosGrupoFiltroDto>> ObtenerGruposFiltroAsync(
+            Guid schoolId, Guid materiaId, string? nivelGradeLevelId = null, Guid? teacherScopeId = null);
+
+        /// <summary>Combo Materia y Grupo (subjectId|groupId|gradeLevelId).</summary>
+        Task<List<AprobadosReprobadosComboFiltroDto>> ObtenerAsignacionesComboAsync(
+            Guid schoolId, Guid? teacherScopeId = null);
+
         /// <summary>
         /// Exportar el reporte a PDF. Si logoBytes no es null, se usa en lugar de descargar por URL.
         /// </summary>

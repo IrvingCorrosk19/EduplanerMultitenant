@@ -123,7 +123,7 @@ public class BulkPasswordEmailService : IBulkPasswordEmailService
             }
 
             var oldHash = user.PasswordHash;
-            var plainPassword = DefaultTemporaryPassword.Value;
+            var plainPassword = DefaultTemporaryPassword.Generate(); // unique per user
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(plainPassword);
             user.PasswordEmailStatus = PasswordEmailStatusValues.Pending;
             user.UpdatedAt = DateTime.UtcNow;

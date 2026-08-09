@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using SchoolManager.Dtos;
 using SchoolManager.Services.Interfaces;
@@ -60,7 +60,7 @@ public class PaymentConceptController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al crear concepto de pago");
-            ModelState.AddModelError("", "Error al crear el concepto de pago: " + ex.Message);
+            ModelState.AddModelError("", "Error al crear el concepto de pago. Intente nuevamente.");
             return View(dto);
         }
     }
@@ -112,7 +112,7 @@ public class PaymentConceptController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al actualizar concepto de pago");
-            ModelState.AddModelError("", "Error al actualizar el concepto de pago: " + ex.Message);
+            ModelState.AddModelError("", "Error al actualizar el concepto de pago. Intente nuevamente.");
             ViewBag.ConceptId = id;
             return View(dto);
         }
@@ -138,7 +138,7 @@ public class PaymentConceptController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al eliminar concepto de pago");
-            TempData["ErrorMessage"] = "Error al eliminar el concepto de pago: " + ex.Message;
+            TempData["ErrorMessage"] = "Error al eliminar el concepto de pago. Intente nuevamente.";
         }
 
         return RedirectToAction(nameof(Index));

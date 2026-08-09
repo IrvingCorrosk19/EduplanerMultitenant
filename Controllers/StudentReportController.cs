@@ -1,3 +1,4 @@
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Services.Interfaces;
 using SchoolManager.Dtos;
@@ -12,18 +13,87 @@ using System.Text;
 using System.IO;
 using System.Text.Json;
 using System.Net;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
+[Authorize(Roles = "student,estudiante,acudiente,parent,Director,Inspector,admin,superadmin")]
 public class StudentReportController : Controller
 {
     private readonly IStudentReportService _reportService;
     private readonly ICurrentUserService _currentUserService;
+    private readonly SchoolDbContext _context;
     private readonly ILogger<StudentReportController> _logger;
 
-    public StudentReportController(IStudentReportService reportService, ICurrentUserService currentUserService, ILogger<StudentReportController> logger)
+    public StudentReportController(
+        IStudentReportService reportService,
+        ICurrentUserService currentUserService,
+        SchoolDbContext context,
+        ILogger<StudentReportController> logger)
     {
         _reportService = reportService;
         _currentUserService = currentUserService;
+        _context = context;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Multi-tenant + ownership: evita IDOR (studentId arbitrario).
+    /// Superadmin: sin límite. Estudiante: solo sí mismo. Acudiente: sí mismo o hijo vinculado en prematrícula. Staff: mismo school_id que el estudiante.
+    /// </summary>
+    private async Task<IActionResult?> AuthorizeStudentReportTargetAsync(Guid studentId)
+    {
+        var currentUserId = await _currentUserService.GetCurrentUserIdAsync();
+        if (currentUserId == null)
+            return Unauthorized();
+
+        var roles = User?.FindAll(ClaimTypes.Role).Select(c => c.Value).ToHashSet(StringComparer.OrdinalIgnoreCase) ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (roles.Contains("superadmin") || roles.Contains("SuperAdmin"))
+            return null;
+
+        var target = await _context.Users.AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(u => u.Id == studentId)
+            .Select(u => new { u.SchoolId })
+            .FirstOrDefaultAsync();
+
+        if (target == null)
+            return NotFound();
+
+        var roleLower = (await _currentUserService.GetCurrentUserRoleAsync() ?? "").Trim().ToLowerInvariant();
+
+        if (roleLower is "estudiante" or "student")
+        {
+            if (studentId != currentUserId.Value)
+            {
+                _logger.LogWarning("StudentReport: estudiante intentó acceder a otro studentId. Actor={Actor} Target={Target}", currentUserId, studentId);
+                return Forbid();
+            }
+            return null;
+        }
+
+        if (roleLower is "acudiente" or "parent")
+        {
+            if (studentId == currentUserId.Value)
+                return null;
+
+            var prematLink = await _context.Prematriculations.AsNoTracking()
+                .IgnoreQueryFilters()
+                .AnyAsync(p => p.StudentId == studentId && p.ParentId == currentUserId.Value);
+            if (prematLink)
+                return null;
+
+            _logger.LogWarning("StudentReport: acudiente sin vínculo a studentId. Actor={Actor} Target={Target}", currentUserId, studentId);
+            return Forbid();
+        }
+
+        var mySchoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        if (!mySchoolId.HasValue || target.SchoolId != mySchoolId.Value)
+        {
+            _logger.LogWarning("StudentReport: staff cross-tenant o sin escuela. ActorSchool={School} TargetStudent={Target}", mySchoolId, studentId);
+            return Forbid();
+        }
+
+        return null;
     }
 
     public async Task<IActionResult> Index()
@@ -31,32 +101,26 @@ public class StudentReportController : Controller
         try
         {
             _logger.LogInformation("=== INICIO StudentReportController.Index ===");
-            Console.WriteLine("=== INICIO StudentReportController.Index ===");
 
             // Obtener el ID del usuario autenticado
             var studentId = await _currentUserService.GetCurrentUserIdAsync();
             _logger.LogInformation("StudentId obtenido: {StudentId}", studentId);
-            Console.WriteLine($"StudentId obtenido: {studentId}");
 
             if (studentId == null)
             {
                 _logger.LogWarning("No se pudo identificar al usuario actual");
-                Console.WriteLine("No se pudo identificar al usuario actual");
                 return Unauthorized("No se pudo identificar al usuario actual.");
             }
 
             // Obtener el reporte real desde el servicio (sin pasar trimestre)
             _logger.LogInformation("Llamando a GetReportByStudentIdAsync para StudentId: {StudentId}", studentId.Value);
-            Console.WriteLine($"Llamando a GetReportByStudentIdAsync para StudentId: {studentId.Value}");
-            
+
             var report = await _reportService.GetReportByStudentIdAsync(studentId.Value);
             _logger.LogInformation("Reporte obtenido: {Report}", report != null ? "NO NULL" : "NULL");
-            Console.WriteLine($"Reporte obtenido: {(report != null ? "NO NULL" : "NULL")}");
 
             if (report == null)
             {
                 _logger.LogWarning("No se encontró reporte - estudiante sin calificaciones");
-                Console.WriteLine("No se encontró reporte - estudiante sin calificaciones");
                 
                 // Si no hay reporte, crea un modelo vacío y agrega mensaje para SweetAlert
                 report = new StudentReportDto
@@ -75,46 +139,38 @@ public class StudentReportController : Controller
             }
             else
             {
-                _logger.LogInformation("Reporte encontrado - Grades: {GradesCount}, AvailableTrimesters: {TrimestersCount}", 
+                _logger.LogInformation("Reporte encontrado - Grades: {GradesCount}, AvailableTrimesters: {TrimestersCount}",
                     report.Grades?.Count ?? 0, report.AvailableTrimesters?.Count ?? 0);
-                Console.WriteLine($"Reporte encontrado - Grades: {report.Grades?.Count ?? 0}, AvailableTrimesters: {report.AvailableTrimesters?.Count ?? 0}");
             }
 
             // Forzar que el trimestre seleccionado sea 1T si existe, si no el primero disponible
             var availableTrimesters = report.AvailableTrimesters?.Select(t => t.Trimester).ToList() ?? new List<string>();
             _logger.LogInformation("Trimestres disponibles: {Trimesters}", string.Join(", ", availableTrimesters));
-            Console.WriteLine($"Trimestres disponibles: {string.Join(", ", availableTrimesters)}");
 
             string selectedTrimester = availableTrimesters.Contains("1T") ? "1T" : availableTrimesters.FirstOrDefault() ?? "1T";
             _logger.LogInformation("Trimestre seleccionado: {SelectedTrimester}", selectedTrimester);
-            Console.WriteLine($"Trimestre seleccionado: {selectedTrimester}");
 
             if (selectedTrimester != null && report.Trimester != selectedTrimester)
             {
                 _logger.LogInformation("Solicitando reporte específico para trimestre: {Trimester}", selectedTrimester);
-                Console.WriteLine($"Solicitando reporte específico para trimestre: {selectedTrimester}");
-                
+
                 // Volver a pedir el reporte solo para el trimestre seleccionado
                 report = await _reportService.GetReportByStudentIdAndTrimesterAsync(studentId.Value, selectedTrimester) ?? report;
                 report.AvailableTrimesters = availableTrimesters.Select(t => new AvailableTrimesters { Trimester = t }).ToList();
-                
+
                 _logger.LogInformation("Reporte específico obtenido - Grades: {GradesCount}", report.Grades?.Count ?? 0);
-                Console.WriteLine($"Reporte específico obtenido - Grades: {report.Grades?.Count ?? 0}");
             }
             
             report.StudentId = studentId.Value;
             ViewBag.AvailableTrimesters = report.AvailableTrimesters;
             
             _logger.LogInformation("=== FIN StudentReportController.Index - Enviando a vista ===");
-            Console.WriteLine("=== FIN StudentReportController.Index - Enviando a vista ===");
             
             return View(report);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en StudentReportController.Index: {Message}", ex.Message);
-            Console.WriteLine($"ERROR en StudentReportController.Index: {ex.Message}");
-            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+            _logger.LogError(ex, "Error en StudentReportController.Index");
             throw;
         }
     }
@@ -125,22 +181,22 @@ public class StudentReportController : Controller
         try
         {
             _logger.LogInformation("=== INICIO GetTrimesterData - StudentId: {StudentId}, Trimester: {Trimester} ===", studentId, trimester);
-            Console.WriteLine($"=== INICIO GetTrimesterData - StudentId: {studentId}, Trimester: {trimester} ===");
+
+            var auth = await AuthorizeStudentReportTargetAsync(studentId);
+            if (auth != null)
+                return auth;
 
             var report = await _reportService.GetReportByStudentIdAndTrimesterAsync(studentId, trimester);
             _logger.LogInformation("Reporte obtenido en GetTrimesterData: {Report}", report != null ? "NO NULL" : "NULL");
-            Console.WriteLine($"Reporte obtenido en GetTrimesterData: {(report != null ? "NO NULL" : "NULL")}");
 
             if (report == null)
             {
                 _logger.LogWarning("No se encontraron datos para StudentId: {StudentId}, Trimester: {Trimester}", studentId, trimester);
-                Console.WriteLine($"No se encontraron datos para StudentId: {studentId}, Trimester: {trimester}");
                 return Json(new { error = "No se encontraron datos para el trimestre seleccionado." });
             }
 
-            _logger.LogInformation("Datos encontrados - Grades: {GradesCount}, Attendance: {AttendanceCount}, Discipline: {DisciplineCount}", 
+            _logger.LogInformation("Datos encontrados - Grades: {GradesCount}, Attendance: {AttendanceCount}, Discipline: {DisciplineCount}",
                 report.Grades?.Count ?? 0, report.AttendanceByTrimester?.Count ?? 0, report.DisciplineReports?.Count ?? 0);
-            Console.WriteLine($"Datos encontrados - Grades: {report.Grades?.Count ?? 0}, Attendance: {report.AttendanceByTrimester?.Count ?? 0}, Discipline: {report.DisciplineReports?.Count ?? 0}");
 
             // Preparar los datos de manera segura
             var grades = new List<object>();
@@ -217,16 +273,13 @@ public class StudentReportController : Controller
             };
 
             _logger.LogInformation("=== FIN GetTrimesterData - Enviando respuesta ===");
-            Console.WriteLine("=== FIN GetTrimesterData - Enviando respuesta ===");
 
             return Json(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en GetTrimesterData: {Message}", ex.Message);
-            Console.WriteLine($"ERROR en GetTrimesterData: {ex.Message}");
-            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-            return Json(new { error = ex.Message, stack = ex.StackTrace });
+            _logger.LogError(ex, "Error en GetTrimesterData: StudentId={StudentId}, Trimester={Trimester}", studentId, trimester);
+            return Json(new { error = "Error interno. Intente nuevamente." });
         }
     }
 
@@ -236,13 +289,15 @@ public class StudentReportController : Controller
         try
         {
             _logger.LogInformation("=== INICIO ExportDisciplinePdf - StudentId: {StudentId} ===", studentId);
-            Console.WriteLine($"=== INICIO ExportDisciplinePdf - StudentId: {studentId} ===");
+
+            var auth = await AuthorizeStudentReportTargetAsync(studentId);
+            if (auth != null)
+                return auth;
 
             // Obtener todos los reportes de disciplina del estudiante
             var disciplineReports = await _reportService.GetDisciplineReportsByStudentIdAsync(studentId);
-            
+
             _logger.LogInformation("Reportes de disciplina encontrados: {Count}", disciplineReports?.Count ?? 0);
-            Console.WriteLine($"Reportes de disciplina encontrados: {disciplineReports?.Count ?? 0}");
 
             // Generar HTML para el PDF
             var htmlContent = GenerateDisciplineReportHtml(studentName, grade, disciplineReports);
@@ -252,7 +307,6 @@ public class StudentReportController : Controller
             var fileName = $"Expediente_Disciplina_{studentName?.Replace(" ", "_")}_{DateTime.UtcNow:yyyyMMdd}.html";
             
             _logger.LogInformation("=== FIN ExportDisciplinePdf - Archivo generado: {FileName} ===", fileName);
-            Console.WriteLine($"=== FIN ExportDisciplinePdf - Archivo generado: {fileName} ===");
 
             // Retornar el archivo HTML (que se puede convertir a PDF en el navegador)
             var bytes = Encoding.UTF8.GetBytes(htmlContent);
@@ -260,9 +314,8 @@ public class StudentReportController : Controller
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en ExportDisciplinePdf: {Message}", ex.Message);
-            Console.WriteLine($"ERROR en ExportDisciplinePdf: {ex.Message}");
-            return BadRequest($"Error al generar el expediente: {ex.Message}");
+            _logger.LogError(ex, "Error en ExportDisciplinePdf: StudentId={StudentId}", studentId);
+            return BadRequest("Error interno. Intente nuevamente.");
         }
     }
 

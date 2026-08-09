@@ -15,12 +15,39 @@ public class UserService : IUserService
     private readonly SchoolDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly ILogger<UserService> _logger;
+    private readonly IAuditLogService _auditLog;
 
-    public UserService(SchoolDbContext context, ICurrentUserService currentUserService, ILogger<UserService> logger)
+    public UserService(SchoolDbContext context, ICurrentUserService currentUserService, ILogger<UserService> logger, IAuditLogService auditLog)
     {
         _context = context;
         _currentUserService = currentUserService;
         _logger = logger;
+        _auditLog = auditLog;
+    }
+
+    private async Task WriteAuditAsync(string action, string resource, string details)
+    {
+        try
+        {
+            var user = await _currentUserService.GetCurrentUserAsync();
+            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+            await _auditLog.LogActionAsync(new SchoolManager.Models.AuditLog
+            {
+                Id = Guid.NewGuid(),
+                SchoolId = schoolId,
+                UserId = user?.Id,
+                UserName = user != null ? $"{user.Name} {user.LastName}" : null,
+                UserRole = user?.Role,
+                Action = action,
+                Resource = resource,
+                Details = details,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo escribir audit log: {Action} {Resource}", action, resource);
+        }
     }
 
     public async Task<List<User>> GetAllStudentsAsync()
@@ -30,6 +57,7 @@ public class UserService : IUserService
                 return new List<User>();
 
         return await _context.Users
+            .AsNoTracking()
             .Where(u => u.Role.ToLower() == "student" || u.Role.ToLower() == "estudiante")
                 .Where(u => u.SchoolId == currentUser.SchoolId)
             .OrderBy(u => u.Name)
@@ -40,20 +68,19 @@ public class UserService : IUserService
     {
         try
         {
-            Console.WriteLine($"=== USER SERVICE UPDATE ===");
-            Console.WriteLine($"Usuario ID: {user.Id}");
-            Console.WriteLine($"Nombre: {user.Name}");
-            Console.WriteLine($"Email: {user.Email}");
-            Console.WriteLine($"Celular Principal: {user.CellphonePrimary}");
-            Console.WriteLine($"Celular Secundario: {user.CellphoneSecondary}");
-            Console.WriteLine($"Subjects Count: {subjectIds?.Count ?? 0}");
-            Console.WriteLine($"Groups Count: {groupIds?.Count ?? 0}");
+            _logger.LogInformation("[UserService] UpdateAsync - UserId: {UserId}, Subjects: {SubjectCount}, Groups: {GroupCount}",
+                user.Id, subjectIds?.Count ?? 0, groupIds?.Count ?? 0);
 
-            Console.WriteLine("Actualizando usuario en contexto...");
+            _logger.LogDebug("[UserService] Actualizando usuario en contexto...");
             
             // En lugar de usar Update() que puede causar problemas con claves únicas,
             // vamos a actualizar solo los campos específicos
-            var existingUser = await _context.Users.FindAsync(user.Id);
+            // Usar Where() en lugar de FindAsync() para que el Global Query Filter de tenant se aplique
+            var existingUser = await _context.Users
+                .Include(u => u.Subjects)
+                .Include(u => u.Groups)
+                .Where(u => u.Id == user.Id)
+                .FirstOrDefaultAsync();
             if (existingUser != null)
             {
                 existingUser.Name = user.Name;
@@ -69,7 +96,9 @@ public class UserService : IUserService
                 existingUser.Inclusion = user.Inclusion;
                 existingUser.Orientacion = user.Orientacion;
                 existingUser.Inclusivo = user.Inclusivo;
-                existingUser.PasswordHash = user.PasswordHash;
+                // El formulario Edit no envía PasswordHash; no sobrescribir con null.
+                if (!string.IsNullOrWhiteSpace(user.PasswordHash))
+                    existingUser.PasswordHash = user.PasswordHash;
                 existingUser.UpdatedAt = DateTime.UtcNow;
                 
                 // Actualizar Subjects
@@ -101,20 +130,15 @@ public class UserService : IUserService
                 }
             }
             
-            Console.WriteLine("Guardando cambios en base de datos...");
+            _logger.LogDebug("[UserService] Guardando cambios en base de datos...");
             await _context.SaveChangesAsync();
-            
-            Console.WriteLine("Usuario actualizado exitosamente en UserService");
+
+            _logger.LogInformation("[UserService] Usuario actualizado exitosamente: {UserId}", user.Id);
+            await WriteAuditAsync("USUARIO_EDITADO", "Usuario", $"UserId: {user.Id}, Rol: {user.Role}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"=== ERROR EN USER SERVICE UPDATE ===");
-            Console.WriteLine($"Error: {ex.Message}");
-            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-            }
+            _logger.LogError(ex, "[UserService] Error en UpdateAsync para usuario: {UserId}", user.Id);
             throw;
         }
     }
@@ -206,6 +230,7 @@ public class UserService : IUserService
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
+            await WriteAuditAsync("USUARIO_CREADO", "Usuario", $"Email: {user.Email}, Rol: {user.Role}");
         }
         catch (Exception ex)
         {
@@ -216,41 +241,30 @@ public class UserService : IUserService
     {
         try
         {
-            Console.WriteLine($"=== GET BY ID WITH RELATIONS ===");
-            Console.WriteLine($"Buscando usuario con ID: {id}");
-            
+            _logger.LogDebug("[UserService] GetByIdWithRelations - UserId: {UserId}", id);
+
             var user = await _context.Users
                 .Include(u => u.Subjects)
                 .Include(u => u.Groups)
                 .Include(u => u.Grades)
                 .Include(u => u.SchoolNavigation)
                 .FirstOrDefaultAsync(u => u.Id == id);
-                
+
             if (user != null)
             {
-                Console.WriteLine($"Usuario encontrado: {user.Name} {user.LastName}");
-                Console.WriteLine($"Email: {user.Email}");
-                Console.WriteLine($"Celular Principal: {user.CellphonePrimary}");
-                Console.WriteLine($"Celular Secundario: {user.CellphoneSecondary}");
-                Console.WriteLine($"Subjects: {user.Subjects?.Count ?? 0}");
-                Console.WriteLine($"Groups: {user.Groups?.Count ?? 0}");
+                _logger.LogDebug("[UserService] Usuario encontrado: {UserId}, Subjects: {SubjectCount}, Groups: {GroupCount}",
+                    id, user.Subjects?.Count ?? 0, user.Groups?.Count ?? 0);
             }
             else
             {
-                Console.WriteLine("Usuario no encontrado");
+                _logger.LogWarning("[UserService] Usuario no encontrado: {UserId}", id);
             }
-            
+
             return user;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"=== ERROR EN GET BY ID WITH RELATIONS ===");
-            Console.WriteLine($"Error: {ex.Message}");
-            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-            }
+            _logger.LogError(ex, "[UserService] Error en GetByIdWithRelations para usuario: {UserId}", id);
             throw;
         }
     }
@@ -316,10 +330,8 @@ public class UserService : IUserService
         }
         public async Task<User?> GetByIdAsync(Guid id)
         {
-            var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-            var user = await _context.Users.FindAsync(id);
-            if (user == null || user.SchoolId != schoolId) return null;
-            return user;
+            // Where() aplica el Global Query Filter de tenant automáticamente (FindAsync lo bypasaba)
+            return await _context.Users.Where(u => u.Id == id).FirstOrDefaultAsync();
         }
 
     public async Task CreateAsync(User user, List<Guid> subjectIds, List<Guid> groupIds, List<Guid> gradeLevelIds)
@@ -352,6 +364,7 @@ public class UserService : IUserService
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
+            await WriteAuditAsync("USUARIO_CREADO", "Usuario", $"Email: {user.Email}, Rol: {user.Role}");
         }
         catch (Exception ex)
         {
@@ -434,10 +447,11 @@ public async Task DeleteAsync(Guid id)
         await _context.SaveChangesAsync();
 
         await transaction.CommitAsync();
+        await WriteAuditAsync("USUARIO_ELIMINADO", "Usuario", $"UserId: {id}");
     }
     catch (DbUpdateException dbEx)
     {
-        await transaction.RollbackAsync(); 
+        await transaction.RollbackAsync();
         throw new Exception("No se puede eliminar el usuario porque tiene dependencias en otras entidades.", dbEx);
     }
     catch (Exception ex)
@@ -525,89 +539,128 @@ public async Task<User?> AuthenticateAsync(string email, string password)
         if (string.IsNullOrWhiteSpace(email))
             return null;
 
-        var normalized = email.ToLower().Trim();
+        var normalized = email.Trim().ToLowerInvariant();
+
+        // Solo cuentas activas; escuela activa o SuperAdmin (SchoolId null).
+        // Tracking ON: AuthService actualiza LastLogin / rehash de password.
         var query = _context.Users
             .IgnoreQueryFilters()
-            .Where(u => u.Email.ToLower().Trim() == normalized);
+            .Where(u =>
+                u.Email != null &&
+                u.Email.ToLower().Trim() == normalized &&
+                u.Status != null &&
+                u.Status.ToLower() == "active" &&
+                (u.SchoolId == null || _context.Schools.IgnoreQueryFilters()
+                    .Any(s => s.Id == u.SchoolId && s.IsActive)));
 
         if (schoolId.HasValue && schoolId.Value != Guid.Empty)
+        {
             return await query.FirstOrDefaultAsync(u => u.SchoolId == schoolId);
+        }
 
         var matches = await query.ToListAsync();
         if (matches.Count > 1)
-            return null;
+            return null; // Ambigüedad: el cliente debe enviar SchoolId
         return matches.FirstOrDefault();
+    }
+
+    public async Task<IReadOnlyList<SchoolInfo>> GetLoginSchoolsByEmailAsync(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return Array.Empty<SchoolInfo>();
+
+        var normalized = email.Trim().ToLowerInvariant();
+
+        // Una sola consulta: usuarios activos del correo + escuelas activas.
+        // SuperAdmin (SchoolId null) no entra al selector de institución.
+        var schools = await (
+            from u in _context.Users.AsNoTracking().IgnoreQueryFilters()
+            where u.Email != null
+                  && u.Email.ToLower().Trim() == normalized
+                  && u.Status != null
+                  && u.Status.ToLower() == "active"
+                  && u.SchoolId != null
+            join s in _context.Schools.AsNoTracking().IgnoreQueryFilters()
+                on u.SchoolId equals s.Id
+            where s.IsActive
+            orderby s.Name
+            select new SchoolInfo
+            {
+                Id = s.Id,
+                Name = s.Name,
+                LogoUrl = s.LogoUrl,
+                Address = s.Address,
+                IsActive = s.IsActive
+            })
+            .Distinct()
+            .ToListAsync();
+
+        return schools;
     }
 
     public async Task<(bool success, string message)> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
     {
-        Console.WriteLine($"[UserService.ChangePasswordAsync] Iniciando para userId: {userId}");
-        Console.WriteLine($"[UserService.ChangePasswordAsync] currentPassword length: {currentPassword?.Length ?? 0}");
-        Console.WriteLine($"[UserService.ChangePasswordAsync] newPassword length: {newPassword?.Length ?? 0}");
-        
+        _logger.LogInformation("[UserService.ChangePasswordAsync] Iniciando para userId: {UserId}", userId);
+
         try
         {
-            var user = await _context.Users.FindAsync(userId);
-            Console.WriteLine($"[UserService.ChangePasswordAsync] Usuario encontrado: {(user != null ? $"ID={user.Id}, Email={user.Email}" : "NULL")}");
-            
+            // Where() aplica GQF de tenant (FindAsync lo bypasaba — IDOR potencial)
+            var user = await _context.Users.Where(u => u.Id == userId).FirstOrDefaultAsync();
+
             if (user == null)
             {
-                Console.WriteLine($"[UserService.ChangePasswordAsync] ERROR: Usuario no encontrado");
+                _logger.LogWarning("[UserService.ChangePasswordAsync] Usuario no encontrado: {UserId}", userId);
                 return (false, "Usuario no encontrado");
             }
 
-            Console.WriteLine($"[UserService.ChangePasswordAsync] PasswordHash actual: {user.PasswordHash?.Substring(0, Math.Min(20, user.PasswordHash?.Length ?? 0))}...");
-            Console.WriteLine($"[UserService.ChangePasswordAsync] IsPasswordHashed: {IsPasswordHashed(user.PasswordHash)}");
+            _logger.LogDebug("[UserService.ChangePasswordAsync] IsPasswordHashed: {IsHashed}", IsPasswordHashed(user.PasswordHash));
 
             // Verificar contraseña actual
             bool currentPasswordValid = false;
             if (IsPasswordHashed(user.PasswordHash))
             {
-                Console.WriteLine($"[UserService.ChangePasswordAsync] Verificando contraseña hasheada con BCrypt");
+                _logger.LogDebug("[UserService.ChangePasswordAsync] Verificando contraseña hasheada con BCrypt");
                 currentPasswordValid = BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash);
             }
             else
             {
-                Console.WriteLine($"[UserService.ChangePasswordAsync] Verificando contraseña en texto plano");
+                _logger.LogDebug("[UserService.ChangePasswordAsync] Verificando contraseña en texto plano");
                 currentPasswordValid = currentPassword == user.PasswordHash;
             }
 
-            Console.WriteLine($"[UserService.ChangePasswordAsync] Contraseña actual válida: {currentPasswordValid}");
-
             if (!currentPasswordValid)
             {
-                Console.WriteLine($"[UserService.ChangePasswordAsync] ERROR: Contraseña actual incorrecta");
+                _logger.LogWarning("[UserService.ChangePasswordAsync] Contraseña actual incorrecta para userId: {UserId}", userId);
                 return (false, "La contraseña actual que ingresaste no es correcta. Por favor, verifica e intenta nuevamente.");
             }
 
             // Validar nueva contraseña
             if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 8)
             {
-                Console.WriteLine($"[UserService.ChangePasswordAsync] ERROR: Nueva contraseña inválida (length: {newPassword?.Length ?? 0})");
+                _logger.LogWarning("[UserService.ChangePasswordAsync] Nueva contraseña inválida (longitud insuficiente) para userId: {UserId}", userId);
                 return (false, "La nueva contraseña debe tener al menos 8 caracteres");
             }
 
             // Verificar que la nueva contraseña sea diferente a la actual
             if (currentPassword == newPassword)
             {
-                Console.WriteLine($"[UserService.ChangePasswordAsync] ERROR: Nueva contraseña igual a la actual");
+                _logger.LogWarning("[UserService.ChangePasswordAsync] Nueva contraseña igual a la actual para userId: {UserId}", userId);
                 return (false, "La nueva contraseña debe ser diferente a la actual");
             }
 
-            Console.WriteLine($"[UserService.ChangePasswordAsync] Hasheando nueva contraseña...");
+            _logger.LogDebug("[UserService.ChangePasswordAsync] Hasheando nueva contraseña...");
             // Hashear y actualizar contraseña
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
             user.UpdatedAt = DateTime.UtcNow;
 
-            Console.WriteLine($"[UserService.ChangePasswordAsync] Guardando cambios en la base de datos...");
             await _context.SaveChangesAsync();
-            Console.WriteLine($"[UserService.ChangePasswordAsync] SUCCESS: Contraseña actualizada exitosamente");
+            _logger.LogInformation("[UserService.ChangePasswordAsync] Contraseña actualizada exitosamente para userId: {UserId}", userId);
+            await WriteAuditAsync("CONTRASENA_CAMBIADA", "Usuario", $"UserId: {userId}");
             return (true, "Contraseña actualizada exitosamente");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[UserService.ChangePasswordAsync] EXCEPCIÓN: {ex.Message}");
-            Console.WriteLine($"[UserService.ChangePasswordAsync] StackTrace: {ex.StackTrace}");
+            _logger.LogError(ex, "[UserService.ChangePasswordAsync] Error inesperado para userId: {UserId}", userId);
             return (false, $"Error inesperado al cambiar la contraseña: {ex.Message}");
         }
     }

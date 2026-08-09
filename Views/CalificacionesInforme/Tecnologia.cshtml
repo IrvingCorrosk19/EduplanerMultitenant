@@ -1,0 +1,130 @@
+@{
+    var esDocente = ViewBag.EsDocente as bool? == true;
+    ViewData["Title"] = "Calificaciones — Tecnología";
+    Layout = "_AdminLayout";
+}
+
+<div class="content-header no-print-reporte">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-12">
+                <a href="@Url.Action("Index", "Reportes")" class="text-muted small">&larr; Catálogo de reportes</a>
+                <h1 class="m-0 mt-1" style="font-size:1.35rem;">Calificaciones — Tecnología</h1>
+                <p class="text-muted small mb-0">
+                    Formato oficial MEDUCA. Genere la vista para imprimir; también puede descargar el Excel (.xls) con la misma plantilla.
+                    @if (esDocente)
+                    {
+                        <span> Solo verá <strong>sus asignaciones</strong>.</span>
+                    }
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="content no-print-reporte">
+    <div class="container-fluid">
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger">@TempData["Error"]</div>
+        }
+
+        <form id="filtro-tecnologia" class="border p-3 bg-white" style="max-width:900px;">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Grado / Nivel <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm" id="nivelEducativo" required>
+                        <option value="">-- Seleccione --</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Grupo <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm" id="grupoCombo" required disabled>
+                        <option value="">-- Seleccione grado primero --</option>
+                    </select>
+                    <input type="hidden" id="groupId" />
+                    <input type="hidden" id="gradeLevelId" />
+                </div>
+            </div>
+            <div class="mt-3 d-flex flex-wrap gap-2">
+                <button type="button" id="btn-vista" class="btn btn-primary btn-sm" disabled>
+                    Ver reporte (imprimir)
+                </button>
+                <button type="button" id="btn-excel" class="btn btn-outline-secondary btn-sm" disabled>
+                    Descargar Excel (.xls)
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        $(function () {
+            const GUID_VACIO = '00000000-0000-0000-0000-000000000000';
+
+            cargarNiveles();
+
+            function cargarNiveles() {
+                $.get('@Url.Action("ObtenerNivelesFiltro", "AprobadosReprobados")').done(function (r) {
+                    const s = $('#nivelEducativo').html('<option value="">-- Seleccione --</option>');
+                    if (r.success && r.data) {
+                        r.data.forEach(n => s.append(`<option value="${n.id}">${n.nombre}</option>`));
+                    }
+                });
+            }
+
+            function resetGrupo() {
+                $('#grupoCombo').prop('disabled', true).html('<option value="">-- Seleccione grado primero --</option>');
+                $('#groupId, #gradeLevelId').val('');
+                $('#btn-vista, #btn-excel').prop('disabled', true);
+            }
+
+            function cargarGrupos(nivel) {
+                $('#grupoCombo').prop('disabled', true).html('<option value="">Cargando...</option>');
+                $.get('@Url.Action("ObtenerGruposFiltro", "AprobadosReprobados")', { materiaId: GUID_VACIO, nivelEducativo: nivel })
+                    .done(function (r) {
+                        const s = $('#grupoCombo').html('<option value="">-- Seleccione --</option>');
+                        if (r.success && r.data) {
+                            r.data.forEach(g => {
+                                s.append(`<option value="${g.groupId}|${g.gradeLevelId}">${g.nombre}</option>`);
+                            });
+                            s.prop('disabled', false);
+                        }
+                    });
+            }
+
+            $('#nivelEducativo').change(function () {
+                resetGrupo();
+                if ($(this).val()) cargarGrupos($(this).val());
+            });
+
+            $('#grupoCombo').change(function () {
+                const p = ($(this).val() || '').split('|');
+                $('#groupId').val(p[0] || '');
+                $('#gradeLevelId').val(p[1] || '');
+                const ok = p[0] && p[1];
+                $('#btn-vista, #btn-excel').prop('disabled', !ok);
+            });
+
+            function paramsUrl() {
+                const nivel = $('#nivelEducativo').val();
+                const groupId = $('#groupId').val();
+                const gradeLevelId = $('#gradeLevelId').val();
+                return '?nivelEducativo=' + encodeURIComponent(nivel) +
+                    '&groupId=' + encodeURIComponent(groupId) +
+                    '&gradeLevelId=' + encodeURIComponent(gradeLevelId);
+            }
+
+            $('#btn-vista').click(function () {
+                if (!$('#groupId').val()) return;
+                window.open('@Url.Action("VistaPreviaTecnologia", "CalificacionesInforme")' + paramsUrl(), '_blank');
+            });
+
+            $('#btn-excel').click(function () {
+                if (!$('#groupId').val()) return;
+                window.location.href = '@Url.Action("ExportarExcel", "CalificacionesInforme")' + paramsUrl() + '&tipo=tecnologia';
+            });
+        });
+    </script>
+}

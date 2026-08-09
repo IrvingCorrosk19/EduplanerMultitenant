@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using SchoolManager.Helpers;
 using SchoolManager.Models;
 using SchoolManager.Services.Interfaces;
 using SchoolManager.ViewModels;
@@ -14,25 +15,51 @@ public class SuperAdminService : ISuperAdminService
     private readonly ILogger<SuperAdminService> _logger;
     private readonly ICloudinaryService _cloudinaryService;
     private readonly IAcademicYearService _academicYearService;
+    private readonly IAuditLogService _auditLog;
 
     public SuperAdminService(
         SchoolDbContext context,
         ILogger<SuperAdminService> logger,
         IAcademicYearService academicYearService,
-        ICloudinaryService cloudinaryService)
+        ICloudinaryService cloudinaryService,
+        IAuditLogService auditLog)
     {
         _context = context;
         _logger = logger;
         _academicYearService = academicYearService;
         _cloudinaryService = cloudinaryService;
+        _auditLog = auditLog;
+    }
+
+    private async Task WriteAuditAsync(string action, string resource, string details)
+    {
+        try
+        {
+            await _auditLog.LogActionAsync(new SchoolManager.Models.AuditLog
+            {
+                Id = Guid.NewGuid(),
+                SchoolId = null,
+                UserId = null,
+                UserName = "SuperAdmin",
+                UserRole = "superadmin",
+                Action = action,
+                Resource = resource,
+                Details = details,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo escribir audit log: {Action} {Resource}", action, resource);
+        }
     }
 
     #region Escuelas
 
     public async Task<List<SchoolListViewModel>> GetAllSchoolsAsync(string? searchString = null)
     {
-        Console.WriteLine($"🏫 [SuperAdminService] Obteniendo lista de escuelas con filtro: '{searchString}'");
-        
+        _logger.LogDebug("[SuperAdminService] Obteniendo lista de escuelas con filtro");
+
         var query = from s in _context.Schools.IgnoreQueryFilters()
                    join u in _context.Users on s.AdminId equals u.Id into adminJoin
                    from admin in adminJoin.DefaultIfEmpty()
@@ -61,20 +88,15 @@ public class SuperAdminService : ISuperAdminService
         }
 
         var schools = await query.ToListAsync();
-        Console.WriteLine($"✅ [SuperAdminService] Encontradas {schools.Count} escuelas");
-        
-        foreach (var school in schools)
-        {
-            Console.WriteLine($"   - {school.SchoolName} (ID: {school.SchoolId}) - Admin: {school.AdminName} {school.AdminLastName}");
-        }
+        _logger.LogInformation("[SuperAdminService] Encontradas {Count} escuelas", schools.Count);
 
         return schools;
     }
 
     public async Task<School?> GetSchoolByIdAsync(Guid id)
     {
-        Console.WriteLine($"🔍 [SuperAdminService] Buscando escuela con ID: {id}");
-        
+        _logger.LogDebug("[SuperAdminService] Buscando escuela con ID: {SchoolId}", id);
+
         var school = await _context.Schools
             .IgnoreQueryFilters()
             .Include(s => s.Users)
@@ -82,11 +104,11 @@ public class SuperAdminService : ISuperAdminService
 
         if (school != null)
         {
-            Console.WriteLine($"✅ [SuperAdminService] Escuela encontrada: {school.Name}");
+            _logger.LogDebug("[SuperAdminService] Escuela encontrada: {SchoolId}", id);
         }
         else
         {
-            Console.WriteLine($"❌ [SuperAdminService] Escuela no encontrada con ID: {id}");
+            _logger.LogWarning("[SuperAdminService] Escuela no encontrada con ID: {SchoolId}", id);
         }
 
         return school;
@@ -94,8 +116,8 @@ public class SuperAdminService : ISuperAdminService
 
     public async Task<SchoolAdminViewModel?> GetSchoolForEditAsync(Guid id)
     {
-        Console.WriteLine($"🔍 [SuperAdminService] Obteniendo escuela para edición con ID: {id}");
-        
+        _logger.LogDebug("[SuperAdminService] Obteniendo escuela para edición con ID: {SchoolId}", id);
+
         var school = await _context.Schools
             .IgnoreQueryFilters()
             .Include(s => s.Users)
@@ -103,7 +125,7 @@ public class SuperAdminService : ISuperAdminService
 
         if (school == null)
         {
-            Console.WriteLine($"❌ [SuperAdminService] Escuela no encontrada para edición");
+            _logger.LogWarning("[SuperAdminService] Escuela no encontrada para edición: {SchoolId}", id);
             return null;
         }
 
@@ -123,24 +145,24 @@ public class SuperAdminService : ISuperAdminService
             AdminStatus = admin?.Status ?? "active"
         };
 
-        Console.WriteLine($"✅ [SuperAdminService] ViewModel creado para escuela: {school.Name}");
+        _logger.LogDebug("[SuperAdminService] ViewModel creado para escuela: {SchoolId}", school.Id);
         return viewModel;
     }
 
     public async Task<bool> CreateSchoolWithAdminAsync(SchoolAdminViewModel model, IFormFile? logoFile, string uploadsPath)
     {
-        Console.WriteLine($"🏫 [SuperAdminService] Creando escuela con admin: {model.SchoolName}");
-        
+        _logger.LogInformation("[SuperAdminService] Creando escuela con admin");
+
         try
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
-            
+
             // Guardar logo si se proporciona
             string? logoUrl = null;
             if (logoFile != null)
             {
                 logoUrl = await SaveLogoAsync(logoFile, uploadsPath);
-                Console.WriteLine($"📁 [SuperAdminService] Logo guardado: {logoUrl}");
+                _logger.LogDebug("[SuperAdminService] Logo guardado en almacenamiento");
             }
 
             // Crear la escuela primero sin admin
@@ -157,7 +179,7 @@ public class SuperAdminService : ISuperAdminService
 
             _context.Schools.Add(school);
             await _context.SaveChangesAsync();
-            Console.WriteLine($"🏫 [SuperAdminService] Escuela creada: {school.Name}");
+            _logger.LogInformation("[SuperAdminService] Escuela creada con ID: {SchoolId}", school.Id);
 
             // Crear el admin con la referencia a la escuela
             var admin = new User
@@ -175,7 +197,7 @@ public class SuperAdminService : ISuperAdminService
 
             _context.Users.Add(admin);
             await _context.SaveChangesAsync();
-            Console.WriteLine($"👤 [SuperAdminService] Admin creado: {admin.Name} {admin.LastName}");
+            _logger.LogInformation("[SuperAdminService] Admin creado con ID: {AdminId}", admin.Id);
 
             // Actualizar la escuela con la referencia al admin
             school.AdminId = admin.Id;
@@ -204,29 +226,30 @@ public class SuperAdminService : ISuperAdminService
 
             await transaction.CommitAsync();
 
-            Console.WriteLine($"✅ [SuperAdminService] Escuela y admin creados exitosamente");
+            _logger.LogInformation("[SuperAdminService] Escuela y admin creados exitosamente: {SchoolId}", school.Id);
+            await WriteAuditAsync("ESCUELA_CREADA", "Escuela", $"Nombre: {school.Name}");
+            await WriteAuditAsync("USUARIO_CREADO_SUPERADMIN", "Usuario", $"Email: {admin.Email}, SchoolId: {school.Id}");
             return true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ [SuperAdminService] Error creando escuela: {ex.Message}");
-            _logger.LogError(ex, "Error creando escuela con admin");
+            _logger.LogError(ex, "[SuperAdminService] Error creando escuela con admin");
             return false;
         }
     }
 
     public async Task<bool> UpdateSchoolAsync(SchoolAdminEditViewModel model, IFormFile? logoFile, string uploadsPath)
     {
-        Console.WriteLine($"🔄 [SuperAdminService] Actualizando escuela: {model.SchoolName}");
-        
+        _logger.LogInformation("[SuperAdminService] Actualizando escuela: {SchoolId}", model.SchoolId);
+
         try
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
-            
-            var school = await _context.Schools.FindAsync(model.SchoolId);
+
+            var school = await _context.Schools.IgnoreQueryFilters().Where(x => x.Id == model.SchoolId).FirstOrDefaultAsync();
             if (school == null)
             {
-                Console.WriteLine($"❌ [SuperAdminService] Escuela no encontrada para actualizar");
+                _logger.LogWarning("[SuperAdminService] Escuela no encontrada para actualizar: {SchoolId}", model.SchoolId);
                 return false;
             }
 
@@ -243,14 +266,14 @@ public class SuperAdminService : ISuperAdminService
                 if (!string.IsNullOrEmpty(logoUrl))
                 {
                     school.LogoUrl = logoUrl;
-                    Console.WriteLine($"📁 [SuperAdminService] Nuevo logo guardado: {logoUrl}");
+                    _logger.LogDebug("[SuperAdminService] Nuevo logo guardado para escuela: {SchoolId}", school.Id);
                 }
             }
 
             // Actualizar admin si se proporciona
             if (!string.IsNullOrEmpty(model.AdminName))
             {
-                var admin = await _context.Users.FindAsync(model.AdminId);
+                var admin = await _context.Users.IgnoreQueryFilters().Where(x => x.Id == model.AdminId).FirstOrDefaultAsync();
                 if (admin != null)
                 {
                     admin.Name = model.AdminName;
@@ -258,28 +281,27 @@ public class SuperAdminService : ISuperAdminService
                     admin.Email = model.AdminEmail;
                     admin.Status = model.AdminStatus;
 
-                    Console.WriteLine($"👤 [SuperAdminService] Admin actualizado: {admin.Name} {admin.LastName}");
+                    _logger.LogDebug("[SuperAdminService] Admin actualizado: {AdminId}", admin.Id);
                 }
             }
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            Console.WriteLine($"✅ [SuperAdminService] Escuela actualizada exitosamente");
+            _logger.LogInformation("[SuperAdminService] Escuela actualizada exitosamente: {SchoolId}", school.Id);
             return true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ [SuperAdminService] Error actualizando escuela: {ex.Message}");
-            _logger.LogError(ex, "Error actualizando escuela");
+            _logger.LogError(ex, "[SuperAdminService] Error actualizando escuela: {SchoolId}", model.SchoolId);
             return false;
         }
     }
 
     public async Task<bool> DeleteSchoolAsync(Guid id)
     {
-        Console.WriteLine($"🗑️ [SuperAdminService] Desactivando escuela (soft delete) con ID: {id}");
-        
+        _logger.LogInformation("[SuperAdminService] Desactivando escuela (soft delete): {SchoolId}", id);
+
         try
         {
             var school = await _context.Schools
@@ -288,29 +310,29 @@ public class SuperAdminService : ISuperAdminService
 
             if (school == null)
             {
-                Console.WriteLine($"❌ [SuperAdminService] Escuela no encontrada con ID: {id}");
+                _logger.LogWarning("[SuperAdminService] Escuela no encontrada para desactivar: {SchoolId}", id);
                 return false;
             }
 
             school.IsActive = false;
             _context.Schools.Update(school);
             await _context.SaveChangesAsync();
-            
-            Console.WriteLine($"✅ [SuperAdminService] Escuela desactivada correctamente: {school.Name}");
+
+            _logger.LogInformation("[SuperAdminService] Escuela desactivada correctamente: {SchoolId}", id);
+            await WriteAuditAsync("ESCUELA_DESACTIVADA", "Escuela", $"SchoolId: {id}");
             return true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ [SuperAdminService] Error desactivando escuela: {ex.Message}");
-            _logger.LogError(ex, "Error desactivando escuela");
+            _logger.LogError(ex, "[SuperAdminService] Error desactivando escuela: {SchoolId}", id);
             return false;
         }
     }
 
     public async Task<SchoolAdminEditViewModel?> GetSchoolForEditWithAdminAsync(Guid id)
     {
-        Console.WriteLine($"🔍 [SuperAdminService] Obteniendo escuela para edición con admin, ID: {id}");
-        
+        _logger.LogDebug("[SuperAdminService] Obteniendo escuela para edición con admin, ID: {SchoolId}", id);
+
         var school = await _context.Schools
             .IgnoreQueryFilters()
             .Include(s => s.Users)
@@ -318,7 +340,7 @@ public class SuperAdminService : ISuperAdminService
 
         if (school == null)
         {
-            Console.WriteLine($"❌ [SuperAdminService] Escuela no encontrada para edición");
+            _logger.LogWarning("[SuperAdminService] Escuela no encontrada para edición: {SchoolId}", id);
             return null;
         }
 
@@ -337,7 +359,7 @@ public class SuperAdminService : ISuperAdminService
             AdminStatus = admin?.Status ?? "active"
         };
 
-        Console.WriteLine($"✅ [SuperAdminService] ViewModel creado para escuela: {school.Name}");
+        _logger.LogDebug("[SuperAdminService] ViewModel creado para escuela con admin: {SchoolId}", school.Id);
         return viewModel;
     }
 
@@ -347,32 +369,32 @@ public class SuperAdminService : ISuperAdminService
 
     public async Task<List<User>> GetAllAdminsAsync()
     {
-        Console.WriteLine($"👥 [SuperAdminService] Obteniendo lista de admins");
-        
+        _logger.LogDebug("[SuperAdminService] Obteniendo lista de admins");
+
         var admins = await _context.Users
             .Where(u => u.Role == "admin" || u.Role == "superadmin")
             .Include(u => u.SchoolNavigation)
             .ToListAsync();
 
-        Console.WriteLine($"✅ [SuperAdminService] Encontrados {admins.Count} admins");
+        _logger.LogDebug("[SuperAdminService] Encontrados {Count} admins", admins.Count);
         return admins;
     }
 
     public async Task<User?> GetUserByIdAsync(Guid id)
     {
-        Console.WriteLine($"🔍 [SuperAdminService] Buscando usuario con ID: {id}");
-        
+        _logger.LogDebug("[SuperAdminService] Buscando usuario con ID: {UserId}", id);
+
         var user = await _context.Users
             .Include(u => u.SchoolNavigation)
             .FirstOrDefaultAsync(u => u.Id == id);
 
         if (user != null)
         {
-            Console.WriteLine($"✅ [SuperAdminService] Usuario encontrado: {user.Name} {user.LastName}");
+            _logger.LogDebug("[SuperAdminService] Usuario encontrado: {UserId}", id);
         }
         else
         {
-            Console.WriteLine($"❌ [SuperAdminService] Usuario no encontrado con ID: {id}");
+            _logger.LogWarning("[SuperAdminService] Usuario no encontrado con ID: {UserId}", id);
         }
 
         return user;
@@ -380,15 +402,15 @@ public class SuperAdminService : ISuperAdminService
 
     public async Task<UserEditViewModel?> GetUserForEditAsync(Guid id)
     {
-        Console.WriteLine($"🔍 [SuperAdminService] Obteniendo usuario para edición con ID: {id}");
-        
+        _logger.LogDebug("[SuperAdminService] Obteniendo usuario para edición con ID: {UserId}", id);
+
         var user = await _context.Users
             .Include(u => u.SchoolNavigation)
             .FirstOrDefaultAsync(u => u.Id == id);
 
         if (user == null)
         {
-            Console.WriteLine($"❌ [SuperAdminService] Usuario no encontrado para edición");
+            _logger.LogWarning("[SuperAdminService] Usuario no encontrado para edición: {UserId}", id);
             return null;
         }
 
@@ -403,27 +425,27 @@ public class SuperAdminService : ISuperAdminService
             PhotoUrl = user.PhotoUrl
         };
 
-        Console.WriteLine($"✅ [SuperAdminService] ViewModel creado para usuario: {user.Name}");
+        _logger.LogDebug("[SuperAdminService] ViewModel creado para usuario: {UserId}", user.Id);
         return viewModel;
     }
 
     public async Task<bool> UpdateUserAsync(UserEditViewModel model)
     {
-        Console.WriteLine($"🔄 [SuperAdminService] Actualizando usuario: {model.Name} {model.LastName}");
-        
+        _logger.LogInformation("[SuperAdminService] Actualizando usuario: {UserId}", model.Id);
+
         try
         {
-            var user = await _context.Users.FindAsync(model.Id);
+            var user = await _context.Users.IgnoreQueryFilters().Where(x => x.Id == model.Id).FirstOrDefaultAsync();
             if (user == null)
             {
-                Console.WriteLine($"❌ [SuperAdminService] Usuario no encontrado para actualizar");
+                _logger.LogWarning("[SuperAdminService] Usuario no encontrado para actualizar: {UserId}", model.Id);
                 return false;
             }
 
             // Protección para usuarios superadmin - no pueden ser inactivados
             if (user.Role == "superadmin" && model.Status == "inactive")
             {
-                Console.WriteLine($"🚫 [SuperAdminService] Intento de inactivar superadmin bloqueado: {user.Name}");
+                _logger.LogWarning("[SuperAdminService] Intento de inactivar superadmin bloqueado: {UserId}", user.Id);
                 return false;
             }
 
@@ -441,33 +463,32 @@ public class SuperAdminService : ISuperAdminService
             {
                 // Forzar status activo para superadmin
                 user.Status = "active";
-                Console.WriteLine($"🔒 [SuperAdminService] Status forzado a 'active' para superadmin: {user.Name}");
+                _logger.LogWarning("[SuperAdminService] Status forzado a 'active' para superadmin: {UserId}", user.Id);
             }
 
-            Console.WriteLine($"👤 [SuperAdminService] Usuario actualizado: {user.Name} {user.LastName}");
+            _logger.LogDebug("[SuperAdminService] Usuario actualizado: {UserId}", user.Id);
 
             await _context.SaveChangesAsync();
-            Console.WriteLine($"✅ [SuperAdminService] Usuario actualizado exitosamente");
+            _logger.LogInformation("[SuperAdminService] Usuario actualizado exitosamente: {UserId}", user.Id);
             return true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ [SuperAdminService] Error actualizando usuario: {ex.Message}");
-            _logger.LogError(ex, "Error actualizando usuario");
+            _logger.LogError(ex, "[SuperAdminService] Error actualizando usuario: {UserId}", model.Id);
             return false;
         }
     }
 
     public async Task<bool> DeleteUserAsync(Guid id)
     {
-        Console.WriteLine($"🗑️ [SuperAdminService] Eliminando usuario con ID: {id}");
-        
+        _logger.LogInformation("[SuperAdminService] Eliminando usuario: {UserId}", id);
+
         try
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _context.Users.IgnoreQueryFilters().Where(x => x.Id == id).FirstOrDefaultAsync();
             if (user == null)
             {
-                Console.WriteLine($"❌ [SuperAdminService] Usuario no encontrado para eliminar");
+                _logger.LogWarning("[SuperAdminService] Usuario no encontrado para eliminar: {UserId}", id);
                 return false;
             }
 
@@ -477,13 +498,13 @@ public class SuperAdminService : ISuperAdminService
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
 
-            Console.WriteLine($"✅ [SuperAdminService] Usuario eliminado exitosamente: {user.Name}");
+            _logger.LogInformation("[SuperAdminService] Usuario eliminado exitosamente: {UserId}", id);
+            await WriteAuditAsync("USUARIO_ELIMINADO_SUPERADMIN", "Usuario", $"UserId: {id}");
             return true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ [SuperAdminService] Error eliminando usuario: {ex.Message}");
-            _logger.LogError(ex, "Error eliminando usuario");
+            _logger.LogError(ex, "[SuperAdminService] Error eliminando usuario: {UserId}", id);
             return false;
         }
     }
@@ -494,7 +515,7 @@ public class SuperAdminService : ISuperAdminService
 
     public async Task<object> DiagnoseSchoolAsync(Guid id)
     {
-        Console.WriteLine($"🔍 [SuperAdminService] Diagnosticando escuela con ID: {id}");
+        _logger.LogDebug("[SuperAdminService] Diagnosticando escuela con ID: {SchoolId}", id);
         
         var school = await _context.Schools
             .IgnoreQueryFilters()
@@ -529,7 +550,7 @@ public class SuperAdminService : ISuperAdminService
             userCount = school.Users.Count
         };
 
-        Console.WriteLine($"✅ [SuperAdminService] Diagnóstico completado para: {school.Name}");
+        _logger.LogDebug("[SuperAdminService] Diagnóstico completado para escuela: {SchoolId}", id);
         return diagnosis;
     }
 
@@ -551,12 +572,12 @@ public class SuperAdminService : ISuperAdminService
                     "Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET.");
             }
 
-            Console.WriteLine($"☁️ [SuperAdminService] Subiendo logo a Cloudinary...");
+            _logger.LogDebug("[SuperAdminService] Subiendo logo a Cloudinary...");
             var logoUrl = await _cloudinaryService.UploadImageAsync(logoFile, "schools/logos");
             if (string.IsNullOrEmpty(logoUrl))
                 throw new InvalidOperationException("No se pudo subir el logo a Cloudinary.");
 
-            Console.WriteLine($"✅ [SuperAdminService] Logo guardado en Cloudinary: {logoUrl}");
+            _logger.LogInformation("[SuperAdminService] Logo guardado en Cloudinary exitosamente");
             return logoUrl;
         }
         catch (InvalidOperationException)
@@ -565,8 +586,7 @@ public class SuperAdminService : ISuperAdminService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ [SuperAdminService] Error guardando logo: {ex.Message}");
-            _logger.LogError(ex, "Error guardando logo en Cloudinary");
+            _logger.LogError(ex, "[SuperAdminService] Error guardando logo en Cloudinary");
             return null;
         }
     }
@@ -585,12 +605,12 @@ public class SuperAdminService : ISuperAdminService
                     "Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET.");
             }
 
-            Console.WriteLine($"☁️ [SuperAdminService] Subiendo avatar a Cloudinary...");
+            _logger.LogDebug("[SuperAdminService] Subiendo avatar a Cloudinary...");
             var avatarUrl = await _cloudinaryService.UploadImageAsync(avatarFile, "users/avatars");
             if (string.IsNullOrEmpty(avatarUrl))
                 throw new InvalidOperationException("No se pudo subir el avatar a Cloudinary.");
 
-            Console.WriteLine($"✅ [SuperAdminService] Avatar guardado en Cloudinary: {avatarUrl}");
+            _logger.LogInformation("[SuperAdminService] Avatar guardado en Cloudinary exitosamente");
             return avatarUrl;
         }
         catch (InvalidOperationException)
@@ -599,8 +619,7 @@ public class SuperAdminService : ISuperAdminService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ [SuperAdminService] Error guardando avatar: {ex.Message}");
-            _logger.LogError(ex, "Error guardando avatar en Cloudinary");
+            _logger.LogError(ex, "[SuperAdminService] Error guardando avatar en Cloudinary");
             return null;
         }
     }
@@ -612,11 +631,11 @@ public class SuperAdminService : ISuperAdminService
 
         try
         {
-            // Si es URL de Cloudinary (https://res.cloudinary.com/...), 
+            // Si es URL de Cloudinary (https://res.cloudinary.com/...),
             // devolver null para que la vista use la URL directamente
             if (logoUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine($"☁️ [SuperAdminService] Logo en Cloudinary, acceso directo: {logoUrl}");
+                _logger.LogDebug("[SuperAdminService] Logo en Cloudinary, acceso directo");
                 return null;
             }
 
@@ -626,16 +645,16 @@ public class SuperAdminService : ISuperAdminService
 
             if (File.Exists(filePath))
             {
-                Console.WriteLine($"📁 [SuperAdminService] Logo local encontrado: {logoUrl}");
+                _logger.LogDebug("[SuperAdminService] Logo local encontrado");
                 return await File.ReadAllBytesAsync(filePath);
             }
 
-            Console.WriteLine($"❌ [SuperAdminService] Logo no encontrado: {logoUrl}");
+            _logger.LogWarning("[SuperAdminService] Logo local no encontrado");
             return null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ [SuperAdminService] Error leyendo logo: {ex.Message}");
+            _logger.LogError(ex, "[SuperAdminService] Error leyendo logo");
             return null;
         }
     }
@@ -650,7 +669,7 @@ public class SuperAdminService : ISuperAdminService
             // Si es URL de Cloudinary, devolver null para acceso directo
             if (avatarUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine($"☁️ [SuperAdminService] Avatar en Cloudinary, acceso directo: {avatarUrl}");
+                _logger.LogDebug("[SuperAdminService] Avatar en Cloudinary, acceso directo");
                 return null;
             }
 
@@ -660,16 +679,16 @@ public class SuperAdminService : ISuperAdminService
 
             if (File.Exists(filePath))
             {
-                Console.WriteLine($"📁 [SuperAdminService] Avatar local encontrado: {avatarUrl}");
+                _logger.LogDebug("[SuperAdminService] Avatar local encontrado");
                 return await File.ReadAllBytesAsync(filePath);
             }
 
-            Console.WriteLine($"❌ [SuperAdminService] Avatar no encontrado: {avatarUrl}");
+            _logger.LogWarning("[SuperAdminService] Avatar local no encontrado");
             return null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ [SuperAdminService] Error leyendo avatar: {ex.Message}");
+            _logger.LogError(ex, "[SuperAdminService] Error leyendo avatar");
             return null;
         }
     }
@@ -680,7 +699,7 @@ public class SuperAdminService : ISuperAdminService
 
     private async Task DeleteUserRelationsAsync(User user)
     {
-        Console.WriteLine($"     🔍 [SuperAdminService] Buscando relaciones para usuario: {user.Name}");
+        _logger.LogDebug("[SuperAdminService] Buscando relaciones para usuario: {UserId}", user.Id);
 
         // MEJORADO: Inactivar asignaciones de estudiantes (preserva historial)
         // Nota: Si realmente necesitas eliminar permanentemente, usa DeleteAssignmentsPermanentlyAsync
@@ -690,7 +709,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (studentAssignments.Count > 0)
         {
-            Console.WriteLine($"     🗑️ [SuperAdminService] Inactivando {studentAssignments.Count} asignaciones de estudiantes");
+            _logger.LogDebug("[SuperAdminService] Inactivando {Count} asignaciones de estudiantes para usuario: {UserId}", studentAssignments.Count, user.Id);
             foreach (var assignment in studentAssignments)
             {
                 assignment.IsActive = false;
@@ -713,7 +732,7 @@ public class SuperAdminService : ISuperAdminService
 
             if (scheduleEntries.Count > 0)
             {
-                Console.WriteLine($"     🗑️ [SuperAdminService] Eliminando {scheduleEntries.Count} entradas de horario del docente");
+                _logger.LogDebug("[SuperAdminService] Eliminando {Count} entradas de horario del docente: {UserId}", scheduleEntries.Count, user.Id);
                 _context.ScheduleEntries.RemoveRange(scheduleEntries);
             }
         }
@@ -725,7 +744,7 @@ public class SuperAdminService : ISuperAdminService
 
         if (teacherAssignments.Count > 0)
         {
-            Console.WriteLine($"     🗑️ [SuperAdminService] Eliminando {teacherAssignments.Count} asignaciones de profesores");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} asignaciones de profesores: {UserId}", teacherAssignments.Count, user.Id);
             _context.TeacherAssignments.RemoveRange(teacherAssignments);
         }
 
@@ -736,7 +755,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (activityScores.Count > 0)
         {
-            Console.WriteLine($"     🗑️ [SuperAdminService] Eliminando {activityScores.Count} puntajes de actividades");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} puntajes de actividades: {UserId}", activityScores.Count, user.Id);
             _context.StudentActivityScores.RemoveRange(activityScores);
         }
 
@@ -747,7 +766,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (disciplineReports.Count > 0)
         {
-            Console.WriteLine($"     🗑️ [SuperAdminService] Eliminando {disciplineReports.Count} reportes de disciplina");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} reportes de disciplina: {UserId}", disciplineReports.Count, user.Id);
             _context.DisciplineReports.RemoveRange(disciplineReports);
         }
 
@@ -758,7 +777,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (attendances.Count > 0)
         {
-            Console.WriteLine($"     🗑️ [SuperAdminService] Eliminando {attendances.Count} asistencias");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} asistencias: {UserId}", attendances.Count, user.Id);
             _context.Attendances.RemoveRange(attendances);
         }
 
@@ -769,14 +788,14 @@ public class SuperAdminService : ISuperAdminService
         
         if (activities.Count > 0)
         {
-            Console.WriteLine($"     🗑️ [SuperAdminService] Eliminando {activities.Count} actividades");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} actividades: {UserId}", activities.Count, user.Id);
             _context.Activities.RemoveRange(activities);
         }
     }
 
     private async Task DeleteSchoolEntitiesAsync(School school)
     {
-        Console.WriteLine($"🏫 [SuperAdminService] Eliminando entidades de la escuela: {school.Name}");
+        _logger.LogInformation("[SuperAdminService] Eliminando entidades de la escuela: {SchoolId}", school.Id);
 
         // Eliminar actividades
         var activities = await _context.Activities
@@ -785,7 +804,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (activities.Count > 0)
         {
-            Console.WriteLine($"🗑️ [SuperAdminService] Eliminando {activities.Count} actividades");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} actividades de la escuela: {SchoolId}", activities.Count, school.Id);
             _context.Activities.RemoveRange(activities);
         }
 
@@ -796,7 +815,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (activityTypes.Count > 0)
         {
-            Console.WriteLine($"🗑️ [SuperAdminService] Eliminando {activityTypes.Count} tipos de actividades específicos");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} tipos de actividades específicos de la escuela: {SchoolId}", activityTypes.Count, school.Id);
             _context.ActivityTypes.RemoveRange(activityTypes);
         }
 
@@ -807,7 +826,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (auditLogs.Count > 0)
         {
-            Console.WriteLine($"🗑️ [SuperAdminService] Eliminando {auditLogs.Count} logs de auditoría");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} logs de auditoría de la escuela: {SchoolId}", auditLogs.Count, school.Id);
             _context.AuditLogs.RemoveRange(auditLogs);
         }
 
@@ -818,7 +837,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (subjectAssignments.Count > 0)
         {
-            Console.WriteLine($"🗑️ [SuperAdminService] Eliminando {subjectAssignments.Count} asignaciones de materias");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} asignaciones de materias de la escuela: {SchoolId}", subjectAssignments.Count, school.Id);
             _context.SubjectAssignments.RemoveRange(subjectAssignments);
         }
 
@@ -829,7 +848,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (groups.Count > 0)
         {
-            Console.WriteLine($"🗑️ [SuperAdminService] Eliminando {groups.Count} grupos");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} grupos de la escuela: {SchoolId}", groups.Count, school.Id);
             _context.Groups.RemoveRange(groups);
         }
 
@@ -840,7 +859,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (subjects.Count > 0)
         {
-            Console.WriteLine($"🗑️ [SuperAdminService] Eliminando {subjects.Count} materias");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} materias de la escuela: {SchoolId}", subjects.Count, school.Id);
             _context.Subjects.RemoveRange(subjects);
         }
 
@@ -851,7 +870,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (areas.Count > 0)
         {
-            Console.WriteLine($"🗑️ [SuperAdminService] Eliminando {areas.Count} áreas específicas");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} áreas específicas de la escuela: {SchoolId}", areas.Count, school.Id);
             _context.Areas.RemoveRange(areas);
         }
 
@@ -862,7 +881,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (trimesters.Count > 0)
         {
-            Console.WriteLine($"🗑️ [SuperAdminService] Eliminando {trimesters.Count} trimestres");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} trimestres de la escuela: {SchoolId}", trimesters.Count, school.Id);
             _context.Trimesters.RemoveRange(trimesters);
         }
 
@@ -873,7 +892,7 @@ public class SuperAdminService : ISuperAdminService
         
         if (securitySettings.Count > 0)
         {
-            Console.WriteLine($"🗑️ [SuperAdminService] Eliminando {securitySettings.Count} configuraciones de seguridad");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} configuraciones de seguridad de la escuela: {SchoolId}", securitySettings.Count, school.Id);
             _context.SecuritySettings.RemoveRange(securitySettings);
         }
 
@@ -884,14 +903,14 @@ public class SuperAdminService : ISuperAdminService
         
         if (students.Count > 0)
         {
-            Console.WriteLine($"🗑️ [SuperAdminService] Eliminando {students.Count} estudiantes");
+            _logger.LogDebug("[SuperAdminService] Eliminando {Count} estudiantes de la escuela: {SchoolId}", students.Count, school.Id);
             _context.Students.RemoveRange(students);
         }
     }
 
     private async Task DeleteManyToManyRelationsAsync(School school)
     {
-        Console.WriteLine($"🔍 [SuperAdminService] Eliminando relaciones muchos a muchos");
+        _logger.LogDebug("[SuperAdminService] Eliminando relaciones muchos a muchos de la escuela: {SchoolId}", school.Id);
 
         var schoolUsers = await _context.Users
             .Where(u => u.SchoolId == school.Id)
@@ -899,7 +918,7 @@ public class SuperAdminService : ISuperAdminService
 
         foreach (var user in schoolUsers)
         {
-            Console.WriteLine($"🗑️ [SuperAdminService] Eliminando relaciones para usuario: {user.Name}");
+            _logger.LogDebug("[SuperAdminService] Eliminando relaciones para usuario: {UserId}", user.Id);
 
             // Eliminar relaciones user_groups
             var userGroupsCount = await _context.Database.ExecuteSqlRawAsync(
@@ -907,25 +926,25 @@ public class SuperAdminService : ISuperAdminService
             
             if (userGroupsCount > 0)
             {
-                Console.WriteLine($"🗑️ [SuperAdminService] Eliminadas {userGroupsCount} relaciones user_groups para {user.Name}");
+                _logger.LogDebug("[SuperAdminService] Eliminadas {Count} relaciones user_groups para usuario: {UserId}", userGroupsCount, user.Id);
             }
 
             // Eliminar relaciones user_subjects
             var userSubjectsCount = await _context.Database.ExecuteSqlRawAsync(
                 $"DELETE FROM user_subjects WHERE user_id = '{user.Id}'");
-            
+
             if (userSubjectsCount > 0)
             {
-                Console.WriteLine($"🗑️ [SuperAdminService] Eliminadas {userSubjectsCount} relaciones user_subjects para {user.Name}");
+                _logger.LogDebug("[SuperAdminService] Eliminadas {Count} relaciones user_subjects para usuario: {UserId}", userSubjectsCount, user.Id);
             }
 
             // Eliminar relaciones user_grades
             var userGradesCount = await _context.Database.ExecuteSqlRawAsync(
                 $"DELETE FROM user_grades WHERE user_id = '{user.Id}'");
-            
+
             if (userGradesCount > 0)
             {
-                Console.WriteLine($"🗑️ [SuperAdminService] Eliminadas {userGradesCount} relaciones user_grades para {user.Name}");
+                _logger.LogDebug("[SuperAdminService] Eliminadas {Count} relaciones user_grades para usuario: {UserId}", userGradesCount, user.Id);
             }
         }
     }
@@ -1139,6 +1158,103 @@ public class SuperAdminService : ISuperAdminService
             Status = u.Status ?? "",
             HasActiveAssignment = false
         });
+    }
+
+    public async Task<SuperAdminStaffDirectoryPageVm> GetStaffDirectoryPageAsync(SuperAdminStaffDirectoryFilterVm filter)
+    {
+        filter ??= new SuperAdminStaffDirectoryFilterVm();
+        if (filter.Page < 1)
+            filter.Page = 1;
+        filter.PageSize = Math.Clamp(filter.PageSize <= 0 ? 25 : filter.PageSize, 1, 100);
+
+        var page = new SuperAdminStaffDirectoryPageVm { Filter = filter };
+
+        var baseQuery = _context.Users.AsNoTracking()
+            .Where(u => u.Role != null && StaffInstitutionalProfileAccess.StaffDirectoryAllowlist.Contains(u.Role));
+
+        if (filter.SchoolId.HasValue)
+            baseQuery = baseQuery.Where(u => u.SchoolId == filter.SchoolId.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.Role))
+        {
+            var r = filter.Role.Trim();
+            baseQuery = baseQuery.Where(u => u.Role == r);
+        }
+
+        if (filter.UserStatus == "active")
+            baseQuery = baseQuery.Where(u => u.Status == "active");
+        else if (filter.UserStatus == "inactive")
+            baseQuery = baseQuery.Where(u => u.Status != "active" || u.Status == null);
+
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var p = "%" + filter.Search.Trim() + "%";
+            baseQuery = baseQuery.Where(u =>
+                EF.Functions.ILike(u.Name, p) ||
+                EF.Functions.ILike(u.LastName, p) ||
+                (u.Email != null && EF.Functions.ILike(u.Email, p)) ||
+                (u.DocumentId != null && EF.Functions.ILike(u.DocumentId, p)));
+        }
+
+        page.SchoolOptions = await _context.Schools.IgnoreQueryFilters()
+            .OrderBy(s => s.Name)
+            .Select(s => new SelectListItem { Value = s.Id.ToString(), Text = s.Name })
+            .ToListAsync();
+        page.SchoolOptions.Insert(0, new SelectListItem { Value = "", Text = "Todas las escuelas" });
+
+        var roleRows = await _context.Users.AsNoTracking()
+            .Where(u => u.Role != null && StaffInstitutionalProfileAccess.StaffDirectoryAllowlist.Contains(u.Role))
+            .Select(u => u.Role!)
+            .Distinct()
+            .OrderBy(r => r)
+            .ToListAsync();
+        page.RoleOptions = roleRows
+            .Select(r => new SelectListItem { Value = r, Text = StaffInstitutionalRoleFilter.FormatRoleDisplay(r) })
+            .ToList();
+        page.RoleOptions.Insert(0, new SelectListItem { Value = "", Text = "Todos los roles" });
+
+        MarkSelected(page.SchoolOptions, filter.SchoolId);
+        if (!string.IsNullOrWhiteSpace(filter.Role))
+        {
+            var fr = filter.Role.Trim();
+            foreach (var o in page.RoleOptions)
+                o.Selected = o.Value == fr;
+        }
+
+        var rowsQuery = baseQuery.Select(u => new SuperAdminStaffDirectoryRowVm
+        {
+            UserId = u.Id,
+            PhotoUrl = u.PhotoUrl,
+            FullName = u.Name + " " + u.LastName,
+            DocumentId = u.DocumentId,
+            Email = u.Email ?? "",
+            SchoolName = u.SchoolNavigation != null ? u.SchoolNavigation.Name : null,
+            SchoolId = u.SchoolId,
+            RoleRaw = u.Role ?? "",
+            RoleDisplay = StaffInstitutionalRoleFilter.FormatRoleDisplay(u.Role),
+            JobTitle = _context.StaffInstitutionalProfiles
+                .Where(p => p.UserId == u.Id).Select(p => p.JobTitle).FirstOrDefault(),
+            Department = _context.StaffInstitutionalProfiles
+                .Where(p => p.UserId == u.Id).Select(p => p.Department).FirstOrDefault(),
+            EmployeeCode = _context.StaffInstitutionalProfiles
+                .Where(p => p.UserId == u.Id).Select(p => p.EmployeeCode).FirstOrDefault(),
+            Status = u.Status ?? ""
+        });
+
+        var ordered = rowsQuery.OrderBy(r => r.SchoolName ?? "").ThenBy(r => r.FullName);
+
+        page.TotalCount = await ordered.CountAsync();
+        page.TotalPages = page.TotalCount == 0 ? 0 : (int)Math.Ceiling(page.TotalCount / (double)filter.PageSize);
+
+        if (filter.Page > page.TotalPages && page.TotalPages > 0)
+            filter.Page = page.TotalPages;
+
+        page.Rows = await ordered
+            .Skip((filter.Page - 1) * filter.PageSize)
+            .Take(filter.PageSize)
+            .ToListAsync();
+
+        return page;
     }
 
     #endregion

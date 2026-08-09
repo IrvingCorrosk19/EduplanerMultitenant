@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using SchoolManager.Models;
 using SchoolManager.Dtos;
@@ -7,8 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using SchoolManager.Services.Interfaces;
 using SchoolManager.Interfaces;
+using SchoolManager.Helpers;
 
-[Authorize(Roles = "teacher")]
+[Authorize(Roles = "Director,Inspector,Teacher,Docente,secretaria,admin")]
 public class OrientationReportController : Controller
 {
     private readonly IOrientationReportService _orientationReportService;
@@ -131,6 +132,7 @@ public class OrientationReportController : Controller
     public IActionResult Create() => View();
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateWithFiles()
     {
         try
@@ -160,35 +162,33 @@ public class OrientationReportController : Controller
             if (files.Any())
             {
                 var documentList = new List<object>();
+                var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "orientation");
+                if (!Directory.Exists(uploadsPath)) Directory.CreateDirectory(uploadsPath);
+
                 foreach (var file in files)
                 {
-                    if (file.Length > 0)
+                    // Validar tipo y tamaño
+                    var (isValid, validationError) = FileUploadValidator.Validate(file, FileUploadValidator.AllowedDocumentExtensions);
+                    if (!isValid)
+                        return Json(new { success = false, message = $"Archivo rechazado: {validationError}" });
+
+                    // Nombre seguro: solo extensión del original, GUID como nombre
+                    var safeExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                    var fileName = $"{Guid.NewGuid()}{safeExtension}";
+                    var filePath = Path.Combine(uploadsPath, fileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
                     {
-                        // Crear directorio si no existe
-                        var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "orientation");
-                        if (!Directory.Exists(uploadsPath))
-                        {
-                            Directory.CreateDirectory(uploadsPath);
-                        }
-
-                        // Generar nombre único para el archivo
-                        var fileName = $"{Guid.NewGuid()}_{file.FileName}";
-                        var filePath = Path.Combine(uploadsPath, fileName);
-
-                        // Guardar archivo
-                        using (var stream = new FileStream(filePath, FileMode.Create))
-                        {
-                            await file.CopyToAsync(stream);
-                        }
-
-                        documentList.Add(new
-                        {
-                            fileName = file.FileName,
-                            savedName = fileName,
-                            size = file.Length,
-                            uploadDate = DateTime.UtcNow
-                        });
+                        await file.CopyToAsync(stream);
                     }
+
+                    documentList.Add(new
+                    {
+                        fileName = Path.GetFileName(file.FileName), // nombre original sin rutas
+                        savedName = fileName,
+                        size = file.Length,
+                        uploadDate = DateTime.UtcNow
+                    });
                 }
                 documentsJson = System.Text.Json.JsonSerializer.Serialize(documentList);
             }
@@ -231,7 +231,7 @@ public class OrientationReportController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al crear el reporte de orientación");
-            return Json(new { success = false, error = "Error al crear el reporte", details = ex.Message });
+            return Json(new { success = false, error = "Error al crear el reporte", details = "Error interno. Intente nuevamente." });
         }
     }
 
@@ -243,6 +243,7 @@ public class OrientationReportController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(OrientationReport report)
     {
         if (ModelState.IsValid)
@@ -253,6 +254,7 @@ public class OrientationReportController : Controller
         return View(report);
     }
 
+    [Authorize(Roles = "Director,Inspector")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var report = await _orientationReportService.GetByIdAsync(id);
@@ -261,6 +263,8 @@ public class OrientationReportController : Controller
     }
 
     [HttpPost, ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector")]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         await _orientationReportService.DeleteAsync(id);
@@ -315,7 +319,7 @@ public class OrientationReportController : Controller
         }
         catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new { error = "Error interno. Intente nuevamente." });
         }
     }
 
@@ -330,6 +334,7 @@ public class OrientationReportController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendEmailToStudent([FromBody] SendOrientationEmailDto request)
     {
         try
@@ -405,6 +410,7 @@ public class OrientationReportController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetAsistencias([FromBody] GetNotesDto request)
     {
         try
@@ -420,7 +426,7 @@ public class OrientationReportController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al obtener asistencias");
-            return Json(new { success = false, error = ex.Message });
+            return Json(new { success = false, error = "Error interno. Intente nuevamente." });
         }
     }
 

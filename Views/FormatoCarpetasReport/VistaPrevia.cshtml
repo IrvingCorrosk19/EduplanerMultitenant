@@ -1,0 +1,121 @@
+@model SchoolManager.ViewModels.FormatoCarpetasReportViewModel
+@using SchoolManager.ViewModels
+@{
+    Layout = null;
+    string Fn(decimal? n) => FormatoCarpetasFilaViewModel.FormatearNota(n);
+    var t1 = Model.TrimestresEncabezado.Count > 0 ? Model.TrimestresEncabezado[0] : "1ro";
+    var t2 = Model.TrimestresEncabezado.Count > 1 ? Model.TrimestresEncabezado[1] : "2do";
+    var t3 = Model.TrimestresEncabezado.Count > 2 ? Model.TrimestresEncabezado[2] : "3ro";
+    string LogoSrc(string? url) {
+        if (string.IsNullOrWhiteSpace(url)) return "";
+        if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return url;
+        return Url.Content($"/File/GetSchoolLogo?logoUrl={Uri.EscapeDataString(url)}") ?? "";
+    }
+    var logoSrc = LogoSrc(Model.LogoUrl);
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Formato para Carpetas</title>
+    <link rel="stylesheet" href="~/css/reporte-institucional-base.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/reporte-formato-carpetas.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/reporte-pagina-legal.css" asp-append-version="true" />
+</head>
+<body class="reporte-institucional-body reporte-carpetas reporte-pagina-legal">
+    <div class="reporte-institucional-toolbar no-print">
+        <button type="button" onclick="window.print()">Imprimir</button>
+        <button type="button" onclick="window.close()">Cerrar</button>
+    </div>
+    <div id="printArea">
+        <header class="ri-header">
+            @if (!string.IsNullOrEmpty(logoSrc)) {
+                <div class="ri-header-logo"><img src="@logoSrc" alt="Logo" onerror="this.parentElement.style.display='none'" /></div>
+            } else { <div class="ri-header-logo"></div> }
+            <div class="ri-header-text">
+                <span class="line">      Ministerio de Educación</span>
+                <span class="line bold">@Model.InstitutoNombre</span>
+                <span class="line">@Model.TituloInforme</span>
+                <span class="line">@Model.AnioLectivoLinea</span>
+            </div>
+        </header>
+        <table class="ri-meta">
+            <tr>
+                <td>Consejero (a): @Model.ConsejeroNombre</td>
+                <td>Profesor (a): @Model.ProfesorNombre</td>
+            </tr>
+            <tr>
+                <td>Grupo: @Model.GrupoEtiqueta</td>
+                <td>Asignatura: @Model.MateriaNombre</td>
+            </tr>
+        </table>
+        <table class="ri-tabla">
+            <thead>
+                <tr>
+                    <th rowspan="2" class="col-num th-horizontal">N°</th>
+                    <th rowspan="2" class="col-nombre th-horizontal">Nombre de los Estudiantes</th>
+                    <th colspan="3" class="th-horizontal">Trimestre</th>
+                    <th rowspan="2" class="col-prom th-horizontal">Prom.</th>
+                    <th colspan="2" class="th-horizontal">@t1</th>
+                    <th colspan="2" class="th-horizontal">@t2</th>
+                    <th colspan="2" class="th-horizontal">@t3</th>
+                    <th colspan="2" class="th-horizontal">Total</th>
+                </tr>
+                <tr class="subhead">
+                    <th class="col-nota-trim th-horizontal">@t1</th>
+                    <th class="col-nota-trim th-horizontal">@t2</th>
+                    <th class="col-nota-trim th-horizontal">@t3</th>
+                    <th class="col-at">A</th><th class="col-at">T</th>
+                    <th class="col-at">A</th><th class="col-at">T</th>
+                    <th class="col-at">A</th><th class="col-at">T</th>
+                    <th class="col-at">A</th><th class="col-at">T</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.Filas) {
+                    <tr>
+                        <td class="col-num">@f.Numero</td>
+                        <td class="col-nombre">@f.Nombre</td>
+                        <td>@Fn(f.NotaTrim1)</td>
+                        <td>@Fn(f.NotaTrim2)</td>
+                        <td>@Fn(f.NotaTrim3)</td>
+                        <td class="col-prom">@Fn(f.PromedioFinal)</td>
+                        <td>@f.AusenciasT1</td><td>@f.TardanzasT1</td>
+                        <td>@f.AusenciasT2</td><td>@f.TardanzasT2</td>
+                        <td>@f.AusenciasT3</td><td>@f.TardanzasT3</td>
+                        <td>@f.TotalAusencias</td><td>@f.TotalTardanzas</td>
+                    </tr>
+                }
+                @for (var v = 0; v < Model.FilasPlantillaVacias; v++) {
+                    var n = Model.Filas.Count + v + 1;
+                    <tr>
+                        <td>@n</td><td></td>
+                        <td></td><td></td><td></td><td></td>
+                        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <section class="ri-signature-footer">
+            <div class="ri-signature-row">
+                <div class="ri-signature-block">
+                    <div class="ri-signature-line"></div>
+                    <div class="ri-signature-label">Firma del Docente</div>
+                </div>
+                <div class="ri-signature-block">
+                    <div class="ri-signature-line"></div>
+                    <div class="ri-signature-label">Firma del Director(a)</div>
+                </div>
+            </div>
+            <div class="ri-observation-box">
+                <div class="ri-observation-title">Observación:</div>
+                <div class="ri-observation-lines">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </section>
+    </div>
+</body>
+</html>

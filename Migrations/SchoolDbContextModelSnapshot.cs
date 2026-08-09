@@ -186,7 +186,13 @@ namespace SchoolManager.Migrations
 
                     b.HasIndex(new[] { "TrimesterId" }, "IX_activities_TrimesterId");
 
+                    b.HasIndex(new[] { "SchoolId", "GroupId", "GradeLevelId" }, "IX_activities_school_group_grade");
+
                     b.HasIndex(new[] { "SchoolId" }, "IX_activities_school_id");
+
+                    b.HasIndex(new[] { "SchoolId", "SubjectId", "GroupId", "Trimester" }, "IX_activities_school_subject_group_trimester");
+
+                    b.HasIndex(new[] { "SchoolId", "TeacherId", "GroupId" }, "IX_activities_school_teacher_group");
 
                     b.HasIndex(new[] { "SubjectId" }, "IX_activities_subject_id");
 
@@ -318,11 +324,9 @@ namespace SchoolManager.Migrations
 
                     b.HasIndex("CreatedBy");
 
-                    b.HasIndex("SchoolId");
-
                     b.HasIndex("UpdatedBy");
 
-                    b.HasIndex(new[] { "Name" }, "activity_types_name_key")
+                    b.HasIndex(new[] { "SchoolId", "Name" }, "activity_types_school_name_key")
                         .IsUnique();
 
                     b.ToTable("activity_types", (string)null);
@@ -388,7 +392,7 @@ namespace SchoolManager.Migrations
 
                     b.HasIndex(new[] { "SchoolId" }, "IX_area_school_id");
 
-                    b.HasIndex(new[] { "Name" }, "area_name_key")
+                    b.HasIndex(new[] { "SchoolId", "Name" }, "area_school_name_key")
                         .IsUnique();
 
                     b.ToTable("area", (string)null);
@@ -455,13 +459,17 @@ namespace SchoolManager.Migrations
 
                     b.HasIndex("CreatedBy");
 
-                    b.HasIndex("SchoolId");
-
                     b.HasIndex("UpdatedBy");
 
                     b.HasIndex(new[] { "GradeId" }, "IX_attendance_grade_id");
 
                     b.HasIndex(new[] { "GroupId" }, "IX_attendance_group_id");
+
+                    b.HasIndex(new[] { "SchoolId", "GroupId", "Date" }, "IX_attendance_school_group_date");
+
+                    b.HasIndex(new[] { "SchoolId" }, "IX_attendance_school_id");
+
+                    b.HasIndex(new[] { "SchoolId", "StudentId", "Date" }, "IX_attendance_school_student_date");
 
                     b.HasIndex(new[] { "StudentId" }, "IX_attendance_student_id");
 
@@ -653,7 +661,7 @@ namespace SchoolManager.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("report_type");
 
-                    b.Property<Guid?>("SchoolId")
+                    b.Property<Guid>("SchoolId")
                         .HasColumnType("uuid")
                         .HasColumnName("school_id");
 
@@ -687,13 +695,15 @@ namespace SchoolManager.Migrations
 
                     b.HasIndex("CreatedBy");
 
-                    b.HasIndex("SchoolId");
-
                     b.HasIndex("UpdatedBy");
 
                     b.HasIndex(new[] { "GradeLevelId" }, "IX_discipline_reports_grade_level_id");
 
                     b.HasIndex(new[] { "GroupId" }, "IX_discipline_reports_group_id");
+
+                    b.HasIndex(new[] { "SchoolId", "Date" }, "IX_discipline_reports_school_date");
+
+                    b.HasIndex(new[] { "SchoolId" }, "IX_discipline_reports_school_id");
 
                     b.HasIndex(new[] { "StudentId" }, "IX_discipline_reports_student_id");
 
@@ -918,6 +928,8 @@ namespace SchoolManager.Migrations
 
                     b.HasIndex(new[] { "RequestedAt" }, "IX_email_jobs_requested_at");
 
+                    b.HasIndex(new[] { "SchoolId" }, "IX_email_jobs_school_id");
+
                     b.HasIndex(new[] { "Status" }, "IX_email_jobs_status");
 
                     b.ToTable("email_jobs", (string)null);
@@ -1083,11 +1095,9 @@ namespace SchoolManager.Migrations
 
                     b.HasIndex("CreatedBy");
 
-                    b.HasIndex("SchoolId");
-
                     b.HasIndex("UpdatedBy");
 
-                    b.HasIndex(new[] { "Name" }, "grade_levels_name_key")
+                    b.HasIndex(new[] { "SchoolId", "Name" }, "grade_levels_school_name_key")
                         .IsUnique();
 
                     b.ToTable("grade_levels", (string)null);
@@ -1243,6 +1253,73 @@ namespace SchoolManager.Migrations
                     b.ToTable("id_card_template_fields", (string)null);
                 });
 
+            modelBuilder.Entity("SchoolManager.Models.InstitutionalCredentialCard", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("CardNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("card_number");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsPrinted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_printed");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("PrintedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("printed_at");
+
+                    b.Property<Guid>("SchoolId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("school_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("active")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("institutional_credential_cards_pkey");
+
+                    b.HasIndex(new[] { "CardNumber" }, "IX_institutional_credential_cards_card_number")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "SchoolId" }, "IX_institutional_credential_cards_school_id");
+
+                    b.HasIndex(new[] { "SchoolId", "Status" }, "IX_institutional_credential_cards_school_id_status");
+
+                    b.HasIndex(new[] { "UserId" }, "IX_institutional_credential_cards_user_id");
+
+                    b.HasIndex(new[] { "UserId", "Status" }, "IX_institutional_credential_cards_user_id_status");
+
+                    b.ToTable("institutional_credential_cards", (string)null);
+                });
+
             modelBuilder.Entity("SchoolManager.Models.Message", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1344,6 +1421,8 @@ namespace SchoolManager.Migrations
 
                     b.HasIndex("ParentMessageId");
 
+                    b.HasIndex(new[] { "SchoolId", "SentAt" }, "IX_messages_school_sent_at");
+
                     b.HasIndex(new[] { "RecipientId" }, "idx_messages_recipient");
 
                     b.HasIndex(new[] { "RecipientId", "IsRead" }, "idx_messages_recipient_unread");
@@ -1439,13 +1518,15 @@ namespace SchoolManager.Migrations
 
                     b.HasIndex("CreatedBy");
 
-                    b.HasIndex("SchoolId");
-
                     b.HasIndex("UpdatedBy");
 
                     b.HasIndex(new[] { "GradeLevelId" }, "IX_orientation_reports_grade_level_id");
 
                     b.HasIndex(new[] { "GroupId" }, "IX_orientation_reports_group_id");
+
+                    b.HasIndex(new[] { "SchoolId", "Date" }, "IX_orientation_reports_school_date");
+
+                    b.HasIndex(new[] { "SchoolId", "Status" }, "IX_orientation_reports_school_status");
 
                     b.HasIndex(new[] { "StudentId" }, "IX_orientation_reports_student_id");
 
@@ -1551,6 +1632,10 @@ namespace SchoolManager.Migrations
                         .IsUnique();
 
                     b.HasIndex(new[] { "SchoolId" }, "IX_payments_school_id");
+
+                    b.HasIndex(new[] { "SchoolId", "PaymentDate" }, "IX_payments_school_payment_date");
+
+                    b.HasIndex(new[] { "SchoolId", "PaymentStatus" }, "IX_payments_school_payment_status");
 
                     b.ToTable("payments", (string)null);
                 });
@@ -1731,6 +1816,10 @@ namespace SchoolManager.Migrations
                     b.HasIndex(new[] { "PrematriculationPeriodId" }, "IX_prematriculations_period_id");
 
                     b.HasIndex(new[] { "SchoolId" }, "IX_prematriculations_school_id");
+
+                    b.HasIndex(new[] { "SchoolId", "PrematriculationPeriodId", "Status" }, "IX_prematriculations_school_period_status");
+
+                    b.HasIndex(new[] { "SchoolId", "Status" }, "IX_prematriculations_school_status");
 
                     b.HasIndex(new[] { "StudentId" }, "IX_prematriculations_student_id");
 
@@ -2438,14 +2527,92 @@ namespace SchoolManager.Migrations
 
                     b.HasIndex("CreatedBy");
 
-                    b.HasIndex("SchoolId");
-
                     b.HasIndex("UpdatedBy");
 
-                    b.HasIndex(new[] { "Name" }, "specialties_name_key")
+                    b.HasIndex(new[] { "SchoolId" }, "IX_specialties_school_id");
+
+                    b.HasIndex(new[] { "SchoolId", "Name" }, "specialties_school_name_key")
                         .IsUnique();
 
                     b.ToTable("specialties", (string)null);
+                });
+
+            modelBuilder.Entity("SchoolManager.Models.StaffInstitutionalProfile", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Department")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("department");
+
+                    b.Property<string>("EmployeeCode")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("employee_code");
+
+                    b.Property<string>("JobTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("job_title");
+
+                    b.Property<Guid>("SchoolId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("school_id");
+
+                    b.HasKey("UserId")
+                        .HasName("staff_institutional_profiles_pkey");
+
+                    b.HasIndex(new[] { "SchoolId" }, "IX_staff_institutional_profiles_school_id");
+
+                    b.ToTable("staff_institutional_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("SchoolManager.Models.StaffQrToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsRevoked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_revoked");
+
+                    b.Property<Guid>("SchoolId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("school_id");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("token");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("staff_qr_tokens_pkey");
+
+                    b.HasIndex(new[] { "SchoolId" }, "IX_staff_qr_tokens_school_id");
+
+                    b.HasIndex(new[] { "Token" }, "IX_staff_qr_tokens_token")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "UserId" }, "IX_staff_qr_tokens_user_id");
+
+                    b.ToTable("staff_qr_tokens", (string)null);
                 });
 
             modelBuilder.Entity("SchoolManager.Models.Student", b =>
@@ -2552,11 +2719,13 @@ namespace SchoolManager.Migrations
 
                     b.HasIndex("CreatedBy");
 
-                    b.HasIndex("SchoolId");
-
                     b.HasIndex("UpdatedBy");
 
                     b.HasIndex(new[] { "AcademicYearId" }, "IX_student_activity_scores_academic_year_id");
+
+                    b.HasIndex(new[] { "SchoolId", "ActivityId" }, "IX_student_activity_scores_school_activity");
+
+                    b.HasIndex(new[] { "SchoolId" }, "IX_student_activity_scores_school_id");
 
                     b.HasIndex(new[] { "StudentId", "AcademicYearId" }, "IX_student_activity_scores_student_academic_year");
 
@@ -2606,6 +2775,10 @@ namespace SchoolManager.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<Guid>("SchoolId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("school_id");
+
                     b.Property<Guid?>("ShiftId")
                         .HasColumnType("uuid")
                         .HasColumnName("shift_id");
@@ -2622,6 +2795,12 @@ namespace SchoolManager.Migrations
                     b.HasIndex(new[] { "GradeId" }, "IX_student_assignments_grade_id");
 
                     b.HasIndex(new[] { "GroupId" }, "IX_student_assignments_group_id");
+
+                    b.HasIndex(new[] { "SchoolId", "GroupId", "GradeId", "IsActive" }, "IX_student_assignments_school_group_grade_active");
+
+                    b.HasIndex(new[] { "SchoolId" }, "IX_student_assignments_school_id");
+
+                    b.HasIndex(new[] { "SchoolId", "StudentId", "IsActive" }, "IX_student_assignments_school_student_active");
 
                     b.HasIndex(new[] { "ShiftId" }, "IX_student_assignments_shift_id");
 
@@ -2952,6 +3131,10 @@ namespace SchoolManager.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<Guid>("SchoolId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("school_id");
+
                     b.Property<Guid>("SubjectAssignmentId")
                         .HasColumnType("uuid")
                         .HasColumnName("subject_assignment_id");
@@ -2962,6 +3145,10 @@ namespace SchoolManager.Migrations
 
                     b.HasKey("Id")
                         .HasName("teacher_assignments_pkey");
+
+                    b.HasIndex(new[] { "SchoolId" }, "IX_teacher_assignments_school_id");
+
+                    b.HasIndex(new[] { "SchoolId", "TeacherId" }, "IX_teacher_assignments_school_teacher");
 
                     b.HasIndex(new[] { "SubjectAssignmentId" }, "IX_teacher_assignments_subject_assignment_id");
 
@@ -3483,6 +3670,10 @@ namespace SchoolManager.Migrations
 
                     b.HasIndex(new[] { "SchoolId" }, "IX_users_school_id");
 
+                    b.HasIndex(new[] { "SchoolId", "Role" }, "IX_users_school_role");
+
+                    b.HasIndex(new[] { "SchoolId", "Status" }, "IX_users_school_status");
+
                     b.HasIndex(new[] { "DocumentId" }, "users_document_id_key")
                         .IsUnique();
 
@@ -3795,7 +3986,10 @@ namespace SchoolManager.Migrations
 
                     b.HasOne("SchoolManager.Models.School", "School")
                         .WithMany()
-                        .HasForeignKey("SchoolId");
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("discipline_reports_school_id_fkey");
 
                     b.HasOne("SchoolManager.Models.User", "Student")
                         .WithMany("DisciplineReportStudents")
@@ -3936,6 +4130,27 @@ namespace SchoolManager.Migrations
                         .HasConstraintName("id_card_template_fields_school_id_fkey");
 
                     b.Navigation("School");
+                });
+
+            modelBuilder.Entity("SchoolManager.Models.InstitutionalCredentialCard", b =>
+                {
+                    b.HasOne("SchoolManager.Models.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("institutional_credential_cards_school_id_fkey");
+
+                    b.HasOne("SchoolManager.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("institutional_credential_cards_user_id_fkey");
+
+                    b.Navigation("School");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SchoolManager.Models.Message", b =>
@@ -4369,6 +4584,48 @@ namespace SchoolManager.Migrations
                     b.Navigation("UpdatedByUser");
                 });
 
+            modelBuilder.Entity("SchoolManager.Models.StaffInstitutionalProfile", b =>
+                {
+                    b.HasOne("SchoolManager.Models.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("staff_institutional_profiles_school_id_fkey");
+
+                    b.HasOne("SchoolManager.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("staff_institutional_profiles_user_id_fkey");
+
+                    b.Navigation("School");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SchoolManager.Models.StaffQrToken", b =>
+                {
+                    b.HasOne("SchoolManager.Models.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("staff_qr_tokens_school_id_fkey");
+
+                    b.HasOne("SchoolManager.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("staff_qr_tokens_user_id_fkey");
+
+                    b.Navigation("School");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SchoolManager.Models.Student", b =>
                 {
                     b.HasOne("SchoolManager.Models.User", "Parent")
@@ -4453,6 +4710,13 @@ namespace SchoolManager.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_group");
 
+                    b.HasOne("SchoolManager.Models.School", "School")
+                        .WithMany("StudentAssignments")
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("student_assignments_school_id_fkey");
+
                     b.HasOne("SchoolManager.Models.Shift", "Shift")
                         .WithMany("StudentAssignments")
                         .HasForeignKey("ShiftId")
@@ -4470,6 +4734,8 @@ namespace SchoolManager.Migrations
                     b.Navigation("Grade");
 
                     b.Navigation("Group");
+
+                    b.Navigation("School");
 
                     b.Navigation("Shift");
 
@@ -4617,6 +4883,13 @@ namespace SchoolManager.Migrations
 
             modelBuilder.Entity("SchoolManager.Models.TeacherAssignment", b =>
                 {
+                    b.HasOne("SchoolManager.Models.School", "School")
+                        .WithMany("TeacherAssignments")
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("teacher_assignments_school_id_fkey");
+
                     b.HasOne("SchoolManager.Models.SubjectAssignment", "SubjectAssignment")
                         .WithMany("TeacherAssignments")
                         .HasForeignKey("SubjectAssignmentId")
@@ -4628,6 +4901,8 @@ namespace SchoolManager.Migrations
                         .HasForeignKey("TeacherId")
                         .IsRequired()
                         .HasConstraintName("teacher_assignments_teacher_id_fkey");
+
+                    b.Navigation("School");
 
                     b.Navigation("SubjectAssignment");
 
@@ -4939,11 +5214,15 @@ namespace SchoolManager.Migrations
 
                     b.Navigation("SecuritySettings");
 
+                    b.Navigation("StudentAssignments");
+
                     b.Navigation("Students");
 
                     b.Navigation("SubjectAssignments");
 
                     b.Navigation("Subjects");
+
+                    b.Navigation("TeacherAssignments");
 
                     b.Navigation("Trimesters");
 

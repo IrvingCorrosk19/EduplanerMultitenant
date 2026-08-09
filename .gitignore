@@ -21,5 +21,20 @@ Backups/
 # Carpeta de salida de compilación auxiliar
 compile_verify_out/
 
+# Salida publish dedicada a Playwright E2E (no versionar)
+.e2e_publish/
+
 # Configuración local de Claude Code (puede contener datos sensibles)
 .claude/
+
+# Artefactos locales de build / publish / pruebas
+publish_vps/
+_verify_build_*/
+_verify_build_autonoma/
+_pwtemp/
+analysis_db/
+qa_bulk_upload/
+migration_artifacts/
+*.tgz
+node_modules/
+e2e/node_modules/

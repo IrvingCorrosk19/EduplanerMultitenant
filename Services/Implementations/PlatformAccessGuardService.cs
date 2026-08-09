@@ -25,7 +25,7 @@ public class PlatformAccessGuardService : IPlatformAccessGuardService
         if (!id.HasValue)
             return false;
 
-        var user = await _context.Users.FindAsync(id.Value);
+        var user = await _context.Users.Where(x => x.Id == id.Value).FirstOrDefaultAsync();
         if (user == null)
             return false;
 

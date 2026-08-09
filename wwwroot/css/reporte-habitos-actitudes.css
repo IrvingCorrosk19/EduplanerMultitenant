@@ -1,0 +1,14 @@
+/* Cuadro Hábitos y Actitudes — plantilla oficial */
+.reporte-habitos .ri-header-text .line { font-size: 10.5pt; }
+.reporte-habitos .ri-meta-block { width: 100%; margin: 4pt 0 6pt; font-size: 10pt; }
+.reporte-habitos .ri-meta-block td { border: none; padding: 2pt 4pt; vertical-align: bottom; }
+.reporte-habitos .ri-tabla .col-num { width: 3%; }
+.reporte-habitos .ri-tabla .col-nombre { width: 16%; text-align: left !important; padding-left: 4pt !important; }
+.reporte-habitos .ri-tabla .col-habito { width: 6.5%; font-size: 7.5pt; }
+.reporte-habitos .ri-tabla thead tr { height: auto; }
+.reporte-habitos .ri-tabla thead th { font-size: 7.5pt; line-height: 1.05; padding: 3pt 1pt !important; }
+.reporte-habitos .ri-pie { margin-top: 12pt; font-size: 10pt; }
+.reporte-habitos .ri-pie td { border: none; padding: 4pt 8pt; }
+@media print {
+    @page { size: landscape; margin: 6mm 5mm; }
+}

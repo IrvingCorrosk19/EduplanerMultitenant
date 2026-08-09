@@ -111,5 +111,30 @@ public partial class SchoolDbContext
 
         modelBuilder.Entity<StudentPaymentAccess>()
             .HasQueryFilter(e => (_tenantId == null && _isSuperAdmin) || e.SchoolId == _tenantId);
+
+        // IMP-09: Entidades que faltaban GQF — agregadas en Sprint 3
+        modelBuilder.Entity<Area>()
+            .HasQueryFilter(e => (_tenantId == null && _isSuperAdmin) || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<AuditLog>()
+            .HasQueryFilter(e => (_tenantId == null && _isSuperAdmin) || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<StudentAssignment>()
+            .HasQueryFilter(e => (_tenantId == null && _isSuperAdmin) || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<TeacherAssignment>()
+            .HasQueryFilter(e => (_tenantId == null && _isSuperAdmin) || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<IdCardTemplateField>()
+            .HasQueryFilter(e => (_tenantId == null && _isSuperAdmin) || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<StaffInstitutionalProfile>()
+            .HasQueryFilter(e => (_tenantId == null && _isSuperAdmin) || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<InstitutionalCredentialCard>()
+            .HasQueryFilter(e => (_tenantId == null && _isSuperAdmin) || e.SchoolId == _tenantId);
+
+        modelBuilder.Entity<StaffQrToken>()
+            .HasQueryFilter(e => (_tenantId == null && _isSuperAdmin) || e.SchoolId == _tenantId);
     }
 }

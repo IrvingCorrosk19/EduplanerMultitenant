@@ -116,7 +116,7 @@ public class PrematriculationPeriodService : IPrematriculationPeriodService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        var period = await _context.PrematriculationPeriods.FindAsync(id);
+        var period = await _context.PrematriculationPeriods.Where(x => x.Id == id).FirstOrDefaultAsync();
         if (period == null)
             return false;
 

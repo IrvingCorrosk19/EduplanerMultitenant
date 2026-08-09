@@ -1,17 +1,22 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using SchoolManager.Models;
 using SchoolManager.Dtos;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
+[Authorize(Roles = "Director,Inspector,Teacher,Docente,secretaria,admin")]
 public class AttendanceController : Controller
 {
     private readonly IAttendanceService _attendanceService;
+    private readonly ILogger<AttendanceController> _logger;
 
-    public AttendanceController(IAttendanceService attendanceService)
+    public AttendanceController(IAttendanceService attendanceService, ILogger<AttendanceController> logger)
     {
         _attendanceService = attendanceService;
+        _logger = logger;
     }
 
     public async Task<IActionResult> Index()
@@ -27,9 +32,12 @@ public class AttendanceController : Controller
         return View(attendance);
     }
 
+    [Authorize(Roles = "Director,Inspector,secretaria,admin")]
     public IActionResult Create() => View();
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector,secretaria,admin")]
     public async Task<IActionResult> Create(Attendance attendance)
     {
         if (ModelState.IsValid)
@@ -40,6 +48,7 @@ public class AttendanceController : Controller
         return View(attendance);
     }
 
+    [Authorize(Roles = "Director,Inspector,secretaria,admin")]
     public async Task<IActionResult> Edit(Guid id)
     {
         var attendance = await _attendanceService.GetByIdAsync(id);
@@ -48,6 +57,8 @@ public class AttendanceController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector,secretaria,admin")]
     public async Task<IActionResult> Edit(Attendance attendance)
     {
         if (ModelState.IsValid)
@@ -58,6 +69,7 @@ public class AttendanceController : Controller
         return View(attendance);
     }
 
+    [Authorize(Roles = "Director,Inspector")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var attendance = await _attendanceService.GetByIdAsync(id);
@@ -66,6 +78,8 @@ public class AttendanceController : Controller
     }
 
     [HttpPost, ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector")]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         await _attendanceService.DeleteAsync(id);
@@ -73,6 +87,7 @@ public class AttendanceController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveAttendances([FromBody] List<AttendanceSaveDto> attendances)
     {
         try
@@ -82,11 +97,12 @@ public class AttendanceController : Controller
         }
         catch (Exception ex)
         {
-            return BadRequest(new { success = false, message = ex.Message });
+            return BadRequest(new { success = false, message = "Error interno. Intente nuevamente." });
         }
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Historial([FromBody] HistorialAsistenciaFiltroDto filtro)
     {
         try
@@ -96,14 +112,15 @@ public class AttendanceController : Controller
         }
         catch (Exception ex)
         {
-            return BadRequest(new { success = false, message = ex.Message });
+            return BadRequest(new { success = false, message = "Error interno. Intente nuevamente." });
         }
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Estadisticas([FromBody] EstadisticasFiltroDto filtro)
     {
-        Console.WriteLine($"Trimestre: {filtro.Trimestre}, Inicio: {filtro.FechaInicio}, Fin: {filtro.FechaFin}");
+        _logger.LogDebug("Estadísticas solicitadas: Trimestre={Trimestre}, GroupId={GroupId}, GradeId={GradeId}", filtro.Trimestre, filtro.GroupId, filtro.GradeId);
         if (filtro == null || filtro.GroupId == Guid.Empty || filtro.GradeId == Guid.Empty || string.IsNullOrEmpty(filtro.Trimestre))
             return BadRequest("Faltan datos para la consulta.");
 

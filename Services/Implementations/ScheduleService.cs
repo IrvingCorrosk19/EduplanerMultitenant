@@ -34,11 +34,11 @@ public class ScheduleService : IScheduleService
         if (ta == null)
             throw new InvalidOperationException("No se encontró la asignación docente indicada.");
 
-        var timeSlot = await _context.TimeSlots.FindAsync(timeSlotId).ConfigureAwait(false);
+        var timeSlot = await _context.TimeSlots.Where(x => x.Id == timeSlotId).FirstOrDefaultAsync().ConfigureAwait(false);
         if (timeSlot == null)
             throw new InvalidOperationException("No se encontró el bloque horario indicado.");
 
-        var academicYear = await _context.AcademicYears.FindAsync(academicYearId).ConfigureAwait(false);
+        var academicYear = await _context.AcademicYears.Where(x => x.Id == academicYearId).FirstOrDefaultAsync().ConfigureAwait(false);
         if (academicYear == null)
             throw new InvalidOperationException("No se encontró el año académico indicado.");
 

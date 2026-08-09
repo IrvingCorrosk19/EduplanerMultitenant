@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Models;
 
+[Authorize(Roles = "Director,Inspector,Teacher,Docente,secretaria,admin,superadmin")]
 public class SubjectController : Controller
 {
     private readonly ISubjectService _subjectService;
@@ -23,18 +25,16 @@ public class SubjectController : Controller
         return View(subject);
     }
 
-    //public IActionResult Create() => View();
-
     [HttpGet]
     public async Task<IActionResult> ListJson()
     {
         try
         {
             var subjects = await _subjectService.GetAllAsync();
-            return Json(new { 
-                success = true, 
-                data = subjects.Select(s => new { 
-                    id = s.Id, 
+            return Json(new {
+                success = true,
+                data = subjects.Select(s => new {
+                    id = s.Id,
                     name = s.Name,
                     description = s.Description
                 })
@@ -42,11 +42,13 @@ public class SubjectController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al obtener las materias: " + ex.Message });
+            return Json(new { success = false, message = "Error al obtener las materias. Intente nuevamente." });
         }
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,secretaria,admin,superadmin")]
     public async Task<IActionResult> Create([FromBody] Subject subject)
     {
         if (string.IsNullOrWhiteSpace(subject.Name))
@@ -55,9 +57,9 @@ public class SubjectController : Controller
         try
         {
             var created = await _subjectService.CreateAsync(subject);
-            return Json(new { 
-                success = true, 
-                id = created.Id, 
+            return Json(new {
+                success = true,
+                id = created.Id,
                 name = created.Name,
                 description = created.Description,
                 message = "Materia creada exitosamente."
@@ -65,18 +67,13 @@ public class SubjectController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al crear la materia: " + ex.Message });
+            return Json(new { success = false, message = "Error al crear la materia. Intente nuevamente." });
         }
     }
 
-    //public async Task<IActionResult> Edit(Guid id)
-    //{
-    //    var subject = await _subjectService.GetByIdAsync(id);
-    //    if (subject == null) return NotFound();
-    //    return View(subject);
-    //}
-
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,secretaria,admin,superadmin")]
     public async Task<IActionResult> Edit([FromBody] Subject subject)
     {
         if (string.IsNullOrWhiteSpace(subject.Name))
@@ -85,9 +82,9 @@ public class SubjectController : Controller
         try
         {
             var updated = await _subjectService.UpdateAsync(subject);
-            return Json(new { 
-                success = true, 
-                id = updated.Id, 
+            return Json(new {
+                success = true,
+                id = updated.Id,
                 name = updated.Name,
                 description = updated.Description,
                 message = "Materia actualizada exitosamente."
@@ -95,11 +92,13 @@ public class SubjectController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al actualizar la materia: " + ex.Message });
+            return Json(new { success = false, message = "Error al actualizar la materia. Intente nuevamente." });
         }
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,secretaria,admin,superadmin")]
     public async Task<IActionResult> ToggleActive([FromBody] ToggleActiveSubjectRequest request)
     {
         if (request.Id == Guid.Empty)
@@ -114,17 +113,19 @@ public class SubjectController : Controller
             subject.Status = !(subject.Status ?? false);
             subject.UpdatedAt = DateTime.UtcNow;
             await _subjectService.UpdateAsync(subject);
-            
+
             var estado = (subject.Status ?? false) ? "activada" : "desactivada";
             return Json(new { success = true, isActive = subject.Status, message = $"Materia {estado} exitosamente." });
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al cambiar el estado: " + ex.Message });
+            return Json(new { success = false, message = "Error al cambiar el estado. Intente nuevamente." });
         }
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,secretaria,admin,superadmin")]
     public async Task<IActionResult> Delete([FromBody] DeleteSubjectRequest request)
     {
         if (request.Id == Guid.Empty)
@@ -141,11 +142,11 @@ public class SubjectController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return Json(new { success = false, message = ex.Message });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente." });
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al eliminar la materia: " + ex.Message });
+            return Json(new { success = false, message = "Error al eliminar la materia. Intente nuevamente." });
         }
     }
 }

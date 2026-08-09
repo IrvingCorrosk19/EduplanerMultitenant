@@ -16,6 +16,21 @@
             disciplinaAccionesLista = null;
         }
     }
+
+    object docsForJs = Array.Empty<object>();
+    if (!string.IsNullOrWhiteSpace(Model.Documents))
+    {
+        try
+        {
+            docsForJs = JsonSerializer.Deserialize<object>(Model.Documents) ?? Array.Empty<object>();
+        }
+        catch
+        {
+            docsForJs = Array.Empty<object>();
+        }
+    }
+
+    var documentsJsonForScript = JsonSerializer.Serialize(docsForJs);
 }
 
 <div class="container-fluid">
@@ -110,13 +125,15 @@
         {
             <text>
             try {
-                var documents = JSON.parse('@Html.Raw(Model.Documents)');
-                var documentsHtml = '<ul>';
+                var documents = @Html.Raw(documentsJsonForScript);
+                if (!Array.isArray(documents)) documents = [];
+                var ul = $('<ul/>');
                 documents.forEach(function(doc) {
-                    documentsHtml += '<li><a href="/uploads/discipline/' + doc.fileName + '" target="_blank">' + doc.originalName + '</a></li>';
+                    var fn = (doc && doc.fileName) ? String(doc.fileName).replace(/[^a-zA-Z0-9._-]/g, '') : '';
+                    var on = (doc && doc.originalName) ? String(doc.originalName) : '';
+                    ul.append($('<li/>').append($('<a/>', { href: '/uploads/discipline/' + fn, target: '_blank', text: on })));
                 });
-                documentsHtml += '</ul>';
-                $('#documentsList').html(documentsHtml);
+                $('#documentsList').append(ul);
             } catch(e) {
                 $('#documentsList').html('<p class="text-muted">Error al cargar documentos</p>');
             }

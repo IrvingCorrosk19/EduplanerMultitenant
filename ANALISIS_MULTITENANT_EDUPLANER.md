@@ -120,3 +120,132 @@ Eduplaner **no es un multi-tenant “incorrecto” en intención**: hay `school_
 ---
 
 *Fin del informe — solo diagnóstico, sin recomendaciones de implementación.*
+
+---
+
+# Auditoría actualizada (29/04/2026) — Multitenancy Eduplaner (SchoolManager)
+
+## 1. Resumen Ejecutivo (nivel CTO)
+
+Eduplaner tiene un multi-tenancy **lógico** (no RLS) implementado con EF Core `HasQueryFilter` sobre un subconjunto de entidades y validaciones manuales en servicios/controladores. Eso reduce el riesgo en flujos “normales”, pero **no cierra el aislamiento matemáticamente** y no cumple el estándar de un SaaS multi-institución real.
+
+El problema no es “intención”: es que el sistema permite y/o escribe estados donde el tenant queda indeterminado (`SchoolId = NULL`), y algunas validaciones/ownership dependen de datasets ya filtrados por QueryFilters, volviendo la verificación cross-tenant **ineficaz**.
+
+**Veredicto**: no listo para producción SaaS multi-tenant con múltiples colegios simultáneos bajo auditoría seria.
+
+## 2. Estado actual del multi-tenancy
+
+### Tenant resolution (contrato real)
+
+- `Infrastructure/TenantProvider.cs`: el tenant se deriva del claim `"school_id"`; `IsSuperAdmin` se deriva del rol `"superadmin"`.
+- `Models/SchoolDbContext.cs`: `HasQueryFilter` para cada entidad filtra por `e.SchoolId == _tenantId`, salvo el caso especial `(_tenantId == null && _isSuperAdmin)`.
+
+Implicación: si el claim `school_id` falta/no parsea, el sistema se reduce a filas con `SchoolId IS NULL` (para no-superadmin), no a “todas las escuelas”.
+
+### Cobertura incompleta (puntos sin `SchoolId` directo)
+
+Existen entidades críticas que **no tienen** columna `SchoolId` en el modelo:
+
+- `Models/StudentAssignment.cs` (sin `SchoolId`)
+- `Models/TeacherAssignment.cs` (sin `SchoolId`)
+- `Models/ScheduleEntry.cs` (sin `SchoolId`)
+
+Estas tablas sólo quedan “tenant-scoped” si cada endpoint hace scoping correcto en el punto de entrada (lo cual en un SaaS exige garantías consistentes y automatizadas).
+
+### Semántica peligrosa de NULL
+
+El modelo C# usa `Guid? SchoolId` en tablas sensibles:
+
+- `Models/Attendance.cs` (`Guid? SchoolId`)
+- `Models/StudentActivityScore.cs` (`Guid? SchoolId`)
+
+Cuando se insertan filas sin poblar `SchoolId`, el aislamiento depende del estado del claim/tenant context y genera un “null tenant pool”.
+
+**Lectura clave (modelo C# ↔ aislamiento):** el sistema trata `SchoolId = NULL` como un estado “especial”, pero el aislamiento real depende de QueryFilters por tenant. En particular:
+- Tablas de hechos sensibles con `SchoolId` nullable: `Models/Attendance.cs`, `Models/StudentActivityScore.cs`.
+- Tablas con `SchoolId` no-null (ejemplo): `Models/Payment.cs`.
+
+Esta asimetría hace que cualquier flujo de escritura que olvide setear `SchoolId` cree un pool con comportamiento impredecible entre entornos (request, worker, anon).
+
+## 3. Hallazgos críticos
+
+### 🔴 1) `Attendance` bulk insert sin `SchoolId` (crea pool NULL)
+
+- `Services/Implementations/AttendanceService.cs` → `SaveAttendancesAsync(...)` crea `Attendance` sin setear `SchoolId` ni llamar a `AuditHelper.SetSchoolIdAsync`.
+- Con `Attendance.SchoolId` nullable, el insert genera `SchoolId = NULL`.
+
+Impacto: corrupción de datos multi-tenant, degradación de trazabilidad y potencial exposición cuando el tenant context es `null` (anon/worker).
+
+### 🔴 2) Validación de ownership en notas es ineficaz (QueryFilter ya filtra)
+
+- `Services/Implementations/StudentActivityScoreService.cs` → `SaveBulkFromNotasAsync(...)` intenta detectar outsiders con:
+  - `_context.Users.CountAsync(u => studentIds.Contains(u.Id) && u.SchoolId != currentUserSchool.Id)`
+- Pero `_context.Users` tiene QueryFilter por tenant (`Models/SchoolDbContext.cs`).
+
+Impacto: IDs de estudiantes cross-tenant pueden pasar la validación (porque los outsiders ni aparecen en el dataset filtrado) y el sistema puede escribir hechos (notas) con `SchoolId` del docente sobre IDs de estudiantes ajenos.
+
+Escenario (2 colegios en paralelo): un docente de `School A` envía en el payload notas para `StudentId` perteneciente a `School B`. Si el backend no puede detectar el mismatch de pertenencia (porque el dataset de validación ya está filtrado por QueryFilter), el sistema termina creando/actualizando registros de notas con el tenant del docente (de `School A`).
+
+### 🔴 3) Asignaciones cross-tenant: `StudentAssignmentController.GuardarAsignacion` no valida pertenencia
+
+- `Controllers/StudentAssignmentController.cs` → `GuardarAsignacion(...)` delega a `StudentAssignmentService.AssignStudentAsync(request.UserId, ...)` con IDs enviados por el cliente.
+- `Services/Implementations/StudentAssignmentService.cs` → `AssignStudentAsync(...)` no valida que `student.SchoolId` coincida con el tenant del caller.
+- `StudentAssignment` no tiene `SchoolId`, por lo que QueryFilters no protegen esa tabla.
+
+Impacto: un operador de colegio A puede asociar al grafo de asignaciones estudiantes de colegio B mediante payload.
+
+### 🔴 4) Lecturas cross-tenant por `studentId` sin scoping en endpoint
+
+- `Controllers/StudentAssignmentController.cs` → `GetGradeGroupByStudent(studentId)` no valida que `studentId` pertenezca al colegio del caller.
+
+Impacto: enumeración inter-tenant (aunque el contenido sea “grado/grupo”, sigue siendo canal de información).
+
+### 🔴 5) Endpoint anónimo depende de QueryFilters de tenant
+
+- `Controllers/StudentIdCardController.cs` → `PublicEmergencyInfo` es `AllowAnonymous` y consulta `_context.Users` sin `IgnoreQueryFilters`.
+- `Helpers/StudentRoleFilter.cs` sólo filtra por rol, no desactiva QueryFilters.
+
+Impacto: funcionalidad inconsistente y riesgo de exposición si existen usuarios en pool `SchoolId = NULL`.
+
+### 🔴 6) Sin RLS / “cinturón final” en BD
+
+El aislamiento depende 100% de aplicación/EF. Un fallo de endpoint o un bypass futuro (`IgnoreQueryFilters()` mal usado) convierte el problema en “escala de dataset”.
+
+## 4. Hallazgos estructurales
+
+1. **Multi-tenancy por joins**: tablas sin `SchoolId` (StudentAssignment/TeacherAssignment/ScheduleEntry) elevan la carga de “cada endpoint bien escrito” a un nivel que no es aceptable como garantía de producto SaaS.
+2. **Semántica de NULL inconsistente**: el código usa patrones tipo `x.SchoolId == null || x.SchoolId == schoolId`, pero QueryFilters excluyen NULL para tenants normales; esto rompe el contrato mental de “global por NULL”.
+3. **Dependencia de claim vs DB**: el tenant context está ligado al claim `school_id`, mientras varios servicios además consultan `user.SchoolId` en BD. Esa dualidad puede desalinear QueryFilters, escrituras y validaciones.
+4. **Ownership parcial**: hay defensas (por ejemplo, TeacherId vs docente autenticado en notas), pero no existe un mecanismo uniforme que amarre ownership para TODO el grafo crítico en todos los paths.
+
+## 5. Hallazgos de performance
+
+1. **Patrones de N+1**: `TeacherGradebookController.GetCounselorGroupAverages` hace loops y llama repetidamente a `GetNotasPorFiltroAsync` durante la construcción de promedios.
+2. **Materialización/pivots en memoria**: libros de calificaciones materializan resultados y agrupan en C#.
+3. **Crecimiento multi-tenant amplifica el costo**: si existen filas en pool NULL y/o joins sin scoping consistente, el “dataset efectivo” por request crece y agrava planes caros.
+
+## 6. Riesgos de seguridad
+
+1. **Riesgo de fuga/interferencia por pool NULL** (asistencias/notas con `SchoolId` nullable y escritura sin setear).
+2. **Ownership verificado contra datasets ya filtrados** (validación de outsiders en notas).
+3. **Cross-tenant write** en asignaciones (StudentAssignments) donde no hay `SchoolId` en el hecho.
+4. **Anon endpoints** con QueryFilters activos (comportamiento depende del estado de datos en pool NULL).
+5. **No hay enforcement en BD** (RLS ausente).
+
+## 7. Evaluación de preparación para producción (SI / NO / PARCIAL)
+
+**NO**.
+
+## 8. Conclusión brutalmente honesta
+
+Eduplaner no está listo para venderse como SaaS multi-tenant real. El sistema implementa “multi-tenancy lógico” con EF QueryFilters, pero:
+- hay escrituras sin poblar el tenant en tablas sensibles,
+- existen validaciones cross-tenant que no pueden detectar outsiders correctamente cuando dependen de QueryFilters,
+- y hay endpoints que aceptan IDs sin ownership scoping consistente en tablas sin `SchoolId`.
+
+En auditoría real, esto se traduce en que el aislamiento no es una propiedad del sistema, sino una propiedad del código “perfecto”. Eso no pasa.
+
+---
+
+*Fin del informe — solo diagnóstico, sin recomendaciones de implementación.*
+

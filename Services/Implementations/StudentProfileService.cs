@@ -118,7 +118,7 @@ namespace SchoolManager.Services.Implementations
             {
                 _logger.LogInformation("📝 Actualizando perfil del estudiante: {StudentId}", model.Id);
 
-                var user = await _context.Users.FindAsync(model.Id);
+                var user = await _context.Users.Where(x => x.Id == model.Id).FirstOrDefaultAsync();
 
                 if (user == null || (user.Role.ToLower() != "student" && user.Role.ToLower() != "estudiante"))
                 {

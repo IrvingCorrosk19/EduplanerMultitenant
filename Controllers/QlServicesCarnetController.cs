@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Dtos;
 using SchoolManager.Services.Interfaces;
@@ -49,7 +49,7 @@ public class QlServicesCarnetController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = "Error interno. Intente nuevamente." });
         }
         catch (Exception ex)
         {
@@ -72,7 +72,7 @@ public class QlServicesCarnetController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = "Error interno. Intente nuevamente." });
         }
         catch (Exception ex)
         {

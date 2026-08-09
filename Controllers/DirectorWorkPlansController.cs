@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Dtos;
 using SchoolManager.Services.Interfaces;
@@ -94,7 +94,7 @@ public class DirectorWorkPlansController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return Json(new { success = false, message = ex.Message });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente." });
         }
     }
 
@@ -115,7 +115,7 @@ public class DirectorWorkPlansController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return Json(new { success = false, message = ex.Message });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente." });
         }
     }
 

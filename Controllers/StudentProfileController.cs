@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Services.Interfaces;
 using SchoolManager.ViewModels;
@@ -234,7 +234,7 @@ namespace SchoolManager.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                TempData["Error"] = ex.Message;
+                TempData["Error"] = "Error interno. Intente nuevamente.";
             }
             catch (Exception ex)
             {

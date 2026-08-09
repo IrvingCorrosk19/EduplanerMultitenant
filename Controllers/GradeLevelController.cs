@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Models;
 using SchoolManager.Services.Interfaces;
 
 namespace SchoolManager.Controllers;
 
+[Authorize(Roles = "Director,Inspector,secretaria,admin,superadmin")]
 [Route("GradeLevel")]
 public class GradeLevelController : Controller
 {
@@ -24,11 +26,13 @@ public class GradeLevelController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al obtener los grados: " + ex.Message });
+            return Json(new { success = false, message = "Error al obtener los grados. Intente nuevamente." });
         }
     }
 
     [HttpPost("Create")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,secretaria,admin,superadmin")]
     public async Task<IActionResult> Create([FromBody] GradeLevel data)
     {
         try
@@ -53,11 +57,13 @@ public class GradeLevelController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al crear el grado: " + ex.Message });
+            return Json(new { success = false, message = "Error al crear el grado. Intente nuevamente." });
         }
     }
 
     [HttpPost("Edit")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,secretaria,admin,superadmin")]
     public async Task<IActionResult> Edit([FromBody] GradeLevel data)
     {
         try
@@ -68,21 +74,23 @@ public class GradeLevelController : Controller
             }
 
             var updated = await _gradeLevelService.UpdateAsync(data);
-            return Json(new { 
-                success = true, 
-                id = updated.Id, 
-                name = updated.Name, 
+            return Json(new {
+                success = true,
+                id = updated.Id,
+                name = updated.Name,
                 description = updated.Description,
                 message = "Grado actualizado exitosamente."
             });
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al actualizar el grado: " + ex.Message });
+            return Json(new { success = false, message = "Error al actualizar el grado. Intente nuevamente." });
         }
     }
 
     [HttpPost("Delete")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,secretaria,admin,superadmin")]
     public async Task<IActionResult> Delete([FromBody] DeleteGradeRequest request)
     {
         try
@@ -102,11 +110,11 @@ public class GradeLevelController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return Json(new { success = false, message = ex.Message });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente." });
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al eliminar el grado: " + ex.Message });
+            return Json(new { success = false, message = "Error al eliminar el grado. Intente nuevamente." });
         }
     }
 }

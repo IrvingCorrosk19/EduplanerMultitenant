@@ -35,7 +35,7 @@ namespace SchoolManager.Services.Implementations
 
         public async Task<Shift?> GetByIdAsync(Guid id)
         {
-            return await _context.Shifts.FindAsync(id);
+            return await _context.Shifts.Where(x => x.Id == id).FirstOrDefaultAsync();
         }
 
         public async Task<Shift?> GetByNameAsync(string name)
@@ -132,7 +132,7 @@ namespace SchoolManager.Services.Implementations
             
             try
             {
-                var shift = await _context.Shifts.FindAsync(id);
+                var shift = await _context.Shifts.Where(x => x.Id == id).FirstOrDefaultAsync();
                 if (shift != null)
                 {
                     // En lugar de eliminar, marcar como inactiva

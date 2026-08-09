@@ -23,6 +23,9 @@ public partial class StudentAssignment
 
     public Guid? AcademicYearId { get; set; }
 
+    /// <summary>Denormalizado para multi-tenant: misma escuela que estudiante/grupo (índice + GQF).</summary>
+    public Guid SchoolId { get; set; }
+
     public virtual GradeLevel Grade { get; set; } = null!;
 
     public virtual Group Group { get; set; } = null!;
@@ -32,4 +35,6 @@ public partial class StudentAssignment
     public virtual User Student { get; set; } = null!;
 
     public virtual AcademicYear? AcademicYear { get; set; }
+
+    public virtual School School { get; set; } = null!;
 }

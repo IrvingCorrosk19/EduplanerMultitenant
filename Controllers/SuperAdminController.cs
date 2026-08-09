@@ -1,6 +1,7 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SchoolManager.Helpers;
 using SchoolManager.Models;
 using SchoolManager.Services;
 using SchoolManager.ViewModels;
@@ -16,6 +17,7 @@ public class SuperAdminController : Controller
 
     private readonly ISuperAdminService _superAdminService;
     private readonly IUserPhotoService _userPhotoService;
+    private readonly IFileStorageService _fileStorage;
     private readonly IWebHostEnvironment _webHostEnvironment;
     private readonly SchoolDbContext _db;
     private readonly ILogger<SuperAdminController> _logger;
@@ -23,12 +25,14 @@ public class SuperAdminController : Controller
     public SuperAdminController(
         ISuperAdminService superAdminService,
         IUserPhotoService userPhotoService,
+        IFileStorageService fileStorage,
         IWebHostEnvironment webHostEnvironment,
         SchoolDbContext db,
         ILogger<SuperAdminController> logger)
     {
         _superAdminService = superAdminService;
         _userPhotoService = userPhotoService;
+        _fileStorage = fileStorage;
         _webHostEnvironment = webHostEnvironment;
         _db = db;
         _logger = logger;
@@ -69,7 +73,7 @@ public class SuperAdminController : Controller
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError("", "Error al crear la escuela y el administrador: " + ex.Message);
+                ModelState.AddModelError("", "Error al crear la escuela y el administrador. Intente nuevamente.");
                 _logger.LogError(ex, "Error al crear escuela y administrador");
             }
         }
@@ -80,9 +84,8 @@ public class SuperAdminController : Controller
     // GET: SuperAdmin/ListSchools
     public async Task<IActionResult> ListSchools(string searchString)
     {
-        Console.WriteLine($"🔍 [ListSchools] Cargando lista de escuelas...");
-        Console.WriteLine($"🔍 [ListSchools] Filtro de búsqueda: '{searchString}'");
-        
+        _logger.LogInformation("[ListSchools] Cargando lista de escuelas con filtro");
+
         try
         {
             var schools = await _superAdminService.GetAllSchoolsAsync(searchString);
@@ -91,10 +94,8 @@ public class SuperAdminController : Controller
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"💥 [ListSchools] Error al cargar escuelas: {ex.Message}");
-            Console.WriteLine($"📊 [ListSchools] Stack Trace: {ex.StackTrace}");
             _logger.LogError(ex, "Error al cargar lista de escuelas");
-            
+
             ViewData["CurrentFilter"] = searchString;
             return View(new List<SchoolListViewModel>());
         }
@@ -141,7 +142,7 @@ public class SuperAdminController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return Json(new { success = false, message = ex.Message });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente." });
         }
         catch (Exception ex)
         {
@@ -174,36 +175,190 @@ public class SuperAdminController : Controller
         }
     }
 
+    [HttpGet]
+    public async Task<IActionResult> StudentDirectoryDownloadPhoto(Guid userId)
+    {
+        var user = await _db.Users.AsNoTracking().IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return NotFound();
+
+        var role = (user.Role ?? "").ToLowerInvariant();
+        if (role is not ("student" or "estudiante" or "alumno"))
+            return NotFound();
+
+        if (string.IsNullOrWhiteSpace(user.PhotoUrl))
+            return NotFound("El estudiante no tiene foto.");
+
+        try
+        {
+            var bytes = await _fileStorage.GetUserPhotoBytesAsync(user.PhotoUrl.Trim());
+            if (bytes == null || bytes.Length == 0)
+                return NotFound("No se pudo obtener la foto.");
+
+            var ext = user.PhotoUrl.Contains(".png", StringComparison.OrdinalIgnoreCase) ? "png" : "jpg";
+            var contentType = ext == "png" ? "image/png" : "image/jpeg";
+            var fileName = BuildStudentPhotoDownloadFileName(user.Name, user.LastName, user.DocumentId, ext);
+            return File(bytes, contentType, fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error descargando foto de estudiante {UserId} desde StudentDirectory", userId);
+            return NotFound("No se pudo descargar la foto.");
+        }
+    }
+
+    private static string BuildStudentPhotoDownloadFileName(string? name, string? lastName, string? documentId, string ext)
+    {
+        static string Sanitize(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return "";
+            var chars = value.Trim().Where(c => char.IsLetterOrDigit(c) || c is ' ' or '-' or '_').ToArray();
+            var s = new string(chars).Trim();
+            return string.IsNullOrWhiteSpace(s) ? "" : s.Replace(' ', '-');
+        }
+
+        var parts = new[] { Sanitize(name), Sanitize(lastName), Sanitize(documentId) }
+            .Where(p => !string.IsNullOrEmpty(p))
+            .ToList();
+        var baseName = parts.Count > 0 ? string.Join("_", parts) : "estudiante";
+        return $"{baseName}.{ext}";
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> StaffDirectory([FromQuery] SuperAdminStaffDirectoryFilterVm? filter)
+    {
+        filter ??= new SuperAdminStaffDirectoryFilterVm();
+        var page = await _superAdminService.GetStaffDirectoryPageAsync(filter);
+        return View(page);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(12 * 1024 * 1024)]
+    public async Task<IActionResult> StaffDirectoryUpdatePhoto(Guid userId, IFormFile? photo)
+    {
+        if (photo == null || photo.Length == 0)
+            return Json(new { success = false, message = "Seleccione una imagen (JPEG o PNG)." });
+
+        var user = await _db.Users.AsNoTracking().IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return Json(new { success = false, message = "Usuario no encontrado." });
+
+        if (!StaffInstitutionalProfileAccess.IsStaffDirectoryEligibleRole(user.Role))
+            return Json(new { success = false, message = "El usuario no es personal institucional elegible para el directorio." });
+
+        try
+        {
+            await _userPhotoService.UpdatePhotoAsync(userId, photo);
+            var updated = await _db.Users.AsNoTracking().IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+            return Json(new { success = true, photoUrl = updated?.PhotoUrl });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error actualizando foto de personal {UserId}", userId);
+            return Json(new { success = false, message = "No se pudo actualizar la foto." });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> StaffDirectoryRemovePhoto(Guid userId)
+    {
+        var user = await _db.Users.AsNoTracking().IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return Json(new { success = false, message = "Usuario no encontrado." });
+
+        if (!StaffInstitutionalProfileAccess.IsStaffDirectoryEligibleRole(user.Role))
+            return Json(new { success = false, message = "El usuario no es personal institucional elegible para el directorio." });
+
+        try
+        {
+            await _userPhotoService.RemovePhotoAsync(userId);
+            return Json(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error eliminando foto de personal {UserId}", userId);
+            return Json(new { success = false, message = "No se pudo eliminar la foto." });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> StaffDirectorySaveProfile(
+        Guid userId,
+        string? jobTitle,
+        string? department,
+        string? employeeCode)
+    {
+        var user = await _db.Users.AsNoTracking().IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return Json(new { success = false, message = "Usuario no encontrado." });
+
+        if (!StaffInstitutionalProfileAccess.IsStaffDirectoryEligibleRole(user.Role))
+            return Json(new { success = false, message = "El usuario no es personal institucional elegible para el directorio." });
+
+        if (!user.SchoolId.HasValue)
+            return Json(new { success = false, message = "El usuario no tiene escuela asignada." });
+
+        try
+        {
+            var profile = await _db.StaffInstitutionalProfiles.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(p => p.UserId == userId);
+            if (profile == null)
+            {
+                profile = new StaffInstitutionalProfile { UserId = userId, SchoolId = user.SchoolId.Value };
+                _db.StaffInstitutionalProfiles.Add(profile);
+            }
+            else if (profile.SchoolId == Guid.Empty)
+            {
+                profile.SchoolId = user.SchoolId.Value;
+            }
+
+            profile.JobTitle = string.IsNullOrWhiteSpace(jobTitle) ? null : jobTitle.Trim();
+            profile.Department = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
+            profile.EmployeeCode = string.IsNullOrWhiteSpace(employeeCode) ? null : employeeCode.Trim();
+            await _db.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error guardando perfil laboral {UserId}", userId);
+            return Json(new { success = false, message = "No se pudo guardar el perfil laboral." });
+        }
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteSchool(Guid id)
     {
-        Console.WriteLine($"🔍 [DeleteSchool] Iniciando eliminación de escuela con ID: {id}");
-        
+        _logger.LogInformation("[DeleteSchool] Iniciando eliminación de escuela con ID: {SchoolId}", id);
+
         try
         {
             var success = await _superAdminService.DeleteSchoolAsync(id);
-            
+
             if (success)
             {
-                Console.WriteLine($"✅ [DeleteSchool] Institución desactivada correctamente");
+                _logger.LogInformation("[DeleteSchool] Institución desactivada correctamente: {SchoolId}", id);
                 TempData["SuccessMessage"] = "Institución desactivada correctamente.";
             }
             else
             {
-                Console.WriteLine($"❌ [DeleteSchool] No se pudo desactivar la institución");
+                _logger.LogWarning("[DeleteSchool] No se pudo desactivar la institución: {SchoolId}", id);
                 TempData["ErrorMessage"] = "No se pudo desactivar la institución.";
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ [DeleteSchool] Error eliminando escuela: {ex.Message}");
-            Console.WriteLine($"📊 [DeleteSchool] Stack Trace: {ex.StackTrace}");
-            _logger.LogError(ex, "Error eliminando escuela");
-            TempData["ErrorMessage"] = "Error al eliminar la escuela: " + ex.Message;
+            _logger.LogError(ex, "Error eliminando escuela: {SchoolId}", id);
+            TempData["ErrorMessage"] = "Error al eliminar la escuela. Intente nuevamente.";
         }
 
-        Console.WriteLine($"🔄 [DeleteSchool] Redirigiendo a ListSchools");
         return RedirectToAction(nameof(ListSchools));
     }
 
@@ -211,32 +366,29 @@ public class SuperAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteUser(Guid id)
     {
-        Console.WriteLine($"🔍 [DeleteUser] Iniciando eliminación de usuario con ID: {id}");
-        
+        _logger.LogInformation("[DeleteUser] Iniciando eliminación de usuario con ID: {UserId}", id);
+
         try
         {
             var success = await _superAdminService.DeleteUserAsync(id);
-            
+
             if (success)
             {
-                Console.WriteLine($"✅ [DeleteUser] Usuario eliminado exitosamente");
+                _logger.LogInformation("[DeleteUser] Usuario eliminado exitosamente: {UserId}", id);
                 TempData["SuccessMessage"] = "Usuario eliminado exitosamente.";
             }
             else
             {
-                Console.WriteLine($"❌ [DeleteUser] No se pudo eliminar el usuario");
+                _logger.LogWarning("[DeleteUser] No se pudo eliminar el usuario: {UserId}", id);
                 TempData["ErrorMessage"] = "No se pudo eliminar el usuario.";
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ [DeleteUser] Error eliminando usuario: {ex.Message}");
-            Console.WriteLine($"📊 [DeleteUser] Stack Trace: {ex.StackTrace}");
-            _logger.LogError(ex, "Error eliminando usuario");
-            TempData["ErrorMessage"] = "Error al eliminar el usuario: " + ex.Message;
+            _logger.LogError(ex, "Error eliminando usuario: {UserId}", id);
+            TempData["ErrorMessage"] = "Error al eliminar el usuario. Intente nuevamente.";
         }
 
-        Console.WriteLine($"🔄 [DeleteUser] Redirigiendo a ListSchools");
         return RedirectToAction(nameof(ListSchools));
     }
 
@@ -277,7 +429,7 @@ public class SuperAdminController : Controller
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al actualizar escuela");
-                ModelState.AddModelError("", "Error al actualizar la escuela: " + ex.Message);
+                ModelState.AddModelError("", "Error al actualizar la escuela. Intente nuevamente.");
             }
         }
 
@@ -320,7 +472,7 @@ public class SuperAdminController : Controller
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al actualizar usuario");
-                ModelState.AddModelError("", "Error al actualizar el usuario: " + ex.Message);
+                ModelState.AddModelError("", "Error al actualizar el usuario. Intente nuevamente.");
             }
         }
 
@@ -344,7 +496,7 @@ public class SuperAdminController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            TempData["ErrorMessage"] = "Error interno. Intente nuevamente.";
         }
         catch (Exception ex)
         {
@@ -376,8 +528,8 @@ public class SuperAdminController : Controller
     [HttpGet]
     public async Task<IActionResult> DiagnoseSchool(Guid id)
     {
-        Console.WriteLine($"🔍 [DiagnoseSchool] Diagnosticando escuela con ID: {id}");
-        
+        _logger.LogInformation("[DiagnoseSchool] Diagnosticando escuela con ID: {SchoolId}", id);
+
         try
         {
             var result = await _superAdminService.DiagnoseSchoolAsync(id);
@@ -385,8 +537,8 @@ public class SuperAdminController : Controller
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"💥 [DiagnoseSchool] Error: {ex.Message}");
-            return Json(new { success = false, message = ex.Message });
+            _logger.LogError(ex, "[DiagnoseSchool] Error al diagnosticar escuela: {SchoolId}", id);
+            return Json(new { success = false, message = "Error interno. Intente nuevamente." });
         }
     }
 
@@ -443,10 +595,10 @@ public class SuperAdminController : Controller
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"💥 [CreateInitialSuperAdmin] Error: {ex.Message}");
-            return Json(new { 
-                success = false, 
-                message = "Error al crear superadmin: " + ex.Message 
+            _logger.LogError(ex, "[CreateInitialSuperAdmin] Error al crear superadmin inicial");
+            return Json(new {
+                success = false,
+                message = "Error al crear superadmin. Intente nuevamente."
             });
         }
     }

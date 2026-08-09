@@ -7,7 +7,7 @@ public partial class DisciplineReport
 {
     public Guid Id { get; set; }
 
-    public Guid? SchoolId { get; set; }
+    public Guid SchoolId { get; set; }
 
     public Guid? StudentId { get; set; }
 

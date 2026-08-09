@@ -1,0 +1,198 @@
+@model SchoolManager.ViewModels.InstitutionalCredentialGenerateViewModel
+@{
+    Layout = "_SuperAdminLayout";
+    ViewData["Title"] = Model.UserNotFound ? "Credencial" : (Model.HasActiveCard ? "Credencial — " + Model.Card!.FullName : "Generar credencial");
+    var primary = Model.PrimaryColor;
+    var bg = Model.BackgroundColor;
+    var text = Model.TextColor;
+    var borderColor = "#e5e7eb";
+    var hasLogo = !string.IsNullOrWhiteSpace(Model.SchoolLogoUrl);
+    var showWm = Model.ShowWatermark && hasLogo;
+    var showQrFront = Model.ShowQr && Model.HasActiveCard && !string.IsNullOrEmpty(Model.Card!.QrImageDataUrl);
+}
+<style>
+    .idcard-preview-wrap { display:flex; justify-content:center; padding:1.5rem; background:#f0f2f5; border-radius:12px; }
+    .idcard-face {
+        width:210px; max-width:100%; aspect-ratio:55/85; height:334px; max-height:334px;
+        background:@bg; border-radius:8px; border:1px solid @borderColor;
+        box-shadow:0 4px 14px rgba(0,0,0,.12); color:@text; font-family:'Segoe UI',Tahoma,sans-serif;
+        display:flex; flex-direction:column; overflow:hidden; position:relative; box-sizing:border-box;
+    }
+    .idcard-front-layout { display:flex; flex-direction:column; height:100%; min-height:0; }
+    .idcard-watermark { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:0; }
+    .idcard-watermark img { width:42%; max-width:100px; opacity:.14; object-fit:contain; }
+    .idcard-z1 { position:relative; z-index:2; display:flex; flex-direction:column; flex:1; min-height:0; }
+    .idcard-header { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:6px 8px 5px; background:@primary; flex-shrink:0; }
+    .idcard-logo-center { max-width:40px; max-height:40px; object-fit:contain; margin-bottom:2px; }
+    .idcard-school-name {
+        font-size:7.5pt; font-weight:800; color:#fff; text-align:center; line-height:1.15;
+        text-transform:uppercase; max-width:100%; overflow:hidden;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-word;
+    }
+    .idcard-body { flex:1; display:flex; flex-direction:column; align-items:center; min-height:0; padding:4px 8px 2px; gap:2px; }
+    .idcard-photo-inner {
+        width:82px; height:82px; border:1.5px solid @primary; overflow:hidden;
+        display:flex; align-items:center; justify-content:center; border-radius:3px; background:rgba(0,0,0,.04); flex-shrink:0;
+    }
+    .idcard-photo-inner img { width:100%; height:100%; object-fit:cover; }
+    .idcard-data-center { display:flex; flex-direction:column; align-items:center; text-align:center; width:100%; gap:1px; flex-shrink:0; }
+    .idcard-name {
+        font-size:10pt; font-weight:700; line-height:1.12; max-width:100%;
+        overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-word;
+    }
+    .idcard-line {
+        font-size:7pt; line-height:1.2; max-width:100%;
+        overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-word;
+    }
+    .idcard-qr-front { margin-top:auto; padding:4px 0 2px; flex-shrink:0; }
+    .idcard-qr-front img { width:72px; height:72px; display:block; }
+    .idcard-footer-strip {
+        flex-shrink:0; background:@primary; color:#fff; text-align:center;
+        font-size:6.5pt; font-weight:600; padding:4px 6px; letter-spacing:.02em;
+    }
+</style>
+
+<div class="container py-3">
+    @Html.AntiForgeryToken()
+
+    @if (Model.UserNotFound)
+    {
+        <div class="alert alert-warning">Usuario no encontrado.</div>
+        <a href="/InstitutionalCredential/ui" class="btn btn-secondary">Volver</a>
+    }
+    else if (Model.NotEligible)
+    {
+        <div class="alert alert-warning">@(Model.NotEligibleReason ?? "No elegible.")</div>
+        <a href="/InstitutionalCredential/ui" class="btn btn-secondary">Volver</a>
+    }
+    else if (!Model.HasActiveCard)
+    {
+        <div class="text-center py-4">
+            <h4>Generar credencial institucional</h4>
+            <p class="text-muted">@Model.SchoolName</p>
+            <button type="button" class="btn btn-primary btn-lg" id="btnGenerate" onclick="generateCard('@Model.UserId')">
+                <i class="fas fa-id-badge"></i> Generar credencial
+            </button>
+            <a href="/InstitutionalCredential/ui" class="btn btn-outline-secondary ms-2">Volver</a>
+        </div>
+    }
+    else
+    {
+        <div class="idcard-preview-wrap">
+            <div>
+                <div class="text-center text-muted small mb-1">Credencial institucional</div>
+                <div id="idCardFront" class="idcard-face">
+                    @if (showWm && hasLogo)
+                    {
+                        <div class="idcard-watermark"><img src="@Model.SchoolLogoUrl" alt="" /></div>
+                    }
+                    <div class="idcard-z1 idcard-front-layout">
+                        <div class="idcard-header">
+                            @if (hasLogo)
+                            {
+                                <img class="idcard-logo-center" src="@Model.SchoolLogoUrl" alt="logo" />
+                            }
+                            <div class="idcard-school-name">@Model.SchoolName</div>
+                        </div>
+                        <div class="idcard-body">
+                            <div class="idcard-photo-inner">
+                                @if (Model.ShowPhoto && !string.IsNullOrEmpty(Model.Card!.PhotoUrl))
+                                {
+                                    <img src="@UserPhotoLinks.HrefForCarnetPreview(Model.Card.PhotoUrl, 360)" alt="foto" />
+                                }
+                                else
+                                {
+                                    <span class="small">FOTO</span>
+                                }
+                            </div>
+                            <div class="idcard-data-center">
+                                <div class="idcard-name">@Model.Card!.FullName</div>
+                                @if (Model.ShowDocumentId && !string.IsNullOrWhiteSpace(Model.DocumentId))
+                                {
+                                    <div class="idcard-line">Cédula: @Model.DocumentId</div>
+                                }
+                                <div class="idcard-line"><strong>Cargo:</strong> @Model.Card.JobTitle</div>
+                            </div>
+                            @if (showQrFront)
+                            {
+                                <div class="idcard-qr-front">
+                                    <img src="@Model.Card.QrImageDataUrl" alt="QR verificación" />
+                                </div>
+                            }
+                        </div>
+                        <div class="idcard-footer-strip">Credencial institucional</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <button type="button" class="btn btn-primary btn-lg" id="btnDownloadPdf"
+                    data-pdf-url="@Url.Action("Print", "InstitutionalCredential", new { userId = Model.Card!.UserId })"
+                    data-filename="@($"credencial-{Model.Card.UserId:N}.pdf")">
+                <i class="fas fa-file-pdf"></i> Descargar PDF
+            </button>
+            <button type="button" class="btn btn-warning btn-lg ms-2" onclick="generateCard('@Model.Card.UserId')"><i class="fas fa-sync-alt"></i> Regenerar</button>
+            <a href="/InstitutionalCredential/ui" class="btn btn-secondary btn-lg ms-2">Volver</a>
+        </div>
+    }
+</div>
+
+<script>
+    (function () {
+        var btn = document.getElementById('btnDownloadPdf');
+        if (!btn) return;
+        btn.addEventListener('click', async function () {
+            var url = btn.getAttribute('data-pdf-url');
+            var name = btn.getAttribute('data-filename') || 'credencial.pdf';
+            btn.disabled = true;
+            var prev = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando PDF...';
+            try {
+                var r = await fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+                var ct = (r.headers.get('content-type') || '').toLowerCase();
+                if (!r.ok || !ct.includes('pdf')) {
+                    var errText = await r.text();
+                    alert(errText || 'No se pudo generar el PDF.');
+                    return;
+                }
+                var blob = await r.blob();
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(a.href);
+            } catch {
+                alert('Error de red al descargar el PDF.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = prev;
+            }
+        });
+    })();
+    function generateCard(id) {
+        var btn = document.getElementById('btnGenerate');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...'; }
+        var antiforgeryInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        fetch('/InstitutionalCredential/api/generate/' + id, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': antiforgeryInput ? antiforgeryInput.value : ''
+            }
+        }).then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data && data.cardNumber) {
+                window.location.href = '/InstitutionalCredential/ui/generate/' + id;
+            } else {
+                alert((data && data.message) ? data.message : 'No se pudo generar.');
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-id-badge"></i> Generar credencial'; }
+            }
+        }).catch(function () {
+            alert('Error de red.');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-id-badge"></i> Generar credencial'; }
+        });
+    }
+</script>

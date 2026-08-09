@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolManager.Dtos;
@@ -116,6 +116,7 @@ public class ClubParentsController : Controller
 
     /// <summary>POST /ClubParents/Carnet/MarkPaid — Marcar carnet como Pagado (Pendiente → Pagado).</summary>
     [HttpPost("Carnet/MarkPaid")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> MarkPaid([FromBody] StudentIdRequest request)
     {
         if (request == null || request.StudentId == Guid.Empty)
@@ -131,7 +132,7 @@ public class ClubParentsController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = "Error interno. Intente nuevamente." });
         }
         catch (Exception ex)
         {
@@ -142,6 +143,7 @@ public class ClubParentsController : Controller
 
     /// <summary>POST /ClubParents/Platform/Activate — Activar plataforma (Pendiente → Activo).</summary>
     [HttpPost("Platform/Activate")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ActivatePlatform([FromBody] StudentIdRequest request)
     {
         if (request == null || request.StudentId == Guid.Empty)
@@ -157,7 +159,7 @@ public class ClubParentsController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = "Error interno. Intente nuevamente." });
         }
         catch (Exception ex)
         {

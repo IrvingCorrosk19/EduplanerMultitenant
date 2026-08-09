@@ -58,7 +58,7 @@ public class GradeLevelService : IGradeLevelService
     public async Task<GradeLevel?> GetByIdAsync(Guid id)
     {
         var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-        var grade = await _context.GradeLevels.FindAsync(id);
+        var grade = await _context.GradeLevels.Where(x => x.Id == id).FirstOrDefaultAsync();
         if (grade == null || grade.SchoolId != schoolId) return null;
         return grade;
     }
@@ -103,7 +103,7 @@ public class GradeLevelService : IGradeLevelService
     public async Task<bool> DeleteAsync(Guid id)
     {
         var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-        var entity = await _context.GradeLevels.FindAsync(id);
+        var entity = await _context.GradeLevels.Where(x => x.Id == id).FirstOrDefaultAsync();
         if (entity == null || entity.SchoolId != schoolId) return false;
 
         bool enUso = await _context.SubjectAssignments.AnyAsync(sa => sa.GradeLevelId == id);

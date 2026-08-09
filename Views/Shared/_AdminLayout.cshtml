@@ -22,6 +22,7 @@
         "inspector" => "Inspector",
         _ => userRole
     };
+    var showStaffInstitutionalProfileMenu = SchoolManager.Helpers.StaffInstitutionalProfileAccess.IsAllowedRole(userRole);
 }
 <!DOCTYPE html>
 <html lang="es">
@@ -221,6 +222,14 @@
                         </li>
                         }
                         *@
+                        @if (showStaffInstitutionalProfileMenu) {
+                        <li class="nav-item">
+                            <a href="@Url.Action("Index", "StaffInstitutionalProfile")" class="nav-link">
+                                <i class="nav-icon fas fa-id-badge"></i>
+                                <p>Mi perfil institucional</p>
+                            </a>
+                        </li>
+                        }
                         @if (userRole == "student" || userRole == "estudiante") {
                         <li class="nav-item">
                                 <a href="@Url.Action("Index", "StudentReport")" class="nav-link">
@@ -350,9 +359,39 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
+                                    <a href="@Url.Action("Index", "Reportes")" class="nav-link">
+                                        <i class="fas fa-th-large nav-icon"></i>
+                                        <p>Catálogo de reportes</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
                                     <a href="@Url.Action("Index", "AprobadosReprobados")" class="nav-link">
                                         <i class="fas fa-chart-bar nav-icon"></i>
                                         <p>Aprobados y Reprobados</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="@Url.Action("Index", "HabitosActitudesReport")" class="nav-link">
+                                        <i class="fas fa-clipboard-check nav-icon"></i>
+                                        <p>Hábitos y Actitudes</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="@Url.Action("ExpresionesArtisticas", "CalificacionesInforme")" class="nav-link">
+                                        <i class="fas fa-palette nav-icon"></i>
+                                        <p>Expresiones Artísticas</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="@Url.Action("Tecnologia", "CalificacionesInforme")" class="nav-link">
+                                        <i class="fas fa-microchip nav-icon"></i>
+                                        <p>Tecnología</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="@Url.Action("Index", "FormatoCarpetasReport")" class="nav-link">
+                                        <i class="fas fa-folder-open nav-icon"></i>
+                                        <p>Formato para Carpetas</p>
                                     </a>
                                 </li>
                             </ul>
@@ -765,5 +804,42 @@
     </style>
 
     @RenderSection("Scripts", required: false)
+
+    @* Token antiforgery global — disponible en todas las vistas para AJAX *@
+    @Html.AntiForgeryToken()
+    <script>
+        // Interceptor global: inyecta RequestVerificationToken en todos los fetch() y $.ajax()
+        (function () {
+            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            const token = tokenInput ? tokenInput.value : '';
+            if (!token) return;
+
+            const _fetch = window.fetch;
+            window.fetch = function (url, options) {
+                options = options || {};
+                options.headers = options.headers || {};
+                const method = (options.method || 'GET').toUpperCase();
+                if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+                    if (options.headers instanceof Headers) {
+                        options.headers.set('RequestVerificationToken', token);
+                    } else {
+                        options.headers['RequestVerificationToken'] = token;
+                    }
+                }
+                return _fetch(url, options);
+            };
+
+            if (typeof $ !== 'undefined' && $.ajaxSetup) {
+                $.ajaxSetup({
+                    beforeSend: function (xhr, settings) {
+                        const m = (settings.type || 'GET').toUpperCase();
+                        if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(m)) {
+                            xhr.setRequestHeader('RequestVerificationToken', token);
+                        }
+                    }
+                });
+            }
+        })();
+    </script>
 </body>
 </html>

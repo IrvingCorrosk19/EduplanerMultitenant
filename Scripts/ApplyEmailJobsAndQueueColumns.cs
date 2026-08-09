@@ -14,8 +14,9 @@ public static class ApplyEmailJobsAndQueueColumns
     {
         // ── 1. Crear tabla email_jobs ─────────────────────────────────────────
         await context.Database.ExecuteSqlRawAsync("""
+            CREATE EXTENSION IF NOT EXISTS "pgcrypto";
             CREATE TABLE IF NOT EXISTS email_jobs (
-                id uuid NOT NULL DEFAULT uuid_generate_v4(),
+                id uuid NOT NULL DEFAULT gen_random_uuid(),
                 correlation_id uuid NOT NULL,
                 created_by_user_id uuid NOT NULL,
                 school_id uuid,

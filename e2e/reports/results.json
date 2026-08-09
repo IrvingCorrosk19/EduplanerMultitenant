@@ -1,0 +1,577 @@
+{
+  "config": {
+    "configFile": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright.config.ts",
+    "rootDir": "C:/Proyectos/EduplanerMultitenant/SchoolManager/e2e/tests",
+    "forbidOnly": true,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Proyectos/EduplanerMultitenant/SchoolManager/e2e/reports/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Proyectos/EduplanerMultitenant/SchoolManager/e2e/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "reports/html",
+          "open": "never"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "reports/results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.59.1",
+    "workers": 1,
+    "webServer": {
+      "command": "dotnet publish SchoolManager.csproj -c Release -o .e2e_publish -v minimal /p:UseAppHost=false && dotnet .e2e_publish\\SchoolManager.dll --urls http://127.0.0.1:5173",
+      "cwd": "..",
+      "url": "http://127.0.0.1:5173/",
+      "reuseExistingServer": true,
+      "timeout": 180000,
+      "stdout": "pipe",
+      "stderr": "pipe"
+    }
+  },
+  "suites": [
+    {
+      "title": "admin.spec.ts",
+      "file": "admin.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Admin escuela Canton",
+          "file": "admin.spec.ts",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "login y redirección post-login",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4838,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T21:34:13.376Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\admin-Admin-escuela-Canton-login-y-redirección-post-login-chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\admin-Admin-escuela-Canton-login-y-redirección-post-login-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d4043a9dd1ab94463227-3464c8baade2b0d8c225",
+              "file": "admin.spec.ts",
+              "line": 6,
+              "column": 3
+            },
+            {
+              "title": "/User/Index accesible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5804,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T21:34:18.699Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\admin-Admin-escuela-Canton-User-Index-accesible-chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\admin-Admin-escuela-Canton-User-Index-accesible-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d4043a9dd1ab94463227-d485da7fad8fd867697c",
+              "file": "admin.spec.ts",
+              "line": 12,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "ownership.spec.ts",
+      "file": "ownership.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Ownership multi-escuela (403)",
+          "file": "ownership.spec.ts",
+          "line": 6,
+          "column": 6,
+          "specs": [
+            {
+              "title": "admin Canton: /User/Edit/{usuario otra escuela} → 403",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 9786,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T21:34:24.928Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\ownership-Ownership-multi--52995--usuario-otra-escuela-→-403-chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\ownership-Ownership-multi--52995--usuario-otra-escuela-→-403-chromium\\test-finished-2.png"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\ownership-Ownership-multi--52995--usuario-otra-escuela-→-403-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d4d6a40ebc7c4dfca9d2-6321c0b77ad267a007cd",
+              "file": "ownership.spec.ts",
+              "line": 9,
+              "column": 3
+            },
+            {
+              "title": "estudiante Canton: /Student/Details/{id estudiante otra escuela} → 403",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 9950,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T21:34:35.218Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\ownership-Ownership-multi--2a44f-tudiante-otra-escuela-→-403-chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\ownership-Ownership-multi--2a44f-tudiante-otra-escuela-→-403-chromium\\test-finished-2.png"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\ownership-Ownership-multi--2a44f-tudiante-otra-escuela-→-403-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d4d6a40ebc7c4dfca9d2-2b1c7b1b326cf3d59d1b",
+              "file": "ownership.spec.ts",
+              "line": 16,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "privilege-escalation.spec.ts",
+      "file": "privilege-escalation.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Escalación de privilegios",
+          "file": "privilege-escalation.spec.ts",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "profesor no puede usar /User/Index (solo admin)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3684,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T21:34:45.685Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\privilege-escalation-Escal-fbdb2-usar-User-Index-solo-admin--chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\privilege-escalation-Escal-fbdb2-usar-User-Index-solo-admin--chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "325725808be1f5b1caab-d7892e3ee5ce2b6fb410",
+              "file": "privilege-escalation.spec.ts",
+              "line": 6,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "roles-smoke.spec.ts",
+      "file": "roles-smoke.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Smoke por rol (Canton)",
+          "file": "roles-smoke.spec.ts",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "profesor: TeacherGradebook Index",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3623,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T21:34:49.796Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\roles-smoke-Smoke-por-rol--e13a0-esor-TeacherGradebook-Index-chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\roles-smoke-Smoke-por-rol--e13a0-esor-TeacherGradebook-Index-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0f22eb8e47e7eb945eff-341db00f8fd48c770aca",
+              "file": "roles-smoke.spec.ts",
+              "line": 6,
+              "column": 3
+            },
+            {
+              "title": "estudiante: StudentReport (notas)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4314,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T21:34:53.740Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\roles-smoke-Smoke-por-rol--cb30b-diante-StudentReport-notas--chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\roles-smoke-Smoke-por-rol--cb30b-diante-StudentReport-notas--chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0f22eb8e47e7eb945eff-ea5b0b8005b5689cba48",
+              "file": "roles-smoke.spec.ts",
+              "line": 13,
+              "column": 3
+            },
+            {
+              "title": "secretaria: StudentAssignment",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5572,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T21:34:58.387Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\roles-smoke-Smoke-por-rol--fe655-ecretaria-StudentAssignment-chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\roles-smoke-Smoke-por-rol--fe655-ecretaria-StudentAssignment-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0f22eb8e47e7eb945eff-5fd0fc150913b717a6d9",
+              "file": "roles-smoke.spec.ts",
+              "line": 20,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Aislamiento escuela B (San Miguelito)",
+          "file": "roles-smoke.spec.ts",
+          "line": 28,
+          "column": 6,
+          "specs": [
+            {
+              "title": "admin San Miguelito accede a /User/Index",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2554,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T21:35:04.312Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\roles-smoke-Aislamiento-es-9109a-guelito-accede-a-User-Index-chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\reports\\test-results\\roles-smoke-Aislamiento-es-9109a-guelito-accede-a-User-Index-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0f22eb8e47e7eb945eff-7b4d3722fc9be7549942",
+              "file": "roles-smoke.spec.ts",
+              "line": 29,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-05-03T21:34:04.567Z",
+    "duration": 62915.1,
+    "expected": 9,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

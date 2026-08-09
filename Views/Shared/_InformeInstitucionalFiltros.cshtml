@@ -1,0 +1,217 @@
+@model SchoolManager.ViewModels.InformeInstitucionalFiltroViewModel
+@{
+    var titulo = ViewBag.TituloInforme as string ?? "Informe Institucional";
+    var descripcion = ViewBag.DescripcionInforme as string ?? "";
+    var exportAction = ViewBag.ExportAction as string ?? "ExportarExcel";
+    var exportController = ViewBag.ExportController as string ?? ViewContext.RouteData.Values["controller"]?.ToString();
+    var requiereMateria = ViewBag.RequiereMateria as bool? ?? false;
+    var requiereTrimestre = ViewBag.RequiereTrimestre as bool? ?? true;
+    var trimestres = ViewBag.TrimestresDisponibles as List<string>;
+    var esDocente = ViewBag.EsDocente as bool? == true;
+    var tipoExport = ViewBag.TipoExport as string;
+    var textoTodasMaterias = esDocente ? "Todas mis materias" : "Todas las materias";
+    var textoTodosGrupos = esDocente ? "Todos mis grupos" : "Todos los grupos";
+    var textoTodosNiveles = esDocente ? "Todos mis niveles" : "Todos los niveles";
+    ViewData["Title"] = titulo;
+    Layout = "_AdminLayout";
+}
+
+<div class="container-fluid py-4">
+    <div class="row mb-3">
+        <div class="col-12">
+            <a href="@Url.Action("Index", "Reportes")" class="btn btn-link ps-0 text-decoration-none">
+                <i class="bi bi-arrow-left"></i> Volver al catálogo de reportes
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-2"><i class="bi bi-file-earmark-spreadsheet"></i> @titulo</h2>
+            @if (!string.IsNullOrWhiteSpace(descripcion))
+            {
+                <p class="text-muted">@descripcion</p>
+            }
+            @if (esDocente)
+            {
+                <p class="text-muted small mb-0">Solo verá grupos y materias de <strong>sus asignaciones</strong>.</p>
+            }
+        </div>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filtros</h5>
+        </div>
+        <div class="card-body">
+            <form id="filtro-form">
+                <div class="row">
+                    <div class="col-md-6 col-lg-3">
+                        <label class="form-label"><strong>Grado / Nivel:</strong> <span class="text-danger">*</span></label>
+                        <select class="form-select" id="nivelEducativo" required>
+                            <option value="">-- Seleccione un grado --</option>
+                        </select>
+                        <small class="text-muted">Grados de sus asignaciones (1°, 2°, 7°, etc.).</small>
+                    </div>
+                    @if (requiereTrimestre)
+                    {
+                        <div class="col-md-6 col-lg-3">
+                            <label class="form-label"><strong>Trimestre:</strong> <span class="text-danger">*</span></label>
+                            <select class="form-select" id="trimestre" required>
+                                <option value="">-- Seleccione --</option>
+                                @if (trimestres != null)
+                                {
+                                    foreach (var t in trimestres)
+                                    {
+                                        <option value="@t">@t</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    }
+                    @if (requiereMateria)
+                    {
+                        <div class="col-md-6 col-lg-3">
+                            <label class="form-label"><strong>Materia:</strong> <span class="text-danger">*</span></label>
+                            <select class="form-select" id="materiaId" required disabled>
+                                <option value="">-- Seleccione primero el nivel --</option>
+                            </select>
+                        </div>
+                    }
+                    <div class="col-md-6 col-lg-3">
+                        <label class="form-label"><strong>Grupo:</strong> <span class="text-danger">*</span></label>
+                        <select class="form-select" id="grupoCombo" required disabled>
+                            <option value="">-- Seleccione primero el grado --</option>
+                        </select>
+                        <input type="hidden" id="groupId" />
+                        <input type="hidden" id="gradeLevelId" />
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12 text-center">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-download"></i> Descargar Excel
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            const TODOS = '@SchoolManager.ViewModels.AprobadosReprobadosFiltroValores.Todos';
+            const GUID_VACIO = '00000000-0000-0000-0000-000000000000';
+            const requiereMateria = @requiereMateria.ToString().ToLower();
+            const requiereTrimestre = @requiereTrimestre.ToString().ToLower();
+            const tipoExport = '@(tipoExport ?? "")';
+            const exportUrl = '@Url.Action(exportAction, exportController)';
+
+            cargarNiveles();
+
+            function cargarNiveles() {
+                $.get('@Url.Action("ObtenerNivelesFiltro", "AprobadosReprobados")').done(function (r) {
+                    const s = $('#nivelEducativo').html('<option value="">-- Seleccione un grado --</option>');
+                    if (r.success && r.data) {
+                        r.data.forEach(n => s.append(`<option value="${n.id}">${n.nombre}</option>`));
+                    }
+                });
+            }
+
+            function resetDependientes() {
+                if (requiereMateria) {
+                    $('#materiaId').prop('disabled', true).html('<option value="">-- Seleccione primero el grado --</option>');
+                }
+                $('#grupoCombo').prop('disabled', true).html('<option value="">-- Seleccione primero el grado --</option>');
+                $('#groupId, #gradeLevelId').val('');
+            }
+
+            function cargarMaterias(nivel) {
+                if (!requiereMateria) { cargarGrupos(GUID_VACIO, nivel); return; }
+                $('#materiaId').prop('disabled', true).html('<option value="">Cargando...</option>');
+                $.get('@Url.Action("ObtenerMateriasFiltro", "AprobadosReprobados")', { nivelEducativo: nivel })
+                    .done(function (r) {
+                        const s = $('#materiaId').html('<option value="">-- Seleccione una materia --</option>');
+                        if (r.success && r.data) {
+                            r.data.forEach(m => s.append(`<option value="${m.id}">${m.nombre}</option>`));
+                            s.prop('disabled', false);
+                        }
+                    });
+            }
+
+            function cargarGrupos(materiaId, nivel) {
+                const idConsulta = requiereMateria ? materiaId : GUID_VACIO;
+                $('#grupoCombo').prop('disabled', true).html('<option value="">Cargando...</option>');
+                $.get('@Url.Action("ObtenerGruposFiltro", "AprobadosReprobados")', { materiaId: idConsulta, nivelEducativo: nivel })
+                    .done(function (r) {
+                        const s = $('#grupoCombo').html('<option value="">-- Seleccione un grupo --</option>');
+                        if (r.success && r.data) {
+                            r.data.forEach(g => {
+                                const val = `${g.groupId}|${g.gradeLevelId}`;
+                                s.append(`<option value="${val}">${g.nombre}</option>`);
+                            });
+                            s.prop('disabled', false);
+                        }
+                    });
+            }
+
+            $('#nivelEducativo').change(function () {
+                resetDependientes();
+                if (!$(this).val()) return;
+                cargarMaterias($(this).val());
+            });
+
+            if (requiereMateria) {
+                $('#materiaId').change(function () {
+                    const nivel = $('#nivelEducativo').val();
+                    if (!$(this).val() || !nivel) return;
+                    cargarGrupos($(this).val(), nivel);
+                });
+            }
+
+            $('#grupoCombo').change(function () {
+                const p = ($(this).val() || '').split('|');
+                $('#groupId').val(p[0] || '');
+                $('#gradeLevelId').val(p[1] || '');
+            });
+
+            $('#filtro-form').submit(function (e) {
+                e.preventDefault();
+                const nivel = $('#nivelEducativo').val();
+                const trimestre = requiereTrimestre ? $('#trimestre').val() : '';
+                const materiaId = requiereMateria ? $('#materiaId').val() : GUID_VACIO;
+                const groupId = $('#groupId').val();
+                const gradeLevelId = $('#gradeLevelId').val();
+
+                if (!nivel || !groupId || !gradeLevelId) {
+                    Swal.fire('Error', 'Seleccione grado y grupo.', 'error');
+                    return;
+                }
+                if (requiereTrimestre && !trimestre) {
+                    Swal.fire('Error', 'Seleccione trimestre.', 'error');
+                    return;
+                }
+                if (requiereMateria && !materiaId) {
+                    Swal.fire('Error', 'Seleccione materia.', 'error');
+                    return;
+                }
+
+                let url = exportUrl + '?nivelEducativo=' + encodeURIComponent(nivel) +
+                    '&groupId=' + encodeURIComponent(groupId) +
+                    '&gradeLevelId=' + encodeURIComponent(gradeLevelId);
+                if (requiereTrimestre) url += '&trimestre=' + encodeURIComponent(trimestre);
+                if (requiereMateria) url += '&materiaId=' + encodeURIComponent(materiaId);
+                if (tipoExport) url += '&tipo=' + encodeURIComponent(tipoExport);
+
+                window.location.href = url;
+            });
+        });
+    </script>
+}

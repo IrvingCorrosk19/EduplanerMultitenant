@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using SchoolManager.Dtos;
@@ -190,17 +190,10 @@ public class PrematriculationController : Controller
         ViewBag.AllGrades = allGrades.Select(g => new { id = g.Id, name = g.Name }).ToList();
 
         // Logs de depuración
-        Console.WriteLine($"[DEBUG] Prematriculation/Create - Total grados: {allGrades.Count()}");
-        Console.WriteLine($"[DEBUG] Prematriculation/Create - Grados disponibles: {availableGrades.Count()}");
-        Console.WriteLine($"[DEBUG] Prematriculation/Create - ViewBag.Grades es null: {ViewBag.Grades == null}");
-        if (availableGrades != null && availableGrades.Any())
+        _logger.LogDebug("Prematriculation/Create - Total grados: {TotalGrades}, Grados disponibles: {AvailableGrades}", allGrades.Count(), availableGrades.Count());
+        if (!availableGrades.Any())
         {
-            Console.WriteLine($"[DEBUG] Prematriculation/Create - Primer grado disponible: {availableGrades.First().Name} (ID: {availableGrades.First().Id})");
-        }
-        else
-        {
-            Console.WriteLine("[DEBUG] Prematriculation/Create - ¡NO HAY GRADOS DISPONIBLES!");
-            _logger.LogWarning("Prematriculation/Create - No hay grados disponibles para mostrar. Total grados en sistema: {TotalGrades}, Grados disponibles filtrados: {AvailableGrades}", 
+            _logger.LogWarning("Prematriculation/Create - No hay grados disponibles para mostrar. Total grados en sistema: {TotalGrades}, Grados disponibles filtrados: {AvailableGrades}",
                 allGrades.Count(), availableGrades?.Count() ?? 0);
         }
 
@@ -324,7 +317,7 @@ public class PrematriculationController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al crear prematrícula");
-            ModelState.AddModelError("", "Error al crear la prematrícula: " + ex.Message);
+            ModelState.AddModelError("", "Error al crear la prematrícula. Intente nuevamente.");
             return View(dto);
         }
     }
@@ -453,7 +446,7 @@ public class PrematriculationController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al confirmar matrícula");
-            TempData["ErrorMessage"] = "Error al confirmar la matrícula: " + ex.Message;
+            TempData["ErrorMessage"] = "Error al confirmar la matrícula. Intente nuevamente.";
         }
 
         return RedirectToAction(nameof(Index));
@@ -600,8 +593,8 @@ public class PrematriculationController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al aplicar cambios a la base de datos");
-            TempData["Error"] = $"Error al aplicar cambios: {ex.Message}";
-            return Json(new { success = false, message = ex.Message });
+            TempData["Error"] = "Error interno. Intente nuevamente.";
+            return Json(new { success = false, message = "Error interno. Intente nuevamente." });
         }
     }
 
@@ -630,8 +623,8 @@ public class PrematriculationController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al aplicar cambios de Año Académico");
-            TempData["Error"] = $"Error al aplicar cambios: {ex.Message}";
-            return Json(new { success = false, message = ex.Message });
+            TempData["Error"] = "Error interno. Intente nuevamente.";
+            return Json(new { success = false, message = "Error interno. Intente nuevamente." });
         }
     }
 

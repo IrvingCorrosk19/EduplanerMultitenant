@@ -33,7 +33,7 @@ namespace SchoolManager.Services
         {
             if (!id.HasValue) return null;
             var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-            var report = await _context.OrientationReports.FindAsync(id.Value);
+            var report = await _context.OrientationReports.Where(x => x.Id == id.Value).FirstOrDefaultAsync();
             if (report == null || report.SchoolId != schoolId) return null;
             return report;
         }
@@ -55,7 +55,7 @@ namespace SchoolManager.Services
         public async Task DeleteAsync(Guid id)
         {
             var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-            var report = await _context.OrientationReports.FindAsync(id);
+            var report = await _context.OrientationReports.Where(x => x.Id == id).FirstOrDefaultAsync();
             if (report == null || report.SchoolId != schoolId) return;
             _context.OrientationReports.Remove(report);
             await _context.SaveChangesAsync();

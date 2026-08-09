@@ -6,6 +6,7 @@ using SchoolManager.Models;
 using SchoolManager.Services.Interfaces;
 using SchoolManager.ViewModels;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SchoolManager.Services.Implementations
 {
@@ -42,7 +43,7 @@ namespace SchoolManager.Services.Implementations
                     schoolId, trimestre, nivelEducativo);
 
                 // Obtener información de la escuela
-                var school = await _context.Schools.FindAsync(schoolId);
+                var school = await _context.Schools.Where(x => x.Id == schoolId).FirstOrDefaultAsync();
                 if (school == null)
                     throw new Exception("Escuela no encontrada");
 
@@ -389,6 +390,180 @@ namespace SchoolManager.Services.Implementations
                 _logger.LogError(ex, "Error obteniendo materias");
                 return new List<(Guid, string)>();
             }
+        }
+
+        public async Task<List<AprobadosReprobadosNivelFiltroDto>> ObtenerNivelesFiltroAsync(Guid schoolId, Guid? teacherScopeId = null)
+        {
+            var rows = await CargarAsignacionesInformeAsync(schoolId, teacherScopeId);
+            return rows
+                .GroupBy(r => r.GradeLevelId)
+                .Select(g =>
+                {
+                    var first = g.First();
+                    return new AprobadosReprobadosNivelFiltroDto
+                    {
+                        Id = first.GradeLevelId,
+                        Nombre = FormatearNombreGradoInforme(first.GradeLevelName, null),
+                        Orden = OrdenGradoInforme(first.GradeLevelName, first.GroupGrade)
+                    };
+                })
+                .OrderBy(n => n.Orden)
+                .ThenBy(n => n.Nombre, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        public async Task<List<(Guid Id, string Nombre)>> ObtenerMateriasFiltroAsync(
+            Guid schoolId, string? nivelEducativo = null, Guid? teacherScopeId = null)
+        {
+            var rows = FiltrarPorGradoInforme(await CargarAsignacionesInformeAsync(schoolId, teacherScopeId), nivelEducativo);
+            return rows
+                .GroupBy(r => r.SubjectId)
+                .Select(g => (g.Key, g.First().SubjectName))
+                .OrderBy(x => x.Item2)
+                .ToList();
+        }
+
+        public async Task<List<AprobadosReprobadosGrupoFiltroDto>> ObtenerGruposFiltroAsync(
+            Guid schoolId, Guid materiaId, string? nivelEducativo = null, Guid? teacherScopeId = null)
+        {
+            var rows = FiltrarPorGradoInforme(await CargarAsignacionesInformeAsync(schoolId, teacherScopeId), nivelEducativo);
+            var todasMaterias = AprobadosReprobadosFiltroValores.EsTodos(materiaId);
+
+            var filtered = todasMaterias
+                ? rows
+                : rows.Where(r => r.SubjectId == materiaId);
+
+            return filtered
+                .GroupBy(r => new { r.SubjectId, r.GroupId, r.GradeLevelId })
+                .Select(g =>
+                {
+                    var first = g.First();
+                    var etiquetaGrupo = FormatearEtiquetaGrupoInforme(first);
+                    var nombre = todasMaterias
+                        ? $"{first.SubjectName} — {etiquetaGrupo}"
+                        : etiquetaGrupo;
+                    return new AprobadosReprobadosGrupoFiltroDto
+                    {
+                        SubjectId = todasMaterias ? first.SubjectId : null,
+                        GroupId = first.GroupId,
+                        GradeLevelId = first.GradeLevelId,
+                        Nombre = nombre,
+                        GradoGrupo = FormatearNombreGradoInforme(first.GradeLevelName, null)
+                    };
+                })
+                .OrderBy(g => g.Nombre)
+                .ToList();
+        }
+
+        public async Task<List<AprobadosReprobadosComboFiltroDto>> ObtenerAsignacionesComboAsync(
+            Guid schoolId, Guid? teacherScopeId = null)
+        {
+            var rows = await CargarAsignacionesInformeAsync(schoolId, teacherScopeId);
+            return rows
+                .GroupBy(r => new { r.SubjectId, r.GroupId, r.GradeLevelId })
+                .Select(g => g.First())
+                .OrderBy(r => r.SubjectName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(r => OrdenGradoInforme(r.GradeLevelName, r.GroupGrade))
+                .ThenBy(r => r.GroupName, StringComparer.OrdinalIgnoreCase)
+                .Select(r => new AprobadosReprobadosComboFiltroDto
+                {
+                    Value = $"{r.SubjectId}|{r.GroupId}|{r.GradeLevelId}",
+                    Text = $"{r.SubjectName} - {r.GradeLevelName} {r.GroupName}"
+                })
+                .ToList();
+        }
+
+        private async Task<List<AprobadosReprobadosAsignacionRow>> CargarAsignacionesInformeAsync(Guid schoolId, Guid? teacherScopeId)
+        {
+            if (teacherScopeId.HasValue)
+            {
+                return await _context.TeacherAssignments
+                    .AsNoTracking()
+                    .Where(ta => ta.TeacherId == teacherScopeId.Value && ta.SchoolId == schoolId)
+                    .Select(ta => new AprobadosReprobadosAsignacionRow
+                    {
+                        SubjectId = ta.SubjectAssignment.SubjectId,
+                        SubjectName = ta.SubjectAssignment.Subject!.Name,
+                        GroupId = ta.SubjectAssignment.GroupId,
+                        GroupName = ta.SubjectAssignment.Group!.Name,
+                        GradeLevelId = ta.SubjectAssignment.GradeLevelId,
+                        GradeLevelName = ta.SubjectAssignment.GradeLevel!.Name,
+                        GroupGrade = ta.SubjectAssignment.Group.Grade
+                    })
+                    .ToListAsync();
+            }
+
+            var rows = await _context.SubjectAssignments
+                .AsNoTracking()
+                .Where(sa => sa.SchoolId == schoolId || sa.Group!.SchoolId == schoolId)
+                .Select(sa => new AprobadosReprobadosAsignacionRow
+                {
+                    SubjectId = sa.SubjectId,
+                    SubjectName = sa.Subject.Name,
+                    GroupId = sa.GroupId,
+                    GroupName = sa.Group.Name,
+                    GradeLevelId = sa.GradeLevelId,
+                    GradeLevelName = sa.GradeLevel.Name,
+                    GroupGrade = sa.Group.Grade
+                })
+                .ToListAsync();
+
+            return rows
+                .GroupBy(r => new { r.SubjectId, r.GroupId, r.GradeLevelId })
+                .Select(g => g.First())
+                .ToList();
+        }
+
+        private static List<AprobadosReprobadosAsignacionRow> FiltrarPorGradoInforme(
+            List<AprobadosReprobadosAsignacionRow> rows,
+            string? nivelGradeLevelId)
+        {
+            if (AprobadosReprobadosFiltroValores.EsTodos(nivelGradeLevelId))
+                return rows;
+
+            if (!Guid.TryParse(nivelGradeLevelId, out var gradeLevelId))
+                return new List<AprobadosReprobadosAsignacionRow>();
+
+            return rows.Where(r => r.GradeLevelId == gradeLevelId).ToList();
+        }
+
+        private static string FormatearNombreGradoInforme(string? gradeLevelName, string? groupGrade)
+        {
+            var numero = ExtractGradeNumberInforme(gradeLevelName);
+            if (numero.HasValue)
+                return $"{numero}°";
+
+            if (!string.IsNullOrWhiteSpace(groupGrade))
+                return groupGrade.Trim();
+
+            return string.IsNullOrWhiteSpace(gradeLevelName) ? "Grado" : gradeLevelName.Trim();
+        }
+
+        private static string FormatearEtiquetaGrupoInforme(AprobadosReprobadosAsignacionRow a)
+        {
+            var nombre = (a.GroupName ?? "").Trim();
+            if (string.IsNullOrEmpty(nombre))
+                return "-";
+
+            if (nombre.Contains('-', StringComparison.Ordinal))
+                return nombre;
+
+            var gradoCorto = FormatearNombreGradoInforme(a.GradeLevelName, null).Replace("°", "", StringComparison.Ordinal).Trim();
+            if (string.IsNullOrEmpty(gradoCorto))
+                return nombre;
+
+            return $"{gradoCorto}-{nombre}";
+        }
+
+        private static int OrdenGradoInforme(string? gradeLevelName, string? groupGrade) =>
+            ExtractGradeNumberInforme(gradeLevelName) ?? ExtractGradeNumberInforme(groupGrade) ?? 999;
+
+        private static int? ExtractGradeNumberInforme(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+            var match = Regex.Match(name, @"(\d+)");
+            return match.Success && int.TryParse(match.Value, out var n) ? n : null;
         }
 
         #region PDF institucional – solo capa visual (read-only, sin lógica de negocio)

@@ -10,6 +10,7 @@ using SchoolManager.Services.Interfaces;
 using SchoolManager.Dtos;
 using SchoolManager.Constants;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 [Authorize(Roles = "admin")]
 public class UserController : Controller
@@ -21,6 +22,7 @@ public class UserController : Controller
     private readonly IMapper _mapper;
     private readonly IEmailConfigurationService _emailConfigurationService;
     private readonly ICurrentUserService _currentUserService;
+    private readonly SchoolDbContext _db;
     private readonly ILogger<UserController> _logger;
 
     public UserController(
@@ -31,6 +33,7 @@ public class UserController : Controller
         IMapper mapper,
         IEmailConfigurationService emailConfigurationService,
         ICurrentUserService currentUserService,
+        SchoolDbContext db,
         ILogger<UserController> logger)
     {
         _userService = userService;
@@ -40,7 +43,58 @@ public class UserController : Controller
         _mapper = mapper;
         _emailConfigurationService = emailConfigurationService;
         _currentUserService = currentUserService;
+        _db = db;
         _logger = logger;
+    }
+
+    /// <summary>Ownership multi-escuela: 404 si no existe; 403 si existe fuera del tenant del admin.</summary>
+    private async Task<IActionResult?> RequireManagedUserSameSchoolAsync(Guid userId)
+    {
+        var mySchoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+        if (!mySchoolId.HasValue)
+        {
+            _logger.LogWarning("UserController: admin sin SchoolId.");
+            return Forbid();
+        }
+
+        var row = await _db.Users.AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(u => u.Id == userId)
+            .Select(u => new { u.SchoolId })
+            .FirstOrDefaultAsync();
+
+        if (row == null)
+            return NotFound();
+
+        if (!row.SchoolId.HasValue || row.SchoolId.Value != mySchoolId.Value)
+        {
+            _logger.LogWarning("UserController: acceso cross-tenant denegado. TargetUser={UserId}", userId);
+            return Forbid();
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Tras el gate de tenant: si GQF oculta el usuario (otra escuela), devolver 403 en lugar de 404.
+    /// </summary>
+    private async Task<(User? user, IActionResult? deny)> LoadManagedUserOrCrossTenantForbidAsync(Guid id)
+    {
+        var user = await _userService.GetByIdAsync(id);
+        if (user != null)
+            return (user, null);
+        if (await _db.Users.AsNoTracking().IgnoreQueryFilters().AnyAsync(u => u.Id == id))
+            return (null, Forbid());
+        return (null, NotFound());
+    }
+
+    private void FillEditRolesViewBag()
+    {
+        ViewBag.Roles = Enum.GetValues(typeof(UserRole))
+            .Cast<UserRole>()
+            .Where(r => r != UserRole.Superadmin && r != UserRole.Admin && r != UserRole.Student && r != UserRole.Estudiante)
+            .Select(r => new SelectListItem(r.ToString(), r.ToString().ToLower()))
+            .ToList();
     }
 
     [HttpPost]
@@ -89,7 +143,7 @@ public class UserController : Controller
             Status = model.Status,
             SchoolId = currentSchoolId,
             CreatedAt = DateTime.UtcNow,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.PasswordHash ?? "123456"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.PasswordHash ?? DefaultTemporaryPassword.Generate()),
             DateOfBirth = model.DateOfBirth?.ToUniversalTime(),
             CellphonePrimary = model.CellphonePrimary,
             CellphoneSecondary = model.CellphoneSecondary,
@@ -156,8 +210,10 @@ public class UserController : Controller
 
     public async Task<IActionResult> Details(Guid id)
     {
-        var user = await _userService.GetByIdAsync(id);
-        if (user == null) return NotFound();
+        var gate = await RequireManagedUserSameSchoolAsync(id);
+        if (gate != null) return gate;
+        var (user, deny) = await LoadManagedUserOrCrossTenantForbidAsync(id);
+        if (deny != null) return deny;
         return View(user);
     }
 
@@ -183,25 +239,59 @@ public class UserController : Controller
 
     public async Task<IActionResult> Edit(Guid id)
     {
-        var user = await _userService.GetByIdAsync(id);
-        if (user == null) return NotFound();
-        ViewBag.Roles = Enum.GetValues(typeof(UserRole))
-            .Cast<UserRole>()
-            .Where(r => r != UserRole.Superadmin && r != UserRole.Admin && r != UserRole.Student && r != UserRole.Estudiante)
-            .Select(r => new SelectListItem(r.ToString(), r.ToString().ToLower()))
-            .ToList();
+        var gate = await RequireManagedUserSameSchoolAsync(id);
+        if (gate != null) return gate;
+        var (user, deny) = await LoadManagedUserOrCrossTenantForbidAsync(id);
+        if (deny != null) return deny;
+        FillEditRolesViewBag();
         return View(user);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Edit(User user)
+    public async Task<IActionResult> Edit()
     {
-        if (ModelState.IsValid)
+        if (!Guid.TryParse(Request.Form["Id"].FirstOrDefault(), out var id) || id == Guid.Empty)
         {
-            await _userService.UpdateAsync(user);
+            TempData["Error"] = "Identificador de usuario no válido.";
             return RedirectToAction(nameof(Index));
         }
-        return View(user);
+
+        var gate = await RequireManagedUserSameSchoolAsync(id);
+        if (gate != null) return gate;
+        var (loaded, deny) = await LoadManagedUserOrCrossTenantForbidAsync(id);
+        if (deny != null) return deny;
+        if (loaded == null)
+            return NotFound();
+        var existing = loaded;
+
+        // Evitar model binding directo a User (PasswordHash/SchoolId/etc. no vienen del form y rompen ModelState).
+        var ok = await TryUpdateModelAsync(
+            existing,
+            string.Empty,
+            u => u.Name,
+            u => u.LastName,
+            u => u.Email,
+            u => u.DocumentId,
+            u => u.Role,
+            u => u.Status,
+            u => u.DateOfBirth,
+            u => u.CellphonePrimary,
+            u => u.CellphoneSecondary,
+            u => u.Disciplina,
+            u => u.Inclusion,
+            u => u.Orientacion,
+            u => u.Inclusivo);
+
+        if (!ok)
+        {
+            (existing, deny) = await LoadManagedUserOrCrossTenantForbidAsync(id);
+            if (deny != null) return deny;
+            FillEditRolesViewBag();
+            return View(existing!);
+        }
+
+        await _userService.UpdateAsync(existing, new List<Guid>(), new List<Guid>());
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost]
@@ -209,14 +299,10 @@ public class UserController : Controller
     [RequestSizeLimit(12 * 1024 * 1024)]
     public async Task<IActionResult> UpdatePhoto(Guid id, IFormFile? photo)
     {
-        var user = await _userService.GetByIdAsync(id);
-        if (user == null) return NotFound();
-        var school = await _currentUserService.GetCurrentUserSchoolAsync();
-        if (school != null && user.SchoolId != school.Id)
-        {
-            TempData["Error"] = "No puede modificar la foto de un usuario de otra escuela.";
-            return RedirectToAction(nameof(Edit), new { id });
-        }
+        var gate = await RequireManagedUserSameSchoolAsync(id);
+        if (gate != null) return gate;
+        var (user, deny) = await LoadManagedUserOrCrossTenantForbidAsync(id);
+        if (deny != null) return deny;
         if (photo == null || photo.Length == 0)
         {
             TempData["Error"] = "Seleccione una imagen (JPEG o PNG; si supera 2 MB se comprimirá automáticamente, máx. de subida 12 MB).";
@@ -234,9 +320,10 @@ public class UserController : Controller
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Operación inválida al actualizar foto de usuario {UserId}", id);
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-                return Json(new { success = false, message = ex.Message });
-            TempData["Error"] = ex.Message;
+                return Json(new { success = false, message = "Operación no permitida. Verifique los datos." });
+            TempData["Error"] = "Operación no permitida. Verifique los datos.";
         }
         catch (Exception ex)
         {
@@ -253,14 +340,10 @@ public class UserController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemovePhoto(Guid id)
     {
-        var user = await _userService.GetByIdAsync(id);
-        if (user == null) return NotFound();
-        var school = await _currentUserService.GetCurrentUserSchoolAsync();
-        if (school != null && user.SchoolId != school.Id)
-        {
-            TempData["Error"] = "No puede modificar la foto de un usuario de otra escuela.";
-            return RedirectToAction(nameof(Edit), new { id });
-        }
+        var gate = await RequireManagedUserSameSchoolAsync(id);
+        if (gate != null) return gate;
+        var (user, deny) = await LoadManagedUserOrCrossTenantForbidAsync(id);
+        if (deny != null) return deny;
         try
         {
             await _userPhotoService.RemovePhotoAsync(id);
@@ -280,14 +363,18 @@ public class UserController : Controller
 
     public async Task<IActionResult> Delete(Guid id)
     {
-        var user = await _userService.GetByIdAsync(id);
-        if (user == null) return NotFound();
+        var gate = await RequireManagedUserSameSchoolAsync(id);
+        if (gate != null) return gate;
+        var (user, deny) = await LoadManagedUserOrCrossTenantForbidAsync(id);
+        if (deny != null) return deny;
         return View(user);
     }
 
     [HttpPost, ActionName("Delete")]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
+        var gate = await RequireManagedUserSameSchoolAsync(id);
+        if (gate != null) return gate;
         await _userService.DeleteAsync(id);
         TempData["SuccessMessage"] = "Usuario eliminado exitosamente.";
         return RedirectToAction(nameof(Index));
@@ -296,8 +383,10 @@ public class UserController : Controller
     [HttpGet]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var user = await _userService.GetByIdAsync(id);
-        if (user == null) return NotFound();
+        var gate = await RequireManagedUserSameSchoolAsync(id);
+        if (gate != null) return gate;
+        var (user, deny) = await LoadManagedUserOrCrossTenantForbidAsync(id);
+        if (deny != null) return deny;
 
         var result = new
         {
@@ -314,7 +403,11 @@ public class UserController : Controller
     [HttpGet]
     public async Task<IActionResult> GetUserJson(Guid id)
     {
-        var user = await _userService.GetByIdWithRelationsAsync(id);
+        var gate = await RequireManagedUserSameSchoolAsync(id);
+        if (gate != null) return gate;
+        var (user, deny) = await LoadManagedUserOrCrossTenantForbidAsync(id);
+        if (deny != null) return deny;
+        user = await _userService.GetByIdWithRelationsAsync(id);
         if (user == null) return NotFound();
 
         var result = new
@@ -324,7 +417,6 @@ public class UserController : Controller
             user.LastName,
             user.Email,
             user.DocumentId,
-            user.PasswordHash,
             Role = char.ToUpper(user.Role[0]) + user.Role.Substring(1).ToLower(),
             user.Status,
             user.DateOfBirth,
@@ -379,37 +471,24 @@ public class UserController : Controller
     {
         try
         {
-            Console.WriteLine($"=== INICIO ACTUALIZACIÓN USUARIO ===");
-            Console.WriteLine($"Usuario ID: {model.Id}");
-            Console.WriteLine($"Nombre: {model.Name}");
-            Console.WriteLine($"Email: {model.Email}");
-            Console.WriteLine($"Celular Principal: {model.CellphonePrimary}");
-            Console.WriteLine($"Celular Secundario: {model.CellphoneSecondary}");
-            Console.WriteLine($"Disciplina: {model.Disciplina}");
-            Console.WriteLine($"Inclusion: {model.Inclusion}");
-            Console.WriteLine($"Orientacion: {model.Orientacion}");
-            Console.WriteLine($"Inclusivo: {model.Inclusivo}");
-            
             _logger.LogInformation("Iniciando actualización de usuario {UserId}", model.Id);
 
             if (!ModelState.IsValid)
             {
-                Console.WriteLine($"ModelState inválido: {string.Join(", ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage))}");
-                _logger.LogWarning("ModelState inválido para usuario {UserId}", model.Id);
+                _logger.LogWarning("ModelState inválido para usuario {UserId}: {Errors}", model.Id,
+                    string.Join(", ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
                 return BadRequest(ModelState);
             }
 
-            Console.WriteLine("Buscando usuario existente...");
+            var tenantGate = await RequireManagedUserSameSchoolAsync(model.Id);
+            if (tenantGate != null) return tenantGate;
+
             var existingUser = await _userService.GetByIdWithRelationsAsync(model.Id);
             if (existingUser == null)
             {
-                Console.WriteLine("Usuario no encontrado en la base de datos");
                 _logger.LogWarning("Usuario {UserId} no encontrado", model.Id);
                 return NotFound(new { message = "Usuario no encontrado" });
             }
-
-            Console.WriteLine($"Usuario encontrado: {existingUser.Name} {existingUser.LastName}");
-            Console.WriteLine("Actualizando campos del usuario...");
 
             var roleLower = model.Role?.Trim().ToLower() ?? "";
             var allowedRoles = new[] { "director", "teacher", "contable", "secretaria", "estudiante", "acudiente", "contabilidad", "parent", "admin", "clubparentsadmin", "qlservices", "inspector" };
@@ -432,39 +511,22 @@ public class UserController : Controller
             existingUser.Orientacion = model.Orientacion ?? false;
             existingUser.Inclusivo = model.Inclusivo ?? false;
 
-            Console.WriteLine("=== CAMPOS ASIGNADOS ===");
-            Console.WriteLine($"existingUser.Disciplina: {existingUser.Disciplina}");
-            Console.WriteLine($"existingUser.Inclusion: {existingUser.Inclusion}");
-            Console.WriteLine($"existingUser.Orientacion: {existingUser.Orientacion}");
-            Console.WriteLine($"existingUser.Inclusivo: {existingUser.Inclusivo}");
-            Console.WriteLine("Campos actualizados, guardando cambios...");
             _logger.LogInformation("Campos actualizados para usuario {UserId}", model.Id);
 
             if (!string.IsNullOrEmpty(model.PasswordHash))
             {
-                Console.WriteLine("Actualizando contraseña...");
                 // Hash de la contraseña antes de guardarla
                 existingUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.PasswordHash);
                 _logger.LogInformation("Contraseña actualizada para usuario {UserId}", model.Id);
             }
 
-            Console.WriteLine("Llamando al servicio para guardar cambios...");
             await _userService.UpdateAsync(existingUser, model.Subjects, model.Groups);
 
-            Console.WriteLine("Usuario actualizado exitosamente");
             _logger.LogInformation("Usuario {UserId} actualizado exitosamente", model.Id);
             return Ok(new { message = "Usuario actualizado correctamente" });
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"=== ERROR EN ACTUALIZACIÓN ===");
-            Console.WriteLine($"Error: {ex.Message}");
-            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-            }
-            
             _logger.LogError(ex, "Error al actualizar usuario {UserId}", model.Id);
             return StatusCode(500, new { message = "Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo." });
         }
@@ -476,6 +538,9 @@ public class UserController : Controller
         try
         {
             _logger.LogInformation("Iniciando envío de email de contraseña para usuario ID: {UserId}", id);
+
+            var tenantGate = await RequireManagedUserSameSchoolAsync(id);
+            if (tenantGate != null) return tenantGate;
             
             // Obtener el usuario
             var user = await _userService.GetByIdAsync(id);
@@ -509,7 +574,7 @@ public class UserController : Controller
                 emailConfig.SmtpServer, emailConfig.SmtpPort, emailConfig.SmtpUsername);
 
             // Generar una nueva contraseña temporal
-            var newPassword = DefaultTemporaryPassword.Value;
+            var newPassword = DefaultTemporaryPassword.Generate();
             _logger.LogInformation("Contraseña temporal generada para usuario: {UserEmail}", user.Email);
             
             // Actualizar la contraseña del usuario
@@ -535,7 +600,7 @@ public class UserController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error inesperado al enviar email de contraseña para usuario ID: {UserId}", id);
-            return BadRequest(new { message = $"Error: {ex.Message}" });
+            return BadRequest(new { message = "No se pudo enviar el correo. Intente nuevamente." });
         }
     }
 

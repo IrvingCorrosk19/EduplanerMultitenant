@@ -33,7 +33,7 @@ namespace SchoolManager.Services
         public async Task<Student?> GetByIdAsync(Guid id)
         {
             var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-            var student = await _context.Students.FindAsync(id);
+            var student = await _context.Students.Where(x => x.Id == id).FirstOrDefaultAsync();
             if (student == null || student.SchoolId != schoolId) return null;
             return student;
         }
@@ -53,7 +53,7 @@ namespace SchoolManager.Services
         public async Task DeleteAsync(Guid id)
         {
             var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-            var student = await _context.Students.FindAsync(id);
+            var student = await _context.Students.Where(x => x.Id == id).FirstOrDefaultAsync();
             if (student == null || student.SchoolId != schoolId) return;
             _context.Students.Remove(student);
             await _context.SaveChangesAsync();

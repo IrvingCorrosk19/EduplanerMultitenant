@@ -146,6 +146,7 @@ public class PaymentController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     [Authorize(Roles = "acudiente,parent,student,estudiante")]
     public async Task<IActionResult> PayFromPortal(PaymentCreateDto dto, IFormFile? receiptImageFile)
     {
@@ -204,7 +205,7 @@ public class PaymentController : Controller
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al subir imagen del comprobante");
-                ModelState.AddModelError("ReceiptImage", "Error al subir la imagen: " + ex.Message);
+                ModelState.AddModelError("ReceiptImage", "Error al subir la imagen. Intente de nuevo.");
             }
         }
 
@@ -289,7 +290,7 @@ public class PaymentController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al registrar pago desde portal");
-            TempData["ErrorMessage"] = "Error al registrar el pago: " + ex.Message;
+            TempData["ErrorMessage"] = "No se pudo registrar el pago. Intente nuevamente o contacte soporte.";
             return RedirectToAction(nameof(PayFromPortal), new { prematriculationId = dto.PrematriculationId });
         }
     }
@@ -344,6 +345,7 @@ public class PaymentController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     [Authorize(Roles = "acudiente,parent,student,estudiante")]
     public async Task<IActionResult> PayWithCard(PaymentCreateDto dto)
     {
@@ -394,13 +396,14 @@ public class PaymentController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al registrar pago inmediato con tarjeta");
-            TempData["ErrorMessage"] = "No se pudo procesar el pago con tarjeta: " + ex.Message;
+            TempData["ErrorMessage"] = "No se pudo procesar el pago con tarjeta. Intente nuevamente o contacte soporte.";
             return RedirectToAction(nameof(PayWithCard), new { prematriculationId = dto.PrematriculationId });
         }
     }
 
     // Buscar prematrícula por código o estudiante
     [HttpGet]
+    [Authorize(Roles = "admin,superadmin,contabilidad,contable,Director,Inspector")]
     public async Task<IActionResult> Search()
     {
         var currentUser = await _currentUserService.GetCurrentUserAsync();
@@ -415,6 +418,8 @@ public class PaymentController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "admin,superadmin,contabilidad,contable,Director,Inspector")]
     public async Task<IActionResult> Search(string searchTerm)
     {
         var currentUser = await _currentUserService.GetCurrentUserAsync();
@@ -464,6 +469,7 @@ public class PaymentController : Controller
     }
 
     // Registrar pago
+    [Authorize(Roles = "admin,superadmin,contabilidad,contable,Director,Inspector")]
     public async Task<IActionResult> Register(Guid prematriculationId)
     {
         var prematriculation = await _prematriculationService.GetByIdAsync(prematriculationId);
@@ -491,6 +497,8 @@ public class PaymentController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "admin,superadmin,contabilidad,contable,Director,Inspector")]
     public async Task<IActionResult> Register(PaymentCreateDto dto, IFormFile? receiptImageFile)
     {
         var currentUser = await _currentUserService.GetCurrentUserAsync();
@@ -526,7 +534,7 @@ public class PaymentController : Controller
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al subir imagen del comprobante");
-                ModelState.AddModelError("ReceiptImage", "Error al subir la imagen: " + ex.Message);
+                ModelState.AddModelError("ReceiptImage", "Error al subir la imagen. Intente de nuevo.");
             }
         }
 
@@ -568,7 +576,7 @@ public class PaymentController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al registrar pago");
-            ModelState.AddModelError("", "Error al registrar el pago: " + ex.Message);
+            ModelState.AddModelError("", "No se pudo registrar el pago. Verifique los datos e intente nuevamente.");
             if (prematriculation != null)
             {
                 ViewBag.Prematriculation = prematriculation;
@@ -583,6 +591,7 @@ public class PaymentController : Controller
 
     // Confirmar pago
     [HttpPost]
+    [ValidateAntiForgeryToken]
     [Authorize(Roles = "admin,superadmin,contabilidad,contable")]
     public async Task<IActionResult> Confirm(Guid id)
     {
@@ -660,12 +669,13 @@ public class PaymentController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al confirmar pago");
-            TempData["ErrorMessage"] = "Error al confirmar el pago: " + ex.Message;
+            TempData["ErrorMessage"] = "No se pudo confirmar el pago. Intente nuevamente o contacte soporte.";
             return RedirectToAction(nameof(Index));
         }
     }
 
     // Ver detalles de un pago
+    [Authorize(Roles = "admin,superadmin,contabilidad,contable,Director,Inspector,acudiente,parent,student,estudiante")]
     public async Task<IActionResult> Details(Guid id)
     {
         var payment = await _paymentService.GetByIdAsync(id);
@@ -692,7 +702,7 @@ public class PaymentController : Controller
     }
 
     // Recibo PDF descargable
-    [Authorize]
+    [Authorize(Roles = "admin,superadmin,contabilidad,contable,Director,Inspector,acudiente,parent,student,estudiante")]
     public async Task<IActionResult> Receipt(Guid id)
     {
         var payment = await _paymentService.GetByIdAsync(id);
@@ -820,6 +830,7 @@ public class PaymentController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     [Authorize(Roles = "admin,superadmin,contabilidad,contable")]
     public async Task<IActionResult> GenerateReport(Guid? studentId, Guid? conceptId, DateTime? startDate, DateTime? endDate, string status)
     {

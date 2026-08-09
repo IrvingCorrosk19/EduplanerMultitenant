@@ -49,11 +49,9 @@ namespace SchoolManager.Services.Implementations
             try
             {
                 _logger.LogInformation("=== INICIO GetReportByStudentIdAsync - StudentId: {StudentId} ===", studentId);
-                Console.WriteLine($"=== INICIO GetReportByStudentIdAsync - StudentId: {studentId} ===");
 
                 // Obtener el Grado y Grupo del estudiante PRIMERO para saber su escuela
                 _logger.LogInformation("Buscando asignación del estudiante: {StudentId}", studentId);
-                Console.WriteLine($"Buscando asignación del estudiante: {studentId}");
 
                 var studentUser = await _context.Users
                     .Where(u => u.Id == studentId)
@@ -63,13 +61,11 @@ namespace SchoolManager.Services.Implementations
                 if (studentUser == null || !studentUser.SchoolId.HasValue)
                 {
                     _logger.LogWarning("No se encontró el usuario o no tiene escuela asignada: {StudentId}", studentId);
-                    Console.WriteLine($"No se encontró el usuario o no tiene escuela asignada: {studentId}");
                     return null;
                 }
 
                 // Obtener TODOS los trimestres de la escuela del estudiante (desde la tabla Trimesters)
                 _logger.LogInformation("Buscando trimestres disponibles para la escuela: {SchoolId}", studentUser.SchoolId);
-                Console.WriteLine($"Buscando trimestres disponibles para la escuela: {studentUser.SchoolId}");
 
                 var trimesters = await _context.Trimesters
                     .Where(t => t.SchoolId == studentUser.SchoolId && t.IsActive)
@@ -78,12 +74,10 @@ namespace SchoolManager.Services.Implementations
                     .ToListAsync();
 
                 _logger.LogInformation("Trimestres encontrados en la configuración: {Trimesters}", string.Join(", ", trimesters));
-                Console.WriteLine($"Trimestres encontrados en la configuración: {string.Join(", ", trimesters)}");
 
                 if (!trimesters.Any())
                 {
                     _logger.LogWarning("No hay trimestres configurados en la escuela: {SchoolId}", studentUser.SchoolId);
-                    Console.WriteLine($"No hay trimestres configurados en la escuela: {studentUser.SchoolId}");
                     // Aún así, intentar obtener trimestres de las actividades como fallback
                     trimesters = new List<string> { "1T", "2T", "3T" }; // Trimestres por defecto
                 }
@@ -94,11 +88,9 @@ namespace SchoolManager.Services.Implementations
                                         trimesters.FirstOrDefault(t => t == "3T");
 
                 _logger.LogInformation("Trimestre seleccionado: {SelectedTrimester}", selectedTrimester);
-                Console.WriteLine($"Trimestre seleccionado: {selectedTrimester}");
 
                 // Obtener las actividades del estudiante con la calificación para el trimestre seleccionado
                 _logger.LogInformation("Buscando calificaciones para StudentId: {StudentId}, Trimester: {Trimester}", studentId, selectedTrimester);
-                Console.WriteLine($"Buscando calificaciones para StudentId: {studentId}, Trimester: {selectedTrimester}");
 
                 // MEJORADO: Obtener año académico activo para filtrar notas
                 var activeAcademicYear = await _academicYearService.GetActiveAcademicYearAsync(studentUser.SchoolId);
@@ -139,7 +131,6 @@ namespace SchoolManager.Services.Implementations
                     .ToListAsync();
 
                 _logger.LogInformation("Calificaciones encontradas: {ScoresCount}", studentScores?.Count ?? 0);
-                Console.WriteLine($"Calificaciones encontradas: {studentScores?.Count ?? 0}");
 
                 // Obtener el Grado y Grupo del estudiante
                 var studentAssignment = await _context.StudentAssignments
@@ -155,7 +146,6 @@ namespace SchoolManager.Services.Implementations
                     .FirstOrDefaultAsync();
 
                 _logger.LogInformation("Asignación encontrada: {Assignment}", studentAssignment != null ? $"Grado: {studentAssignment.GradeName}, Grupo: {studentAssignment.GroupName}" : "NULL");
-                Console.WriteLine($"Asignación encontrada: {(studentAssignment != null ? $"Grado: {studentAssignment.GradeName}, Grupo: {studentAssignment.GroupName}" : "NULL")}");
 
                 var name = $"{studentUser.Name} {studentUser.LastName}";
                 var gradeName = studentAssignment != null ? $"{studentAssignment.GradeName} - {studentAssignment.GroupName}" : "Sin asignación";
@@ -164,7 +154,6 @@ namespace SchoolManager.Services.Implementations
                 if (studentScores == null || !studentScores.Any())
                 {
                     _logger.LogWarning("No se encontraron calificaciones para StudentId: {StudentId}, Trimester: {Trimester}", studentId, selectedTrimester);
-                    Console.WriteLine($"No se encontraron calificaciones para StudentId: {studentId}, Trimester: {selectedTrimester}");
                     
                     return new StudentReportDto
                     {
@@ -306,9 +295,8 @@ namespace SchoolManager.Services.Implementations
                 }
             }
 
-                _logger.LogInformation("Construyendo reporte final - Grades: {GradesCount}, Attendance: {AttendanceCount}, Discipline: {DisciplineCount}, Pending: {PendingCount}", 
+                _logger.LogInformation("Construyendo reporte final - Grades: {GradesCount}, Attendance: {AttendanceCount}, Discipline: {DisciplineCount}, Pending: {PendingCount}",
                     grades?.Count ?? 0, attendanceByTrimester?.Count ?? 0, disciplineReports?.Count ?? 0, pendingActivities?.Count ?? 0);
-                Console.WriteLine($"Construyendo reporte final - Grades: {grades?.Count ?? 0}, Attendance: {attendanceByTrimester?.Count ?? 0}, Discipline: {disciplineReports?.Count ?? 0}, Pending: {pendingActivities?.Count ?? 0}");
 
                 // Obtener lista de materias únicas
                 var availableSubjects = grades
@@ -335,15 +323,12 @@ namespace SchoolManager.Services.Implementations
                 };
 
                 _logger.LogInformation("=== FIN GetReportByStudentIdAsync - Reporte construido exitosamente ===");
-                Console.WriteLine("=== FIN GetReportByStudentIdAsync - Reporte construido exitosamente ===");
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error en GetReportByStudentIdAsync para StudentId: {StudentId} - {Message}", studentId, ex.Message);
-                Console.WriteLine($"ERROR en GetReportByStudentIdAsync para StudentId: {studentId} - {ex.Message}");
-                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                _logger.LogError(ex, "Error en GetReportByStudentIdAsync para StudentId: {StudentId}", studentId);
                 throw;
             }
         }
@@ -561,7 +546,6 @@ namespace SchoolManager.Services.Implementations
             try
             {
                 _logger.LogInformation("=== INICIO GetDisciplineReportsByStudentIdAsync - StudentId: {StudentId} ===", studentId);
-                Console.WriteLine($"=== INICIO GetDisciplineReportsByStudentIdAsync - StudentId: {studentId} ===");
 
                 var reports = await _context.DisciplineReports
                     .Where(dr => dr.StudentId == studentId)
@@ -580,14 +564,12 @@ namespace SchoolManager.Services.Implementations
                     .ToListAsync();
 
                 _logger.LogInformation("Reportes de disciplina encontrados: {Count}", reports.Count);
-                Console.WriteLine($"Reportes de disciplina encontrados: {reports.Count}");
 
                 return reports;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error en GetDisciplineReportsByStudentIdAsync: {Message}", ex.Message);
-                Console.WriteLine($"ERROR en GetDisciplineReportsByStudentIdAsync: {ex.Message}");
+                _logger.LogError(ex, "Error en GetDisciplineReportsByStudentIdAsync para StudentId: {StudentId}", studentId);
                 return new List<DisciplineReportDto>();
             }
         }

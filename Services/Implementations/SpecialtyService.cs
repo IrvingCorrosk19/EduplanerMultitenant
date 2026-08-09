@@ -71,7 +71,7 @@ namespace SchoolManager.Services.Implementations
         public async Task<Specialty?> GetByIdAsync(Guid id)
         {
             var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-            var specialty = await _context.Specialties.FindAsync(id);
+            var specialty = await _context.Specialties.Where(x => x.Id == id).FirstOrDefaultAsync();
             if (specialty == null || specialty.SchoolId != schoolId) return null;
             return specialty;
         }
@@ -100,7 +100,7 @@ namespace SchoolManager.Services.Implementations
             if (specialty == null || string.IsNullOrWhiteSpace(specialty.Name))
                 throw new ArgumentException("La especialidad no es válida.");
 
-            var existing = await _context.Specialties.FindAsync(specialty.Id);
+            var existing = await _context.Specialties.Where(x => x.Id == specialty.Id).FirstOrDefaultAsync();
             if (existing == null)
                 throw new InvalidOperationException("Especialidad no encontrada.");
 
@@ -118,7 +118,7 @@ namespace SchoolManager.Services.Implementations
         public async Task DeleteAsync(Guid id)
         {
             var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-            var specialty = await _context.Specialties.FindAsync(id);
+            var specialty = await _context.Specialties.Where(x => x.Id == id).FirstOrDefaultAsync();
             if (specialty == null || specialty.SchoolId != schoolId) return;
 
             bool enUso = await _context.SubjectAssignments.AnyAsync(sa => sa.SpecialtyId == id);

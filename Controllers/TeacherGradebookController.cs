@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using SchoolManager.Dtos;
 using SchoolManager.Interfaces;
 using SchoolManager.Models;
@@ -28,6 +29,8 @@ namespace SchoolManager.Controllers
         private readonly ICounselorAssignmentService _counselorAssignmentService;
         private readonly ISubjectAssignmentService _subjectAssignmentService;
         private readonly IDocumentStorageService _documentStorage;
+        private readonly ITeacherGradebookPdfService _gradebookPdfService;
+        private readonly ILogger<TeacherGradebookController> _logger;
 
 
         public TeacherGradebookController(
@@ -41,11 +44,14 @@ namespace SchoolManager.Controllers
             IAttendanceService attendanceService,
             ICounselorAssignmentService counselorAssignmentService,
             ISubjectAssignmentService subjectAssignmentService,
-            IDocumentStorageService documentStorage)
-            
+            IDocumentStorageService documentStorage,
+            ITeacherGradebookPdfService gradebookPdfService,
+            ILogger<TeacherGradebookController> logger)
+
         {
             _documentStorage = documentStorage;
-            _studentService = studentService;   
+            _gradebookPdfService = gradebookPdfService;
+            _studentService = studentService;
             _trimesterSvc = trimesterSvc;
             _groupSvc = groupSvc;
             _typeSvc = typeSvc;
@@ -55,7 +61,7 @@ namespace SchoolManager.Controllers
             _attendanceService = attendanceService;
             _counselorAssignmentService = counselorAssignmentService;
             _subjectAssignmentService = subjectAssignmentService;
-            
+            _logger = logger;
         }
 
 
@@ -92,7 +98,10 @@ namespace SchoolManager.Controllers
                         decimal? score = null;
                         if (!string.IsNullOrWhiteSpace(nota.Nota))
                         {
-                            if (decimal.TryParse(nota.Nota, out var parsedScore))
+                            if (decimal.TryParse(nota.Nota,
+                                    System.Globalization.NumberStyles.Number,
+                                    System.Globalization.CultureInfo.InvariantCulture,
+                                    out var parsedScore))
                             {
                                 score = parsedScore;
                             }
@@ -126,9 +135,16 @@ namespace SchoolManager.Controllers
 
                 return Ok(new { message = "Notas procesadas y guardadas correctamente." });
             }
+            catch (InvalidOperationException ex)
+            {
+                // Business-rule violations (inactive trimester, wrong school, etc.)
+                _logger.LogWarning(ex, "Validación de negocio en GuardarNotasTemp");
+                return BadRequest(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Error al guardar las notas: {ex.Message}");
+                _logger.LogError(ex, "Error inesperado en GuardarNotasTemp");
+                return StatusCode(500, new { message = "Error interno al guardar las notas. Intente nuevamente." });
             }
         }
 
@@ -238,7 +254,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { error = ex.Message });
+                return Json(new { error = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -270,7 +286,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { error = ex.Message });
+                return Json(new { error = "Error interno. Intente nuevamente." });
             }
         }
         private Guid GetTeacherId()
@@ -375,6 +391,34 @@ namespace SchoolManager.Controllers
             return Json(book);
         }
 
+        // GET: /TeacherGradebook/ExportRegistroPdf?groupId=...&trimester=...&subjectId=...&gradeLevelId=...
+        [HttpGet]
+        public async Task<IActionResult> ExportRegistroPdf(Guid groupId, string trimester, Guid subjectId, Guid gradeLevelId)
+        {
+            try
+            {
+                var teacherId = GetTeacherId();
+                var pdfBytes = await _gradebookPdfService.GenerateRegistroPdfAsync(
+                    teacherId, groupId, trimester, subjectId, gradeLevelId);
+
+                var safeTrim = string.IsNullOrWhiteSpace(trimester)
+                    ? "Trimestre"
+                    : new string(trimester.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
+
+                return File(pdfBytes, "application/pdf", $"Registro_Calificaciones_{safeTrim}.pdf");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generando PDF registro calificaciones. GroupId={GroupId}, SubjectId={SubjectId}, GradeLevelId={GradeLevelId}, Trimester={Trimester}",
+                    groupId, subjectId, gradeLevelId, trimester);
+                return StatusCode(500, "Error al generar el PDF del registro de calificaciones.");
+            }
+        }
+
 
 
 
@@ -416,7 +460,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, error = ex.Message });
+                return Json(new { success = false, error = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -456,7 +500,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, error = ex.Message });
+                return Json(new { success = false, error = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -476,7 +520,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, error = ex.Message });
+                return BadRequest(new { success = false, error = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -494,7 +538,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, error = ex.Message });
+                return BadRequest(new { success = false, error = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -524,7 +568,7 @@ namespace SchoolManager.Controllers
             {
                 return Json(new { 
                     success = false, 
-                    error = ex.Message 
+                    error = "Error interno. Intente nuevamente." 
                 });
             }
         }
@@ -539,7 +583,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, message = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -553,7 +597,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, message = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -562,65 +606,52 @@ namespace SchoolManager.Controllers
         {
             try
             {
-                Console.WriteLine("=== INICIANDO GetCounselorGroupAverages ===");
-                Console.WriteLine($"Request recibido: {request != null}");
-                
+                _logger.LogInformation("=== INICIANDO GetCounselorGroupAverages: GroupId={GroupId}, Trimester={Trimester} ===", request?.GroupId, request?.Trimester);
+
                 if (request == null)
                 {
-                    Console.WriteLine("ERROR: Request es null");
+                    _logger.LogWarning("GetCounselorGroupAverages: Request es null");
                     return BadRequest(new { success = false, error = "Request es null" });
                 }
-                
-                Console.WriteLine($"GroupId: {request.GroupId}");
-                Console.WriteLine($"GradeLevelId: {request.GradeLevelId}");
-                Console.WriteLine($"Trimester: {request.Trimester}");
-                
+
                 if (request.GroupId == Guid.Empty || string.IsNullOrEmpty(request.Trimester))
                 {
-                    Console.WriteLine("ERROR: Datos incompletos para la consulta");
+                    _logger.LogWarning("GetCounselorGroupAverages: Datos incompletos para la consulta");
                     return BadRequest(new { success = false, error = "Datos incompletos para la consulta" });
                 }
 
                 var teacherId = GetTeacherId();
-                Console.WriteLine($"TeacherId obtenido: {teacherId}");
-                
+
                 // Obtener grupos de consejería del docente
-                Console.WriteLine("Obteniendo grupos de consejería...");
                 var counselorGroups = await _counselorAssignmentService.GetCounselorGroupsAsync(teacherId);
-                Console.WriteLine($"Grupos de consejería encontrados: {counselorGroups?.Count() ?? 0}");
-                
+                _logger.LogDebug("GetCounselorGroupAverages: Grupos de consejería encontrados: {Count}", counselorGroups?.Count() ?? 0);
+
                 // Si GradeLevelId está vacío, intentar obtenerlo del grupo de consejería
                 if (request.GradeLevelId == Guid.Empty)
                 {
-                    Console.WriteLine("GradeLevelId está vacío, intentando obtenerlo del grupo de consejería...");
                     var matchingGroup = counselorGroups.FirstOrDefault(g => g.GroupId == request.GroupId);
-                    
+
                     if (matchingGroup != null && matchingGroup.GradeId.HasValue && matchingGroup.GradeId.Value != Guid.Empty)
                     {
                         request.GradeLevelId = matchingGroup.GradeId.Value;
-                        Console.WriteLine($"GradeLevelId obtenido del grupo de consejería: {request.GradeLevelId}");
+                        _logger.LogDebug("GetCounselorGroupAverages: GradeLevelId obtenido del grupo de consejería: {GradeId}", request.GradeLevelId);
                     }
                     else
                     {
-                        Console.WriteLine("No se pudo obtener GradeLevelId del grupo de consejería");
+                        _logger.LogWarning("GetCounselorGroupAverages: No se pudo obtener GradeLevelId del grupo de consejería");
                     }
                 }
-                
-                // Verificar que el docente sea consejero del grupo
-                Console.WriteLine("Verificando permisos de consejería...");
-                
-                var isCounselor = counselorGroups.Any(g => g.GroupId == request.GroupId && 
+
+                var isCounselor = counselorGroups.Any(g => g.GroupId == request.GroupId &&
                     (request.GradeLevelId == Guid.Empty || g.GradeId == request.GradeLevelId));
-                Console.WriteLine($"Es consejero del grupo: {isCounselor}");
-                
+
                 if (!isCounselor)
                 {
-                    Console.WriteLine("ERROR: No tiene permisos como consejero");
+                    _logger.LogWarning("GetCounselorGroupAverages: TeacherId={TeacherId} no tiene permisos de consejero para GroupId={GroupId}", teacherId, request.GroupId);
                     return BadRequest(new { success = false, error = "No tienes permisos para acceder a este grupo como consejero" });
                 }
 
                 // Obtener estudiantes del grupo
-                Console.WriteLine("Obteniendo estudiantes del grupo...");
                 IEnumerable<StudentBasicDto> students;
                 if (request.GradeLevelId != Guid.Empty)
                 {
@@ -628,28 +659,24 @@ namespace SchoolManager.Controllers
                 }
                 else
                 {
-                    // Si no hay GradeLevelId, obtener todos los estudiantes del grupo
-                    // Esto podría requerir un método diferente en el servicio
                     students = await _studentService.GetByGroupAndGradeAsync(request.GroupId, Guid.Empty);
                 }
-                Console.WriteLine($"Estudiantes encontrados: {students?.Count() ?? 0}");
-                
+                _logger.LogDebug("GetCounselorGroupAverages: Estudiantes encontrados: {Count}", students?.Count() ?? 0);
+
                 if (!students.Any())
                 {
-                    Console.WriteLine("No se encontraron estudiantes en el grupo");
-                    return Ok(new { 
-                        success = true, 
-                        data = new { 
-                            students = new List<object>(), 
+                    return Ok(new {
+                        success = true,
+                        data = new {
+                            students = new List<object>(),
                             subjects = new List<object>(),
                             generalAverage = 0.0,
                             approvalPercentage = 0.0
-                        } 
+                        }
                     });
                 }
 
                 // Obtener todas las materias asignadas al grupo
-                Console.WriteLine("Obteniendo materias asignadas al grupo...");
                 IEnumerable<object> subjectAssignments;
                 if (request.GradeLevelId != Guid.Empty)
                 {
@@ -657,42 +684,33 @@ namespace SchoolManager.Controllers
                 }
                 else
                 {
-                    // Si no hay GradeLevelId, obtener todas las materias del grupo
-                    // Esto podría requerir un método diferente en el servicio
                     subjectAssignments = await _subjectAssignmentService.GetByGroupAndGradeAsync(request.GroupId, Guid.Empty);
                 }
-                Console.WriteLine($"Materias encontradas: {subjectAssignments?.Count() ?? 0}");
-                
+
                 var subjects = subjectAssignments.Select(sa => {
                     // Usar reflexión para acceder a las propiedades dinámicamente
                     var subjectId = sa.GetType().GetProperty("SubjectId")?.GetValue(sa);
                     var subject = sa.GetType().GetProperty("Subject")?.GetValue(sa);
                     var subjectName = subject?.GetType().GetProperty("Name")?.GetValue(subject);
-                    
-                    return new { 
-                        id = subjectId, 
-                        name = subjectName ?? "Sin nombre" 
+
+                    return new {
+                        id = subjectId,
+                        name = subjectName ?? "Sin nombre"
                     };
                 }).ToList();
-                
-                Console.WriteLine($"Materias procesadas: {subjects.Count}");
 
                 var result = new List<object>();
                 var allAverages = new List<double>();
                 var approvedCount = 0;
 
-                Console.WriteLine("Procesando estudiantes...");
                 foreach (var student in students)
                 {
-                    Console.WriteLine($"Procesando estudiante: {student.FullName} (ID: {student.StudentId})");
                     var studentAverages = new Dictionary<Guid, double>();
                     var studentTotalScore = 0.0;
                     var studentValidScores = 0;
 
                     foreach (var subject in subjects)
                     {
-                        Console.WriteLine($"  Procesando materia: {subject.name} (ID: {subject.id})");
-                        
                         // Obtener promedio del estudiante en esta materia para el trimestre
                         var notesRequest = new GetNotesDto
                         {
@@ -704,42 +722,32 @@ namespace SchoolManager.Controllers
                         };
 
                         var notas = await _scoreSvc.GetNotasPorFiltroAsync(notesRequest);
-                        Console.WriteLine($"    Notas encontradas: {notas?.Count() ?? 0}");
-                        
                         var studentNotes = notas.FirstOrDefault(n => n.StudentId == student.StudentId.ToString());
-                        Console.WriteLine($"    Notas del estudiante: {studentNotes != null}");
-                        
+
                         double average = 0.0;
                         if (studentNotes?.Notas != null && studentNotes.Notas.Any())
                         {
-                            Console.WriteLine($"    Notas del estudiante en la materia: {studentNotes.Notas.Count}");
-                            
                             var validNotes = studentNotes.Notas
-                                .Where(n => !string.IsNullOrEmpty(n.Nota) && decimal.TryParse(n.Nota, out _))
-                                .Select(n => (double)decimal.Parse(n.Nota))
+                                .Where(n => !string.IsNullOrEmpty(n.Nota) && decimal.TryParse(n.Nota,
+                                    System.Globalization.NumberStyles.Number,
+                                    System.Globalization.CultureInfo.InvariantCulture, out _))
+                                .Select(n => (double)decimal.Parse(n.Nota,
+                                    System.Globalization.CultureInfo.InvariantCulture))
                                 .ToList();
-
-                            Console.WriteLine($"    Notas válidas: {validNotes.Count}");
 
                             if (validNotes.Any())
                             {
                                 average = validNotes.Average();
                                 studentTotalScore += average;
                                 studentValidScores++;
-                                Console.WriteLine($"    Promedio calculado: {average:F2}");
                             }
-                        }
-                        else
-                        {
-                            Console.WriteLine($"    No hay notas para el estudiante en esta materia");
                         }
 
                         studentAverages[(Guid)subject.id] = average;
                     }
 
                     var studentGeneralAverage = studentValidScores > 0 ? studentTotalScore / studentValidScores : 0.0;
-                    Console.WriteLine($"  Promedio general del estudiante: {studentGeneralAverage:F2}");
-                    
+
                     if (studentGeneralAverage > 0)
                     {
                         allAverages.Add(studentGeneralAverage);
@@ -761,9 +769,7 @@ namespace SchoolManager.Controllers
                 var generalAverage = allAverages.Any() ? allAverages.Average() : 0.0;
                 var approvalPercentage = allAverages.Any() ? (approvedCount * 100.0 / allAverages.Count) : 0.0;
 
-                Console.WriteLine($"Promedio general del grupo: {generalAverage:F2}");
-                Console.WriteLine($"Porcentaje de aprobación: {approvalPercentage:F2}%");
-                Console.WriteLine("=== FINALIZANDO GetCounselorGroupAverages ===");
+                _logger.LogInformation("=== FINALIZANDO GetCounselorGroupAverages: GeneralAverage={GeneralAverage:F2}, ApprovalPct={ApprovalPct:F2} ===", generalAverage, approvalPercentage);
 
                 return Ok(new
                 {
@@ -779,9 +785,8 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ERROR en GetCounselorGroupAverages: {ex.Message}");
-                Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                _logger.LogError(ex, "ERROR en GetCounselorGroupAverages: GroupId={GroupId}", request?.GroupId);
+                return StatusCode(500, new { success = false, error = "Error interno. Intente nuevamente." });
             }
         }
     }

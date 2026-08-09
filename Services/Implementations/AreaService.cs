@@ -54,7 +54,7 @@ namespace SchoolManager.Infrastructure.Services
 
         public async Task<Area?> GetByIdAsync(Guid id)
         {
-            return await _context.Areas.FindAsync(id);
+            return await _context.Areas.Where(x => x.Id == id).FirstOrDefaultAsync();
         }
 
         public async Task<Area> CreateAsync(Area area)
@@ -78,7 +78,7 @@ namespace SchoolManager.Infrastructure.Services
             if (string.IsNullOrWhiteSpace(area.Name))
                 throw new ArgumentException("El nombre del área es obligatorio.");
 
-            var existing = await _context.Areas.FindAsync(area.Id);
+            var existing = await _context.Areas.Where(x => x.Id == area.Id).FirstOrDefaultAsync();
             if (existing == null)
                 throw new InvalidOperationException("Área no encontrada.");
 
@@ -98,7 +98,7 @@ namespace SchoolManager.Infrastructure.Services
                 throw new InvalidOperationException("No se puede borrar el área porque está siendo utilizada en el catálogo de materias. Elimina o reasigna esas asignaciones primero.");
             try
             {
-                var area = await _context.Areas.FindAsync(id);
+                var area = await _context.Areas.Where(x => x.Id == id).FirstOrDefaultAsync();
                 if (area != null)
                 {
                     _context.Areas.Remove(area);

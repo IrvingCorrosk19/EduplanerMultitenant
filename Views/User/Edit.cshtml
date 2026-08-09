@@ -29,38 +29,39 @@
                     {
                         <div class="alert alert-danger alert-dismissible fade show"><i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
                     }
+                    @* Formularios de foto fuera del POST Edit: HTML no permite <form> anidados; si están dentro, el navegador rompe el DOM y "Guardar Cambios" no envía el modelo. *@
+                    <div class="mb-4">
+                        <label class="form-label">Foto del usuario</label>
+                        <p class="text-muted small mb-2">Se usará en el carnet estudiantil si es estudiante. JPEG o PNG; si supera 2 MB se comprimirá automáticamente (máx. de subida 12 MB).</p>
+                        <div class="d-flex align-items-start gap-3">
+                            @if (!string.IsNullOrEmpty(Model.PhotoUrl))
+                            {
+                                <img src="@UserPhotoLinks.Href(Model.PhotoUrl)" alt="Foto" class="rounded shadow-sm" style="width:100px;height:100px;object-fit:cover;" />
+                            }
+                            else
+                            {
+                                <div class="rounded bg-light d-flex align-items-center justify-content-center text-muted" style="width:100px;height:100px;"><i class="fas fa-user-circle fa-3x"></i></div>
+                            }
+                            <div>
+                                <form asp-action="UpdatePhoto" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="d-inline mb-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="file" name="photo" accept=".jpg,.jpeg,.png,image/jpeg,image/png" class="form-control form-control-sm mb-1" style="max-width:240px;" />
+                                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload me-1"></i>Subir foto</button>
+                                </form>
+                                @if (!string.IsNullOrEmpty(Model.PhotoUrl))
+                                {
+                                    <form asp-action="RemovePhoto" asp-route-id="@Model.Id" method="post" class="d-inline ms-1">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar la foto de este usuario?');"><i class="fas fa-trash me-1"></i>Eliminar foto</button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
                     <form asp-action="Edit" method="post">
                         <input type="hidden" asp-for="Id" />
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
-
-                        <div class="mb-4">
-                            <label class="form-label">Foto del usuario</label>
-                            <p class="text-muted small mb-2">Se usará en el carnet estudiantil si es estudiante. JPEG o PNG; si supera 2 MB se comprimirá automáticamente (máx. de subida 12 MB).</p>
-                            <div class="d-flex align-items-start gap-3">
-                                @if (!string.IsNullOrEmpty(Model.PhotoUrl))
-                                {
-                                    <img src="@UserPhotoLinks.Href(Model.PhotoUrl)" alt="Foto" class="rounded shadow-sm" style="width:100px;height:100px;object-fit:cover;" />
-                                }
-                                else
-                                {
-                                    <div class="rounded bg-light d-flex align-items-center justify-content-center text-muted" style="width:100px;height:100px;"><i class="fas fa-user-circle fa-3x"></i></div>
-                                }
-                                <div>
-                                    <form asp-action="UpdatePhoto" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="d-inline mb-2">
-                                        @Html.AntiForgeryToken()
-                                        <input type="file" name="photo" accept=".jpg,.jpeg,.png,image/jpeg,image/png" class="form-control form-control-sm mb-1" style="max-width:240px;" />
-                                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload me-1"></i>Subir foto</button>
-                                    </form>
-                                    @if (!string.IsNullOrEmpty(Model.PhotoUrl))
-                                    {
-                                        <form asp-action="RemovePhoto" asp-route-id="@Model.Id" method="post" class="d-inline ms-1">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar la foto de este usuario?');"><i class="fas fa-trash me-1"></i>Eliminar foto</button>
-                                        </form>
-                                    }
-                                </div>
-                            </div>
-                        </div>
 
                         <div class="row">
                             <div class="col-md-6">
@@ -123,9 +124,9 @@
                                 <div class="mb-3">
                                     <label asp-for="Status" class="form-label">Estado</label>
                                     <select asp-for="Status" class="form-select">
-                                        <option value="Activo">Activo</option>
-                                        <option value="Inactivo">Inactivo</option>
-                                        <option value="Suspendido">Suspendido</option>
+                                        @* Valores alineados con users.status / User/Index (CHECK en BD: active, inactive). *@
+                                        <option value="active">Activo</option>
+                                        <option value="inactive">Inactivo</option>
                                     </select>
                                     <span asp-validation-for="Status" class="text-danger"></span>
                                 </div>

@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Models;
 using SchoolManager.Services.Interfaces;
 
+[Authorize(Roles = "Director,superadmin")]
 public class SecuritySettingController : Controller
 {
     private readonly ISecuritySettingService _securitySettingService;
@@ -35,6 +37,7 @@ public class SecuritySettingController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(SecuritySetting setting)
     {
         if (ModelState.IsValid)
@@ -56,6 +59,7 @@ public class SecuritySettingController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(SecuritySetting setting)
     {
         if (ModelState.IsValid)

@@ -165,5 +165,44 @@
 
     @RenderSection("Scripts", required: false)
 
+    @* Token antiforgery global — disponible en todas las vistas para AJAX *@
+    @Html.AntiForgeryToken()
+    <script>
+        // Interceptor global: inyecta RequestVerificationToken en todos los fetch() y $.ajax()
+        // Esto activa [ValidateAntiForgeryToken] en todos los controladores sin cambiar cada llamada JS
+        (function () {
+            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            const token = tokenInput ? tokenInput.value : '';
+            if (!token) return;
+
+            // Interceptar fetch nativo
+            const _fetch = window.fetch;
+            window.fetch = function (url, options) {
+                options = options || {};
+                options.headers = options.headers || {};
+                const method = (options.method || 'GET').toUpperCase();
+                if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+                    if (options.headers instanceof Headers) {
+                        options.headers.set('RequestVerificationToken', token);
+                    } else {
+                        options.headers['RequestVerificationToken'] = token;
+                    }
+                }
+                return _fetch(url, options);
+            };
+
+            // Interceptar jQuery AJAX (si jQuery está disponible)
+            if (typeof $ !== 'undefined' && $.ajaxSetup) {
+                $.ajaxSetup({
+                    beforeSend: function (xhr, settings) {
+                        const m = (settings.type || 'GET').toUpperCase();
+                        if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(m)) {
+                            xhr.setRequestHeader('RequestVerificationToken', token);
+                        }
+                    }
+                });
+            }
+        })();
+    </script>
 </body>
 </html>

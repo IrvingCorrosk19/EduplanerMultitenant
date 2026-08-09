@@ -1,0 +1,460 @@
+{
+  "config": {
+    "configFile": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright.config.ts",
+    "rootDir": "C:/Proyectos/EduplanerMultitenant/SchoolManager/e2e/tests",
+    "forbidOnly": true,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Proyectos/EduplanerMultitenant/SchoolManager/e2e/playwright-report/artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Proyectos/EduplanerMultitenant/SchoolManager/e2e/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "playwright-report/html",
+          "open": "never"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "playwright-report/results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.59.1",
+    "workers": 1,
+    "webServer": {
+      "command": "dotnet publish SchoolManager.csproj -c Release -o .e2e_publish -v minimal /p:UseAppHost=false && dotnet .e2e_publish\\SchoolManager.dll --urls http://127.0.0.1:5173",
+      "cwd": "..",
+      "url": "http://localhost:5173/",
+      "reuseExistingServer": true,
+      "timeout": 180000,
+      "stdout": "pipe",
+      "stderr": "pipe"
+    }
+  },
+  "suites": [
+    {
+      "title": "admin-crud.spec.ts",
+      "file": "admin-crud.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Admin — CRUD usuarios (UI real)",
+          "file": "admin-crud.spec.ts",
+          "line": 11,
+          "column": 6,
+          "specs": [
+            {
+              "title": "User/Index: crear usuario y editar vía /User/Edit/{id}",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 14129,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T23:28:21.404Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\admin-crud-Admin-—-CRUD-us-01325--y-editar-vía-User-Edit-id--chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\admin-crud-Admin-—-CRUD-us-01325--y-editar-vía-User-Edit-id--chromium\\video.webm"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\admin-crud-Admin-—-CRUD-us-01325--y-editar-vía-User-Edit-id--chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "fd8ad0f406f90b8c1a36-481b914baa02c8ec821d",
+              "file": "admin-crud.spec.ts",
+              "line": 12,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "ownership.spec.ts",
+      "file": "ownership.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Ownership — ID válido (200)",
+          "file": "ownership.spec.ts",
+          "line": 12,
+          "column": 6,
+          "specs": [
+            {
+              "title": "admin Canton: /User/Edit/{usuario misma escuela} → 200",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10419,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T23:28:36.673Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-—-ID-v-b1c20-usuario-misma-escuela-→-200-chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-—-ID-v-b1c20-usuario-misma-escuela-→-200-chromium\\video.webm"
+                        },
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-—-ID-v-b1c20-usuario-misma-escuela-→-200-chromium\\test-finished-2.png"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-—-ID-v-b1c20-usuario-misma-escuela-→-200-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d4d6a40ebc7c4dfca9d2-8098172e34023e4c3751",
+              "file": "ownership.spec.ts",
+              "line": 15,
+              "column": 3
+            },
+            {
+              "title": "estudiante Canton: /Student/Details/{propio id} → 200",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4272,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T23:28:47.573Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-—-ID-v-d9ca4-ent-Details-propio-id-→-200-chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-—-ID-v-d9ca4-ent-Details-propio-id-→-200-chromium\\video.webm"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-—-ID-v-d9ca4-ent-Details-propio-id-→-200-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d4d6a40ebc7c4dfca9d2-81cb4c6c5f4af7c96cde",
+              "file": "ownership.spec.ts",
+              "line": 22,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Ownership multi-escuela (403)",
+          "file": "ownership.spec.ts",
+          "line": 32,
+          "column": 6,
+          "specs": [
+            {
+              "title": "admin Canton: /User/Edit/{usuario otra escuela} → 403",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10155,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T23:28:52.207Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-multi--52995--usuario-otra-escuela-→-403-chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-multi--52995--usuario-otra-escuela-→-403-chromium\\video.webm"
+                        },
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-multi--52995--usuario-otra-escuela-→-403-chromium\\test-finished-2.png"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-multi--52995--usuario-otra-escuela-→-403-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d4d6a40ebc7c4dfca9d2-6321c0b77ad267a007cd",
+              "file": "ownership.spec.ts",
+              "line": 35,
+              "column": 3
+            },
+            {
+              "title": "estudiante Canton: /Student/Details/{id estudiante otra escuela} → 403",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10223,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T23:29:02.894Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-multi--2a44f-tudiante-otra-escuela-→-403-chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-multi--2a44f-tudiante-otra-escuela-→-403-chromium\\video.webm"
+                        },
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-multi--2a44f-tudiante-otra-escuela-→-403-chromium\\test-finished-2.png"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\ownership-Ownership-multi--2a44f-tudiante-otra-escuela-→-403-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d4d6a40ebc7c4dfca9d2-2b1c7b1b326cf3d59d1b",
+              "file": "ownership.spec.ts",
+              "line": 42,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "student-portal.spec.ts",
+      "file": "student-portal.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Estudiante — notas y ficha",
+          "file": "student-portal.spec.ts",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "ver notas (StudentReport) y detalle propio (Student/Details)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4073,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-03T23:29:13.745Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\student-portal-Estudiante--b94af-lle-propio-Student-Details--chromium\\test-finished-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\student-portal-Estudiante--b94af-lle-propio-Student-Details--chromium\\video.webm"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Proyectos\\EduplanerMultitenant\\SchoolManager\\e2e\\playwright-report\\artifacts\\student-portal-Estudiante--b94af-lle-propio-Student-Details--chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "9f7386419c9f2adaaad9-f38eac0c86d469bc3f3a",
+              "file": "student-portal.spec.ts",
+              "line": 6,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-05-03T23:28:12.263Z",
+    "duration": 66311.621,
+    "expected": 6,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

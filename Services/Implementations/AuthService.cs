@@ -24,19 +24,19 @@ namespace SchoolManager.Services.Implementations
 
         public async Task<(bool success, string message, User? user)> LoginAsync(string email, string password, Guid? schoolId = null)
         {
+            const string genericFailure = "Correo o contraseña incorrectos.";
+
             var user = await _userService.GetByEmailForLoginAsync(email, schoolId);
 
             if (user == null)
             {
-                var normalized = email.Trim().ToLowerInvariant();
-                var sameEmailCount = await _context.Users.IgnoreQueryFilters()
-                    .CountAsync(u => u.Email.ToLower().Trim() == normalized);
-                if (!schoolId.HasValue && sameEmailCount > 1)
+                var schools = await _userService.GetLoginSchoolsByEmailAsync(email);
+                if (!schoolId.HasValue && schools.Count > 1)
                 {
                     return (false, "Existen varias cuentas con este correo. Seleccione la institución e intente de nuevo.", null);
                 }
 
-                return (false, "Usuario o contraseña incorrecta", null);
+                return (false, genericFailure, null);
             }
 
             bool passwordValid = false;
@@ -44,15 +44,12 @@ namespace SchoolManager.Services.Implementations
             // Verificar si la contraseña está hasheada
             if (IsPasswordHashed(user.PasswordHash))
             {
-                // La contraseña está hasheada, usar BCrypt.Verify
                 passwordValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
             }
             else
             {
-                // La contraseña no está hasheada, comparar directamente
                 passwordValid = password == user.PasswordHash;
-                
-                // Si la contraseña es correcta, hashearla y actualizarla
+
                 if (passwordValid)
                 {
                     user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
@@ -62,7 +59,7 @@ namespace SchoolManager.Services.Implementations
 
             if (!passwordValid)
             {
-                return (false, "Usuario o contraseña incorrecta", null);
+                return (false, genericFailure, null);
             }
 
             if (user.Status?.ToLower() != "active")
@@ -73,6 +70,7 @@ namespace SchoolManager.Services.Implementations
             if (user.SchoolId.HasValue)
             {
                 var school = await _context.Schools
+                    .AsNoTracking()
                     .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(s => s.Id == user.SchoolId.Value);
                 if (school != null && !school.IsActive)
@@ -90,9 +88,10 @@ namespace SchoolManager.Services.Implementations
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Name, user.Name),
-                new Claim(ClaimTypes.Role, user.Role),
                 new Claim("school_id", user.SchoolId?.ToString() ?? "")
             };
+            foreach (var roleClaim in BuildRoleClaims(user.Role))
+                claims.Add(roleClaim);
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var authProperties = new AuthenticationProperties
@@ -129,6 +128,57 @@ namespace SchoolManager.Services.Implementations
                 return null;
 
             return await _userService.GetByIdWithRelationsAsync(Guid.Parse(userIdClaim.Value));
+        }
+
+        /// <summary>Claims ClaimTypes.Role para el valor persistido en users.role (típicamente minúsculas).</summary>
+        internal static IEnumerable<Claim> BuildRoleClaims(string? roleFromDb)
+        {
+            if (string.IsNullOrWhiteSpace(roleFromDb))
+                yield break;
+
+            var raw = roleFromDb.Trim();
+            yield return new Claim(ClaimTypes.Role, raw);
+
+            switch (raw.ToLowerInvariant())
+            {
+                case "director":
+                    yield return new Claim(ClaimTypes.Role, "Director");
+                    break;
+                case "inspector":
+                    yield return new Claim(ClaimTypes.Role, "Inspector");
+                    break;
+                case "teacher":
+                    yield return new Claim(ClaimTypes.Role, "Teacher");
+                    yield return new Claim(ClaimTypes.Role, "Docente");
+                    break;
+                case "admin":
+                    yield return new Claim(ClaimTypes.Role, "Admin");
+                    break;
+                case "secretaria":
+                    yield return new Claim(ClaimTypes.Role, "Secretaria");
+                    break;
+                case "superadmin":
+                    yield return new Claim(ClaimTypes.Role, "SuperAdmin");
+                    break;
+                case "clubparentsadmin":
+                    yield return new Claim(ClaimTypes.Role, "ClubParentsAdmin");
+                    break;
+                case "estudiante":
+                    yield return new Claim(ClaimTypes.Role, "student");
+                    yield return new Claim(ClaimTypes.Role, "Student");
+                    break;
+                case "acudiente":
+                case "parent":
+                    yield return new Claim(ClaimTypes.Role, "Parent");
+                    yield return new Claim(ClaimTypes.Role, "Acudiente");
+                    break;
+                case "qlservices":
+                    yield return new Claim(ClaimTypes.Role, "QlServices");
+                    break;
+                case "contable":
+                    yield return new Claim(ClaimTypes.Role, "Contabilidad");
+                    break;
+            }
         }
 
         public bool IsPasswordHashed(string passwordHash)

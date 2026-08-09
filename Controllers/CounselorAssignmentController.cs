@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SchoolManager.Dtos;
@@ -179,7 +179,7 @@ namespace SchoolManager.Controllers
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning(ex, "Operación inválida al crear asignación de consejero: {Message}", ex.Message);
-                TempData["ErrorMessage"] = ex.Message;
+                TempData["ErrorMessage"] = "Operación no permitida. Verifique los datos e intente nuevamente.";
                 return RedirectToAction(nameof(Create));
             }
             catch (Exception ex)
@@ -265,7 +265,7 @@ namespace SchoolManager.Controllers
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning(ex, "Operación inválida al actualizar asignación de consejero: {Message}", ex.Message);
-                TempData["ErrorMessage"] = ex.Message;
+                TempData["ErrorMessage"] = "Operación no permitida. Verifique los datos e intente nuevamente.";
                 return RedirectToAction(nameof(Edit), new { id });
             }
             catch (Exception ex)
@@ -283,13 +283,11 @@ namespace SchoolManager.Controllers
         {
             try
             {
-                Console.WriteLine($"[DEBUG] Delete method called with ID: {id}");
                 _logger.LogInformation("Eliminando asignación de consejero con ID: {Id}", id);
 
                 // Verificar si el ID es válido
                 if (id == Guid.Empty)
                 {
-                    Console.WriteLine("[ERROR] ID is empty or invalid");
                     _logger.LogError("ID de asignación de consejero inválido: {Id}", id);
                     TempData["ErrorMessage"] = "ID de asignación inválido";
                     return RedirectToAction(nameof(Index));
@@ -299,27 +297,22 @@ namespace SchoolManager.Controllers
                 var assignment = await _counselorAssignmentService.GetByIdAsync(id);
                 if (assignment == null)
                 {
-                    Console.WriteLine($"[ERROR] Assignment not found with ID: {id}");
                     _logger.LogWarning("Asignación de consejero no encontrada con ID: {Id}", id);
                     TempData["ErrorMessage"] = "Asignación de consejero no encontrada";
                     return RedirectToAction(nameof(Index));
                 }
 
-                Console.WriteLine($"[DEBUG] Assignment found: {assignment.UserFullName} - {assignment.AssignmentType}");
-                _logger.LogInformation("Asignación encontrada: {UserFullName} - {AssignmentType}", assignment.UserFullName, assignment.AssignmentType);
+                _logger.LogInformation("Asignación encontrada: AssignmentType={AssignmentType}", assignment.AssignmentType);
 
                 var result = await _counselorAssignmentService.DeleteAsync(id);
-                Console.WriteLine($"[DEBUG] Delete result: {result}");
-                
+
                 if (result)
                 {
-                    Console.WriteLine($"[SUCCESS] Assignment deleted successfully with ID: {id}");
                     _logger.LogInformation("Asignación de consejero eliminada exitosamente con ID: {Id}", id);
                     TempData["SuccessMessage"] = "Asignación de consejero eliminada exitosamente";
                 }
                 else
                 {
-                    Console.WriteLine($"[WARNING] Could not delete assignment with ID: {id}");
                     _logger.LogWarning("No se pudo eliminar la asignación de consejero con ID: {Id}", id);
                     TempData["ErrorMessage"] = "No se pudo eliminar la asignación de consejero";
                 }
@@ -328,10 +321,8 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] Exception in Delete method: {ex.Message}");
-                Console.WriteLine($"[ERROR] Stack trace: {ex.StackTrace}");
                 _logger.LogError(ex, "Error al eliminar asignación de consejero con ID: {Id}", id);
-                TempData["ErrorMessage"] = $"Error al eliminar la asignación de consejero: {ex.Message}";
+                TempData["ErrorMessage"] = "Error al eliminar la asignación de consejero. Intente nuevamente.";
                 return RedirectToAction(nameof(Index));
             }
         }
@@ -402,7 +393,6 @@ namespace SchoolManager.Controllers
         {
             try
             {
-                Console.WriteLine($"[AJAX DEBUG] CreateAjax called with UserId: {dto.UserId}, GradeId: {dto.GradeId}, GroupId: {dto.GroupId}");
                 _logger.LogInformation("Creando asignación de consejero via AJAX para usuario {UserId}", dto.UserId);
 
                 if (!ModelState.IsValid)
@@ -425,7 +415,7 @@ namespace SchoolManager.Controllers
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning(ex, "Operación inválida al crear asignación de consejero via AJAX: {Message}", ex.Message);
-                return Json(new { success = false, message = ex.Message });
+                return Json(new { success = false, message = "Operación no permitida. Verifique los datos e intente nuevamente." });
             }
             catch (Exception ex)
             {
@@ -440,7 +430,6 @@ namespace SchoolManager.Controllers
         {
             try
             {
-                Console.WriteLine($"[AJAX DEBUG] UpdateAjax called with ID: {dto.Id}");
                 _logger.LogInformation("Actualizando asignación de consejero via AJAX con ID: {Id}", dto.Id);
 
                 if (!ModelState.IsValid)
@@ -457,7 +446,7 @@ namespace SchoolManager.Controllers
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning(ex, "Operación inválida al actualizar asignación de consejero via AJAX: {Message}", ex.Message);
-                return Json(new { success = false, message = ex.Message });
+                return Json(new { success = false, message = "Error interno. Intente nuevamente." });
             }
             catch (Exception ex)
             {
@@ -472,7 +461,6 @@ namespace SchoolManager.Controllers
         {
             try
             {
-                Console.WriteLine($"[AJAX DEBUG] DeleteAjax called with ID: {id}");
                 _logger.LogInformation("Eliminando asignación de consejero via AJAX con ID: {Id}", id);
 
                 if (id == Guid.Empty)
@@ -506,7 +494,6 @@ namespace SchoolManager.Controllers
         {
             try
             {
-                Console.WriteLine($"[AJAX DEBUG] GetByIdAjax called with ID: {id}");
                 _logger.LogInformation("Obteniendo asignación de consejero via AJAX con ID: {Id}", id);
 
                 var assignment = await _counselorAssignmentService.GetByIdAsync(id);

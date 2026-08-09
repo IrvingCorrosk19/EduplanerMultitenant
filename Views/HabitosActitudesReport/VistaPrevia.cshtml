@@ -1,0 +1,86 @@
+@model SchoolManager.ViewModels.HabitosActitudesReportViewModel
+@{
+    Layout = null;
+    string LogoSrc(string? url) {
+        if (string.IsNullOrWhiteSpace(url)) return "";
+        if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return url;
+        return Url.Content($"/File/GetSchoolLogo?logoUrl={Uri.EscapeDataString(url)}") ?? "";
+    }
+    var logoSrc = LogoSrc(Model.LogoUrl);
+    var cols = Model.ColumnasHabitos;
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Hábitos y Actitudes</title>
+    <link rel="stylesheet" href="~/css/reporte-institucional-base.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/reporte-habitos-actitudes.css" asp-append-version="true" />
+</head>
+<body class="reporte-institucional-body reporte-habitos">
+    <div class="reporte-institucional-toolbar no-print">
+        <button type="button" onclick="window.print()">Imprimir</button>
+        <button type="button" onclick="window.close()">Cerrar</button>
+    </div>
+    <div id="printArea">
+        <header class="ri-header">
+            @if (!string.IsNullOrEmpty(logoSrc)) {
+                <div class="ri-header-logo"><img src="@logoSrc" alt="Logo" onerror="this.parentElement.style.display='none'" /></div>
+            } else { <div class="ri-header-logo"></div> }
+            <div class="ri-header-text">
+                <span class="line bold">@Model.MinisterioLinea</span>
+                <span class="line">@Model.RegionalLinea</span>
+                <span class="line bold">@Model.InstitutoNombre</span>
+                <span class="line">@Model.AnioLectivoLinea</span>
+            </div>
+        </header>
+        <table class="ri-meta-block">
+            <tr>
+                <td style="width:55%"><strong>HÁBITOS Y ACTITUDES</strong></td>
+                <td style="width:45%;text-align:right"><strong>Trimestre: @Model.TrimestreLinea</strong></td>
+            </tr>
+            <tr>
+                <td>Profesor(a) Consejero(a): @Model.ConsejeroNombre</td>
+                <td style="text-align:right">Grupo: @Model.GrupoEtiqueta</td>
+            </tr>
+            <tr><td colspan="2">OBSERVACIONES: S = satisfecho, X = no satisfecho, R = regular</td></tr>
+        </table>
+        <table class="ri-tabla">
+            <thead>
+                <tr>
+                    <th class="col-num th-horizontal">N°</th>
+                    <th class="col-nombre th-horizontal">NOMBRE DEL ESTUDIANTE</th>
+                    @foreach (var h in cols) { <th class="col-habito th-horizontal">@h</th> }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.Filas) {
+                    <tr>
+                        <td class="col-num">@f.Numero</td>
+                        <td class="col-nombre">@f.Nombre</td>
+                        @for (var i = 0; i < cols.Count; i++) { <td></td> }
+                    </tr>
+                }
+                @for (var v = 0; v < Model.FilasPlantillaVacias; v++) {
+                    var n = Model.Filas.Count + v + 1;
+                    <tr>
+                        <td class="col-num">@n</td>
+                        <td class="col-nombre"></td>
+                        @for (var i = 0; i < cols.Count; i++) { <td></td> }
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <table class="ri-pie">
+            <tr>
+                <td>Profesor(a): _________________________</td>
+                <td>Consejero(a): _________________________</td>
+            </tr>
+            <tr>
+                <td>Grupo: @Model.GrupoEtiqueta</td>
+                <td>Jornada: _________________________</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

@@ -1,0 +1,57 @@
+/* Papel legal institucional: 8.5" × 14" (21.59 cm × 35.56 cm)
+   Expresiones Artísticas, Tecnología, Formato Carpetas */
+
+.reporte-pagina-legal #printArea {
+    box-sizing: border-box;
+    max-width: 8.5in;
+    margin: 0 auto;
+}
+
+@media print {
+    @page {
+        size: 8.5in 14in;
+        margin: 6mm 5mm;
+    }
+
+    .reporte-pagina-legal .no-print {
+        display: none !important;
+    }
+
+    .reporte-pagina-legal #printArea {
+        max-width: none;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+    }
+
+    .reporte-pagina-legal .ri-header,
+    .reporte-pagina-legal .rt-header,
+    .reporte-pagina-legal .ri-meta,
+    .reporte-pagina-legal .rt-meta {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .reporte-pagina-legal .ri-tabla,
+    .reporte-pagina-legal .rt-tabla {
+        page-break-inside: auto;
+        break-inside: auto;
+    }
+
+    .reporte-pagina-legal .ri-tabla thead,
+    .reporte-pagina-legal .rt-tabla thead {
+        display: table-header-group;
+    }
+
+    .reporte-pagina-legal .ri-tabla tbody tr,
+    .reporte-pagina-legal .rt-tabla tbody tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .reporte-pagina-legal .ri-header-logo img,
+    .reporte-pagina-legal .rt-header-logo img {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

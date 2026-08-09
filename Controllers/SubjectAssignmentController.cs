@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolManager.Dtos;
 using SchoolManager.Models;
@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 
 namespace SchoolManager.Controllers
 {
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Director,Inspector,secretaria,admin,superadmin")]
     public class SubjectAssignmentController : Controller
     {
         private readonly SchoolDbContext _context;
@@ -178,11 +179,12 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = "Error al cargar los datos: " + ex.Message });
+                return Json(new { success = false, message = "Error al cargar los datos. Intente nuevamente." });
             }
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([FromBody] SubjectAssignmentCreateDto model)
         {
             // Validaciones básicas del modelo
@@ -357,13 +359,14 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = "Ocurrió un error inesperado: " + ex.Message });
+                return Json(new { success = false, message = "Ocurrió un error inesperado. Intente nuevamente." });
             }
         }
 
 
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit([FromBody] EditSubjectAssignmentViewModel model)
         {
             // Validaciones básicas del modelo
@@ -531,7 +534,7 @@ namespace SchoolManager.Controllers
             catch (Exception ex)
             {
                 // Cualquier otro error inesperado
-                return Json(new { success = false, message = "Ocurrió un error inesperado: " + ex.Message });
+                return Json(new { success = false, message = "Ocurrió un error inesperado. Intente nuevamente." });
             }
         }
 
@@ -571,13 +574,14 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = $"Error al eliminar la asignación: {ex.Message}";
+                TempData["ErrorMessage"] = "Error interno. Intente nuevamente.";
             }
 
             return RedirectToAction("Index");
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteAssignment([FromBody] Guid id)
         {
             // Validar que el ID no esté vacío
@@ -605,12 +609,13 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"Error al eliminar la asignación: {ex.Message}" });
+                return Json(new { success = false, message = "Error interno. Intente nuevamente." });
             }
         }
 
         // Método para carga masiva
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveAssignments([FromBody] List<StudentAssignmentInputModel> asignaciones)
         {
             // Validaciones básicas
@@ -746,7 +751,7 @@ namespace SchoolManager.Controllers
                 }
                 catch (Exception ex)
                 {
-                    errores.Add($"Excepción en {item.Estudiante}: {ex.Message}");
+                    errores.Add("Error interno. Intente nuevamente.");
                 }
             }
 
@@ -763,6 +768,7 @@ namespace SchoolManager.Controllers
 
         // Método para asignaciones individuales
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveAssignmentsSingle([FromBody] List<SubjectAssignmentPreview> asignaciones)
         {
             if (asignaciones == null || asignaciones.Count == 0)
@@ -855,7 +861,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = $"Error inesperado: {ex.Message}";
+                TempData["ErrorMessage"] = "Error interno. Intente nuevamente.";
             }
 
             // Redirigir de vuelta a la vista

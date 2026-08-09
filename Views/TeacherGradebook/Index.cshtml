@@ -836,9 +836,14 @@
 
             <!-- TABLA DE CALIFICACIONES -->
             <div class="card">
-                <div class="card-header d-flex align-items-center gap-2">
-                    <i class="bi bi-journal-check text-success fs-4"></i>
-                    <h5 class="mb-0">Registro de Calificaciones</h5>
+                <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-journal-check text-success fs-4"></i>
+                        <h5 class="mb-0">Registro de Calificaciones</h5>
+                    </div>
+                    <button type="button" id="btnExportRegistroPdf" class="btn btn-outline-danger btn-sm" title="Imprimir registro en PDF">
+                        <i class="bi bi-file-earmark-pdf me-1"></i> Imprimir PDF
+                    </button>
                 </div>
                 <div class="card-body">
                     <div class="row g-3 align-items-end mb-3">
@@ -2612,14 +2617,17 @@
                         });
                     },
                     error: function(xhr, status, error) {
-                        console.error('Error al guardar notas:', error);
+                        console.error('Error al guardar notas:', error, xhr.responseText);
                         let mensaje = 'Hubo un error al guardar las notas.';
-                        if (xhr.responseText) {
-                            mensaje += ' ' + xhr.responseText;
+                        try {
+                            const resp = JSON.parse(xhr.responseText);
+                            if (resp && resp.message) mensaje = resp.message;
+                        } catch(e) {
+                            if (xhr.responseText) mensaje += ' ' + xhr.responseText;
                         }
                         Swal.fire({
                             icon: 'error',
-                            title: 'Error',
+                            title: 'Error al guardar',
                             text: mensaje
                         });
                     }
@@ -2628,6 +2636,22 @@
 
             // Agregar el evento click al botón de guardar notas
             $('#btnGuardarNotas').on('click', guardarNotas);
+
+            $('#btnExportRegistroPdf').on('click', function () {
+                const combo = $('#selGroup').val();
+                const trimester = $('#selTrimester').val();
+                if (!combo || !trimester) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Seleccione filtros',
+                        text: 'Elija trimestre y materia/grupo antes de imprimir el PDF.'
+                    });
+                    return;
+                }
+                const [subjectId, groupId, gradeLevelId] = combo.split('|');
+                const url = `/TeacherGradebook/ExportRegistroPdf?groupId=${groupId}&trimester=${encodeURIComponent(trimester)}&subjectId=${subjectId}&gradeLevelId=${gradeLevelId}`;
+                window.open(url, '_blank');
+            });
 
             // Llamar a la función cuando se cambie de grupo o se haga clic en la pestaña
             $('#selGroup').on('change', loadPromediosFinales);

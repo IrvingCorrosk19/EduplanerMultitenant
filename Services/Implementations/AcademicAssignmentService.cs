@@ -31,11 +31,24 @@ namespace SchoolManager.Infrastructure.Services
                 if (exists)
                     return false;
 
+                var saRow = await _context.SubjectAssignments.AsNoTracking()
+                    .Where(sa => sa.Id == subjectAssignmentId)
+                    .Select(sa => new { sa.SchoolId, sa.GroupId })
+                    .FirstOrDefaultAsync();
+                if (saRow == null)
+                    throw new InvalidOperationException("La asignación de materia no existe.");
+
+                var schoolResolved = saRow.SchoolId
+                    ?? await _context.Groups.AsNoTracking().Where(g => g.Id == saRow.GroupId).Select(g => g.SchoolId).FirstOrDefaultAsync();
+                if (!schoolResolved.HasValue)
+                    throw new InvalidOperationException("No se pudo determinar la escuela para la asignación de docente.");
+
                 var assignment = new TeacherAssignment
                 {
                     Id = Guid.NewGuid(),
                     TeacherId = teacherId,
                     SubjectAssignmentId = subjectAssignmentId,
+                    SchoolId = schoolResolved.Value,
                     CreatedAt = DateTime.UtcNow
                 };
 

@@ -119,8 +119,8 @@ public class FileController : Controller
     /// <summary>
     /// Foto de perfil/carnet: misma idea que GetSchoolLogo — siempre devuelve una imagen (por defecto si falta el archivo).
     /// URL de Cloudinary → redirección al CDN. Rutas locales → bytes desde disco vía IFileStorageService.
+    /// NOTA SEGURIDAD: Requiere autenticación. Los carnets PDF firmados con QR usan un endpoint separado.
     /// </summary>
-    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetUserPhoto(string? photoUrl, int? carnetEdge = null, string? variant = null)
     {
@@ -192,23 +192,31 @@ public class FileController : Controller
     public IActionResult DownloadTemplate(string fileName)
     {
         if (string.IsNullOrEmpty(fileName))
-        {
             return NotFound();
-        }
 
         try
         {
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "descargables", fileName);
-            
+            // Extraer solo el nombre de archivo (sin rutas) para prevenir path traversal
+            var safeFileName = Path.GetFileName(fileName);
+            if (string.IsNullOrEmpty(safeFileName))
+                return BadRequest();
+
+            var basePath = Path.GetFullPath(
+                Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "descargables"));
+            var filePath = Path.GetFullPath(Path.Combine(basePath, safeFileName));
+
+            // Verificar que el path resultante esté dentro del directorio base
+            // Previene: ../../appsettings.json, ../../../etc/passwd, etc.
+            if (!filePath.StartsWith(basePath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                return BadRequest();
+
             if (!System.IO.File.Exists(filePath))
-            {
                 return NotFound();
-            }
 
             var fileBytes = System.IO.File.ReadAllBytes(filePath);
             var contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-            
-            return File(fileBytes, contentType, fileName);
+
+            return File(fileBytes, contentType, safeFileName);
         }
         catch (Exception ex)
         {

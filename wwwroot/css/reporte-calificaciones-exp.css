@@ -1,0 +1,8 @@
+/* Calificaciones Expresiones Artísticas — 12 columnas oficiales */
+.reporte-exp .rt-meta .meta-grado { text-align: right; }
+.reporte-exp .rt-tabla .rt-col-num { width: 4%; }
+.reporte-exp .rt-tabla .rt-col-nombre { width: 24%; text-align: left !important; padding-left: 4pt !important; }
+.reporte-exp .rt-tabla .rt-col-nota { width: 5.5%; }
+.reporte-exp .rt-tabla .rt-col-trim-label { width: 5.5%; }
+.reporte-exp .rt-tabla .rt-col-promedio { width: 6%; }
+.reporte-exp .rt-tabla thead tr.rt-head-row { height: 105pt; }

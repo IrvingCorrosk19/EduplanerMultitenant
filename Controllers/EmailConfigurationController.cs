@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Dtos;
 using SchoolManager.Services.Interfaces;
 using SchoolManager.ViewModels;
@@ -153,7 +153,7 @@ namespace SchoolManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al crear configuración de email para SchoolId: {SchoolId}", model.SchoolId);
-                ModelState.AddModelError("", $"Error al crear la configuración: {ex.Message}");
+                ModelState.AddModelError("", "Error interno. Intente nuevamente.");
                 return View(model);
             }
         }
@@ -205,7 +205,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError("", $"Error al actualizar la configuración: {ex.Message}");
+                ModelState.AddModelError("", "Error interno. Intente nuevamente.");
                 return View(model);
             }
         }
@@ -228,7 +228,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = $"Error al eliminar la configuración: {ex.Message}";
+                TempData["ErrorMessage"] = "Error interno. Intente nuevamente.";
             }
 
             return RedirectToAction(nameof(Index));
@@ -247,7 +247,7 @@ namespace SchoolManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al probar conexión para configuración ID: {ConfigId}", id);
-                return Json(new { success = false, message = $"Error: {ex.Message}" });
+                return Json(new { success = false, message = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -261,7 +261,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"Error: {ex.Message}" });
+                return Json(new { success = false, message = "Error interno. Intente nuevamente." });
             }
         }
     }

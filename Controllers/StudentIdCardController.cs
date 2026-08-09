@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -60,7 +60,8 @@ public class StudentIdCardController : Controller
     [HttpGet("ui/generate/{studentId}")]
     public async Task<IActionResult> GenerateView(Guid studentId)
     {
-        var student = await StudentRoleFilter.WhereIsStudent(_context.Users.AsNoTracking())
+        // IgnoreQueryFilters: endpoint autenticado (SuperAdmin); el GQF anónimo no aplica aquí.
+        var student = await StudentRoleFilter.WhereIsStudent(_context.Users.AsNoTracking().IgnoreQueryFilters())
             .Where(u => u.Id == studentId)
             .Select(u => new
             {
@@ -109,7 +110,7 @@ public class StudentIdCardController : Controller
                         .FirstOrDefault(),
                     EnabledFieldsCount = _context.Set<IdCardTemplateField>().AsNoTracking()
                         .Count(x => x.SchoolId == s.Id && x.IsEnabled),
-                    AcademicYearName = _context.StudentAssignments
+                    AcademicYearName = _context.StudentAssignments.AsNoTracking().IgnoreQueryFilters()
                         .Where(a => a.StudentId == studentId && a.IsActive)
                         .Select(a => a.AcademicYear == null ? null : a.AcademicYear.Name)
                         .FirstOrDefault()
@@ -151,7 +152,8 @@ public class StudentIdCardController : Controller
         if (!CarnetEmergencyInfoLink.TryResolveStudentId(t, _qrSignatureService, out var studentId))
             return View("PublicEmergencyInfoInvalid");
 
-        var row = await StudentRoleFilter.WhereIsStudent(_context.Users.AsNoTracking())
+        // IgnoreQueryFilters: petición anónima; el GQF de User exige SchoolId == null sin esto y rompe el flujo.
+        var row = await StudentRoleFilter.WhereIsStudent(_context.Users.AsNoTracking().IgnoreQueryFilters())
             .Where(u => u.Id == studentId)
             .Select(u => new
             {
@@ -186,7 +188,7 @@ public class StudentIdCardController : Controller
                 .FirstOrDefaultAsync();
         }
 
-        var assign = await _context.StudentAssignments.AsNoTracking()
+        var assign = await _context.StudentAssignments.AsNoTracking().IgnoreQueryFilters()
             .Where(sa => sa.StudentId == studentId && sa.IsActive)
             .Select(sa => new
             {
@@ -285,7 +287,7 @@ public class StudentIdCardController : Controller
                 studentId, userId, ex.Message);
             return new ContentResult
             {
-                Content = "No se pudo generar el PDF: " + ex.Message,
+                Content = "No se pudo generar el PDF. Intente nuevamente.",
                 ContentType = "text/plain; charset=utf-8",
                 StatusCode = StatusCodes.Status500InternalServerError
             };
@@ -317,7 +319,7 @@ public class StudentIdCardController : Controller
         }
         catch (Exception ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = "Error interno. Intente nuevamente." });
         }
     }
 
@@ -474,7 +476,7 @@ public class StudentIdCardController : Controller
         }
         catch (Exception ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = "Error interno. Intente nuevamente." });
         }
     }
 

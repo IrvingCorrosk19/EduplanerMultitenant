@@ -58,7 +58,7 @@ public class GroupService : IGroupService
     public async Task<Group?> GetByIdAsync(Guid id)
     {
         var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-        var group = await _context.Groups.FindAsync(id);
+        var group = await _context.Groups.Where(x => x.Id == id).FirstOrDefaultAsync();
         if (group == null || group.SchoolId != schoolId) return null;
         return group;
     }
@@ -97,7 +97,7 @@ public class GroupService : IGroupService
     public async Task DeleteAsync(Guid id)
     {
         var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-        var group = await _context.Groups.FindAsync(id);
+        var group = await _context.Groups.Where(x => x.Id == id).FirstOrDefaultAsync();
         if (group == null || group.SchoolId != schoolId) return;
 
         bool enUso = await _context.SubjectAssignments.AnyAsync(sa => sa.GroupId == id);

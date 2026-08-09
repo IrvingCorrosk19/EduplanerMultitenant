@@ -207,7 +207,7 @@ namespace SchoolManager.Services
                 throw new InvalidOperationException("No se pudo determinar la escuela del usuario actual.");
             }
 
-            var trimestre = await _context.Trimesters.FindAsync(dto.Id);
+            var trimestre = await _context.Trimesters.Where(x => x.Id == dto.Id).FirstOrDefaultAsync();
             if (trimestre == null)
                 return false;
 
@@ -340,7 +340,7 @@ namespace SchoolManager.Services
                 throw new InvalidOperationException("No se pudo determinar la escuela del usuario actual.");
             }
 
-            var trimestre = await _context.Trimesters.FindAsync(id);
+            var trimestre = await _context.Trimesters.Where(x => x.Id == id).FirstOrDefaultAsync();
             if (trimestre == null)
                 return false;
 
@@ -366,7 +366,7 @@ namespace SchoolManager.Services
                 throw new InvalidOperationException("No se pudo determinar la escuela del usuario actual.");
             }
 
-            var trimestre = await _context.Trimesters.FindAsync(id);
+            var trimestre = await _context.Trimesters.Where(x => x.Id == id).FirstOrDefaultAsync();
             if (trimestre == null)
                 return false;
 

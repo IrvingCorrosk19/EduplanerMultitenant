@@ -1,0 +1,63 @@
+version: "3.8"
+
+# Eduplaner MultiTenant en VPS — NO afecta RestBar/FixHub/CarnetQR/etc.
+# Puerto host: 8087
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: eduplaner_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eduplaner}
+      POSTGRES_USER: ${POSTGRES_USER:-eduplaneruser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - eduplaner_pgdata:/var/lib/postgresql/data
+    networks:
+      - eduplaner_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eduplaneruser} -d ${POSTGRES_DB:-eduplaner}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ./SchoolManager
+      dockerfile: Dockerfile
+    container_name: eduplaner_web
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      AllowedHosts: "*"
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-eduplaner};Username=${POSTGRES_USER:-eduplaneruser};Password=${POSTGRES_PASSWORD};SSL Mode=Disable
+      StudentIdCard__PublicBaseUrl: ${PUBLIC_BASE_URL:-http://164.68.99.83:8087}
+      InstitutionalCredential__PublicBaseUrl: ${PUBLIC_BASE_URL:-http://164.68.99.83:8087}
+      Storage__BasePath: /var/data
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      QrSecurity__SecretKey: ${QR_SECRET_KEY:-CHANGE_ME_QR_SECRET_MIN_32_CHARS_USE_ENV_VAR_XX}
+      ApiToken__SecretKey: ${API_TOKEN_SECRET_KEY:-CHANGE_ME_API_TOKEN_SECRET_MIN_32_CHARS_ENV!}
+    ports:
+      - "8087:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - eduplaner_uploads:/app/wwwroot/uploads
+      - eduplaner_storage:/var/data
+    networks:
+      - eduplaner_net
+    restart: unless-stopped
+
+volumes:
+  eduplaner_pgdata:
+  eduplaner_uploads:
+  eduplaner_storage:
+
+networks:
+  eduplaner_net:
+    name: eduplaner_net
+    driver: bridge

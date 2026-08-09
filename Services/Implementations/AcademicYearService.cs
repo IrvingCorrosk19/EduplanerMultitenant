@@ -108,7 +108,7 @@ public class AcademicYearService : IAcademicYearService
     public async Task<AcademicYear> UpdateAsync(AcademicYear academicYear)
     {
         var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-        var existing = await _context.AcademicYears.FindAsync(academicYear.Id);
+        var existing = await _context.AcademicYears.Where(x => x.Id == academicYear.Id).FirstOrDefaultAsync();
         if (existing == null || existing.SchoolId != schoolId)
             throw new InvalidOperationException("Año académico no encontrado o no pertenece a su institución.");
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -49,6 +49,7 @@ public class TeacherAssignmentController : Controller
     }
 
     [HttpPost("SaveAssignments")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveAssignments([FromBody] SaveTeacherAssignmentsRequest request)
     {
         try
@@ -103,12 +104,13 @@ public class TeacherAssignmentController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al guardar las asignaciones: " + ex.Message });
+            return Json(new { success = false, message = "Error al guardar las asignaciones. Intente nuevamente." });
         }
     }
 
     /// <summary>Elimina una fila de asignación docente–materia desde el modal (quita entradas de horario vinculadas).</summary>
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteTeacherAssignment([FromBody] DeleteTeacherAssignmentRequest? body)
     {
         if (body == null || body.TeacherAssignmentId == Guid.Empty)
@@ -135,7 +137,7 @@ public class TeacherAssignmentController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = "Error al eliminar: " + ex.Message });
+            return Json(new { success = false, message = "Error al eliminar. Intente nuevamente." });
         }
     }
 
@@ -263,6 +265,7 @@ public class TeacherAssignmentController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(Guid TeacherId, Guid SubjectId, Guid GradeLevelId, Guid GroupId, Guid AreaId, Guid SpecialtyId)
     {
         // Aquí debes aplicar lógica para actualizar la asignación del docente
@@ -327,11 +330,12 @@ public class TeacherAssignmentController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { currentAssignments = Array.Empty<object>(), allPossibleAssignments = Array.Empty<object>(), error = ex.Message });
+            return Json(new { currentAssignments = Array.Empty<object>(), allPossibleAssignments = Array.Empty<object>(), error = "Error interno. Intente nuevamente." });
         }
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         await _teacherAssignmentService.DeleteAllAssignmentsByTeacherIdAsync(id);
@@ -340,6 +344,7 @@ public class TeacherAssignmentController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(Guid id, TeacherAssignmentViewModel model)
     {
         if (!ModelState.IsValid || model.SelectedSubjectId == null || model.SelectedGroupId == null ||

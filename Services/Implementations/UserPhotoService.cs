@@ -25,7 +25,7 @@ public sealed class UserPhotoService : IUserPhotoService
 
     public async Task UpdatePhotoAsync(Guid userId, IFormFile file)
     {
-        var user = await _context.Users.FindAsync(userId);
+        var user = await _context.Users.Where(x => x.Id == userId).FirstOrDefaultAsync();
         if (user == null)
         {
             _logger.LogWarning("[UserPhoto] Usuario no encontrado: {UserId}", userId);
@@ -50,7 +50,7 @@ public sealed class UserPhotoService : IUserPhotoService
 
     public async Task RemovePhotoAsync(Guid userId)
     {
-        var user = await _context.Users.FindAsync(userId);
+        var user = await _context.Users.Where(x => x.Id == userId).FirstOrDefaultAsync();
         if (user == null)
         {
             _logger.LogWarning("[UserPhoto] Usuario no encontrado: {UserId}", userId);

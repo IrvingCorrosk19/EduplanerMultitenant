@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Dtos;
 using SchoolManager.Interfaces;
 using SchoolManager.Models;
 
+[Authorize(Roles = "Director,Inspector,Teacher,Docente,secretaria,admin,superadmin")]
 public class ActivityController : Controller
 {
     private readonly IActivityService _activityService;
@@ -29,11 +31,13 @@ public class ActivityController : Controller
 
     /* ---------- CREAR ---------- */
 
-    public IActionResult Create() => View();          // muestra el formulario vacío
+    [Authorize(Roles = "Director,Inspector,secretaria,admin,superadmin")]
+    public IActionResult Create() => View();
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(ActivityCreateDto dto)   // <-- cambia el parámetro
+    [Authorize(Roles = "Director,Inspector,secretaria,admin,superadmin")]
+    public async Task<IActionResult> Create(ActivityCreateDto dto)
     {
         if (!ModelState.IsValid) return View(dto);
 
@@ -43,6 +47,7 @@ public class ActivityController : Controller
 
     /* ---------- EDITAR (opcional, sigue usando entidad) ---------- */
 
+    [Authorize(Roles = "Director,Inspector,secretaria,admin,superadmin")]
     public async Task<IActionResult> Edit(Guid id)
     {
         var activity = await _activityService.GetByIdAsync(id);
@@ -52,6 +57,7 @@ public class ActivityController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector,secretaria,admin,superadmin")]
     public async Task<IActionResult> Edit(Activity activity)
     {
         if (!ModelState.IsValid) return View(activity);
@@ -62,6 +68,7 @@ public class ActivityController : Controller
 
     /* ---------- ELIMINAR ---------- */
 
+    [Authorize(Roles = "Director,Inspector,secretaria,admin,superadmin")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var activity = await _activityService.GetByIdAsync(id);
@@ -71,6 +78,7 @@ public class ActivityController : Controller
 
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector,secretaria,admin,superadmin")]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         await _activityService.DeleteAsync(id);

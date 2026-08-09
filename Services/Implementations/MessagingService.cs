@@ -27,7 +27,7 @@ namespace SchoolManager.Services.Implementations
             {
                 _logger.LogInformation("📧 Enviando mensaje de {SenderId} - Tipo: {Type}", senderId, model.RecipientType);
 
-                var sender = await _context.Users.FindAsync(senderId);
+                var sender = await _context.Users.Where(u => u.Id == senderId).FirstOrDefaultAsync();
                 if (sender == null)
                 {
                     _logger.LogWarning("⚠️ Remitente no encontrado: {SenderId}", senderId);
@@ -495,7 +495,7 @@ namespace SchoolManager.Services.Implementations
         {
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                var user = await _context.Users.Where(u => u.Id == userId).FirstOrDefaultAsync();
                 if (user == null || !user.SchoolId.HasValue)
                     return new RecipientOptionsViewModel();
 
@@ -680,7 +680,7 @@ namespace SchoolManager.Services.Implementations
                 if (string.IsNullOrWhiteSpace(searchTerm) || searchTerm.Length < 2)
                     return new List<RecipientOptionDto>();
 
-                var currentUser = await _context.Users.FindAsync(userId);
+                var currentUser = await _context.Users.Where(u => u.Id == userId).FirstOrDefaultAsync();
                 if (currentUser?.SchoolId == null)
                     return new List<RecipientOptionDto>();
 
@@ -733,7 +733,7 @@ namespace SchoolManager.Services.Implementations
         {
             try
             {
-                var sender = await _context.Users.FindAsync(senderId);
+                var sender = await _context.Users.Where(u => u.Id == senderId).FirstOrDefaultAsync();
                 if (sender == null)
                     return false;
 

@@ -28,6 +28,7 @@ public class SchoolController : Controller
     public IActionResult Create() => View();
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(School school)
     {
         if (ModelState.IsValid)
@@ -46,6 +47,7 @@ public class SchoolController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(School school)
     {
         if (ModelState.IsValid)
@@ -64,6 +66,7 @@ public class SchoolController : Controller
     }
 
     [HttpPost, ActionName("Delete")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         await _schoolService.DeleteAsync(id);

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolManager.Models;
@@ -163,7 +163,7 @@ public class ScheduleController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = ex.Message, data = (object?)null });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente.", data = (object?)null });
         }
     }
 
@@ -196,7 +196,7 @@ public class ScheduleController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = ex.Message, data = (object?)null });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente.", data = (object?)null });
         }
     }
 
@@ -228,15 +228,15 @@ public class ScheduleController : Controller
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Json(new { success = false, message = ex.Message, data = (object?)null });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente.", data = (object?)null });
         }
         catch (InvalidOperationException ex)
         {
-            return Json(new { success = false, message = ex.Message, data = (object?)null });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente.", data = (object?)null });
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = ex.Message, data = (object?)null });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente.", data = (object?)null });
         }
     }
 
@@ -257,15 +257,15 @@ public class ScheduleController : Controller
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Json(new { success = false, message = ex.Message, data = (object?)null });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente.", data = (object?)null });
         }
         catch (InvalidOperationException ex)
         {
-            return Json(new { success = false, message = ex.Message, data = (object?)null });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente.", data = (object?)null });
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = ex.Message, data = (object?)null });
+            return Json(new { success = false, message = "Error interno. Intente nuevamente.", data = (object?)null });
         }
     }
 

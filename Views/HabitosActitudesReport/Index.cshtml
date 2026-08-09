@@ -1,0 +1,90 @@
+@{
+    var esDocente = ViewBag.EsDocente as bool? == true;
+    var trimestres = ViewBag.TrimestresDisponibles as List<string>;
+    ViewData["Title"] = "Cuadro de Hábitos y Actitudes";
+    Layout = "_AdminLayout";
+}
+
+<div class="content-header">
+    <div class="container-fluid">
+        <a href="@Url.Action("Index", "Reportes")" class="text-muted small">&larr; Catálogo de reportes</a>
+        <h1 class="m-0 mt-1" style="font-size:1.35rem;">Cuadro de Hábitos y Actitudes</h1>
+        <p class="text-muted small">Formato oficial MEDUCA. Complete S / X / R en las celdas vacías del reporte impreso o Excel.
+            @if (esDocente) { <span>Solo <strong>sus asignaciones</strong>.</span> }
+        </p>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        @if (TempData["Error"] != null) { <div class="alert alert-danger">@TempData["Error"]</div> }
+        <form class="border p-3 bg-white" style="max-width:920px;">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Trimestre *</label>
+                    <select class="form-select form-select-sm" id="trimestre" required>
+                        <option value="">-- Seleccione --</option>
+                        @if (trimestres != null) { foreach (var t in trimestres) { <option value="@t">@t</option> } }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Grado *</label>
+                    <select class="form-select form-select-sm" id="nivelEducativo" required>
+                        <option value="">-- Seleccione --</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Grupo *</label>
+                    <select class="form-select form-select-sm" id="grupoCombo" required disabled>
+                        <option value="">-- Seleccione grado --</option>
+                    </select>
+                    <input type="hidden" id="groupId" /><input type="hidden" id="gradeLevelId" />
+                </div>
+            </div>
+            <div class="mt-3 d-flex flex-wrap gap-2">
+                <button type="button" id="btn-vista" class="btn btn-primary btn-sm" disabled>Ver reporte</button>
+                <button type="button" id="btn-pdf" class="btn btn-outline-primary btn-sm" disabled>Descargar PDF</button>
+                <button type="button" id="btn-excel" class="btn btn-outline-secondary btn-sm" disabled>Descargar Excel</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+<script>
+$(function () {
+    const GUID_VACIO = '00000000-0000-0000-0000-000000000000';
+    $.get('@Url.Action("ObtenerNivelesFiltro", "AprobadosReprobados")').done(r => {
+        const s = $('#nivelEducativo').html('<option value="">-- Seleccione --</option>');
+        if (r.success && r.data) r.data.forEach(n => s.append(`<option value="${n.id}">${n.nombre}</option>`));
+    });
+    function params() {
+        return '?trimestre=' + encodeURIComponent($('#trimestre').val()) +
+            '&nivelEducativo=' + encodeURIComponent($('#nivelEducativo').val()) +
+            '&groupId=' + encodeURIComponent($('#groupId').val()) +
+            '&gradeLevelId=' + encodeURIComponent($('#gradeLevelId').val());
+    }
+    function setBtns(ok) { $('#btn-vista,#btn-pdf,#btn-excel').prop('disabled', !ok); }
+    $('#nivelEducativo').change(function () {
+        $('#grupoCombo').prop('disabled', true).html('<option value="">Cargando...</option>');
+        $('#groupId,#gradeLevelId').val(''); setBtns(false);
+        if (!$(this).val()) return;
+        $.get('@Url.Action("ObtenerGruposFiltro", "AprobadosReprobados")', { materiaId: GUID_VACIO, nivelEducativo: $(this).val() })
+            .done(r => {
+                const s = $('#grupoCombo').html('<option value="">-- Seleccione --</option>');
+                if (r.success && r.data) r.data.forEach(g => s.append(`<option value="${g.groupId}|${g.gradeLevelId}">${g.nombre}</option>`));
+                s.prop('disabled', false);
+            });
+    });
+    $('#grupoCombo').change(function () {
+        const p = ($(this).val() || '').split('|');
+        $('#groupId').val(p[0] || ''); $('#gradeLevelId').val(p[1] || '');
+        setBtns(p[0] && p[1] && $('#trimestre').val());
+    });
+    $('#trimestre').change(() => setBtns($('#groupId').val() && $('#trimestre').val()));
+    $('#btn-vista').click(() => { if ($('#groupId').val()) window.open('@Url.Action("VistaPrevia", "HabitosActitudesReport")' + params(), '_blank'); });
+    $('#btn-pdf').click(() => { if ($('#groupId').val()) window.location.href = '@Url.Action("ExportarPdf", "HabitosActitudesReport")' + params(); });
+    $('#btn-excel').click(() => { if ($('#groupId').val()) window.location.href = '@Url.Action("ExportarExcel", "HabitosActitudesReport")' + params(); });
+});
+</script>
+}

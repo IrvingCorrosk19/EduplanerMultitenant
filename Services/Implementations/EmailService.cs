@@ -38,10 +38,10 @@ namespace SchoolManager.Services.Implementations
         {
             try
             {
-                // Obtener datos del estudiante
+                // Obtener datos del estudiante (incl. escuela para aislamiento multi-tenant)
                 var student = await _context.Users
                     .Where(u => u.Id == studentId)
-                    .Select(u => new { u.Email, u.Name, u.LastName })
+                    .Select(u => new { u.Email, u.Name, u.LastName, u.SchoolId })
                     .FirstOrDefaultAsync();
 
                 if (student == null)
@@ -70,18 +70,25 @@ namespace SchoolManager.Services.Implementations
                     return false;
                 }
 
-                // Obtener configuración de email de la escuela
-                var schoolId = disciplineReport.Teacher?.SchoolId;
-                if (!schoolId.HasValue)
+                if (disciplineReport.StudentId != studentId)
                 {
-                    _logger.LogWarning("No se pudo obtener SchoolId del profesor");
+                    _logger.LogWarning("El reporte {ReportId} no corresponde al estudiante {StudentId}", disciplineReportId, studentId);
                     return false;
                 }
 
-                var emailConfig = await _emailConfigService.GetActiveBySchoolIdAsync(schoolId.Value);
+                var reportSchoolId = disciplineReport.SchoolId;
+
+                if (student.SchoolId != reportSchoolId)
+                {
+                    _logger.LogWarning("SchoolId del estudiante no coincide con el del reporte de disciplina");
+                    return false;
+                }
+
+                // Obtener configuración de email de la escuela
+                var emailConfig = await _emailConfigService.GetActiveBySchoolIdAsync(reportSchoolId);
                 if (emailConfig == null)
                 {
-                    _logger.LogWarning("No hay configuración de email activa para la escuela: {SchoolId}", schoolId);
+                    _logger.LogWarning("No hay configuración de email activa para la escuela: {SchoolId}", reportSchoolId);
                     return false;
                 }
 

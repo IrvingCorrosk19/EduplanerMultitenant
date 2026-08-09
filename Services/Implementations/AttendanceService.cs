@@ -28,7 +28,7 @@ public class AttendanceService : IAttendanceService
     public async Task<Attendance?> GetByIdAsync(Guid id)
     {
         var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-        var attendance = await _context.Attendances.FindAsync(id);
+        var attendance = await _context.Attendances.Where(x => x.Id == id).FirstOrDefaultAsync();
         if (attendance == null || attendance.SchoolId != schoolId) return null;
         return attendance;
     }
@@ -55,7 +55,7 @@ public class AttendanceService : IAttendanceService
     public async Task DeleteAsync(Guid id)
     {
         var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-        var attendance = await _context.Attendances.FindAsync(id);
+        var attendance = await _context.Attendances.Where(x => x.Id == id).FirstOrDefaultAsync();
         if (attendance == null || attendance.SchoolId != schoolId) return;
         _context.Attendances.Remove(attendance);
         await _context.SaveChangesAsync();
@@ -154,22 +154,38 @@ public class AttendanceService : IAttendanceService
         if (attendances == null || attendances.Count == 0)
             throw new ArgumentException("No se recibieron asistencias.");
 
-        foreach (var dto in attendances)
+        var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
+
+        // Transacción explícita: garantiza atomicidad completa.
+        // Si cualquier registro falla, ninguno se guarda (evita asistencias parciales).
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            var attendance = new Attendance
+            foreach (var dto in attendances)
             {
-                Id = Guid.NewGuid(),
-                StudentId = dto.StudentId,
-                TeacherId = dto.TeacherId,
-                GroupId = dto.GroupId,
-                GradeId = dto.GradeId,
-                Date = dto.Date,
-                Status = dto.Status,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.Attendances.Add(attendance);
+                var attendance = new Attendance
+                {
+                    Id = Guid.NewGuid(),
+                    StudentId = dto.StudentId,
+                    TeacherId = dto.TeacherId,
+                    GroupId = dto.GroupId,
+                    GradeId = dto.GradeId,
+                    SchoolId = schoolId,
+                    Date = dto.Date,
+                    Status = dto.Status,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Attendances.Add(attendance);
+            }
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
         }
-        await _context.SaveChangesAsync();
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<List<AttendanceResponseDto>> GetAttendancesByDateAsync(Guid groupId, Guid gradeId, DateOnly date)

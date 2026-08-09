@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Dtos;
 using SchoolManager.Models;
@@ -82,7 +82,7 @@ namespace SchoolManager.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "FilterByRole failed for role={Role}", role);
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -144,7 +144,7 @@ namespace SchoolManager.Controllers.Admin
                 {
                     success  = false,
                     message  = "Error interno al encolar los correos.",
-                    warnings = new[] { ex.Message }
+                    warnings = new[] { "Error interno. Intente nuevamente." }
                 });
             }
         }

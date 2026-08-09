@@ -70,7 +70,7 @@ public class SubjectService : ISubjectService
     public async Task<Subject?> GetByIdAsync(Guid id)
     {
         var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-        var subject = await _context.Subjects.FindAsync(id);
+        var subject = await _context.Subjects.Where(x => x.Id == id).FirstOrDefaultAsync();
         if (subject == null || subject.SchoolId != schoolId) return null;
         return subject;
     }
@@ -101,7 +101,7 @@ public class SubjectService : ISubjectService
     public async Task DeleteAsync(Guid id)
     {
         var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-        var subject = await _context.Subjects.FindAsync(id);
+        var subject = await _context.Subjects.Where(x => x.Id == id).FirstOrDefaultAsync();
         if (subject == null || subject.SchoolId != schoolId) return;
 
         bool enUso = await _context.SubjectAssignments.AnyAsync(sa => sa.SubjectId == id);

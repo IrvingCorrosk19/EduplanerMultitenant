@@ -79,7 +79,7 @@ public class PaymentConceptService : IPaymentConceptService
     public async Task<PaymentConcept> UpdateAsync(Guid id, PaymentConceptCreateDto dto, Guid updatedBy)
     {
         var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-        var concept = await _context.PaymentConcepts.FindAsync(id);
+        var concept = await _context.PaymentConcepts.Where(x => x.Id == id).FirstOrDefaultAsync();
         if (concept == null || concept.SchoolId != schoolId)
             throw new Exception("Concepto de pago no encontrado");
 
@@ -102,7 +102,7 @@ public class PaymentConceptService : IPaymentConceptService
     public async Task<bool> DeleteAsync(Guid id)
     {
         var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-        var concept = await _context.PaymentConcepts.FindAsync(id);
+        var concept = await _context.PaymentConcepts.Where(x => x.Id == id).FirstOrDefaultAsync();
         if (concept == null || concept.SchoolId != schoolId)
             return false;
 

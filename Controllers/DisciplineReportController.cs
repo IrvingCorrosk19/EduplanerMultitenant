@@ -1,3 +1,4 @@
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Models;
 using SchoolManager.Dtos;
@@ -7,7 +8,9 @@ using SchoolManager.Services.Interfaces;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
+using SchoolManager.Helpers;
 
+[Authorize]
 public class DisciplineReportController : Controller
 {
     private readonly IDisciplineReportService _disciplineReportService;
@@ -33,12 +36,14 @@ public class DisciplineReportController : Controller
         _context = context;
     }
 
+    [Authorize(Roles = "Director,Inspector,Docente,Teacher")]
     public async Task<IActionResult> Index()
     {
         var reports = await _disciplineReportService.GetAllAsync();
         return View(reports);
     }
 
+    [Authorize(Roles = "Director,Inspector,Docente,Teacher")]
     public async Task<IActionResult> Details(Guid id)
     {
         var report = await _disciplineReportService.GetByIdAsync(id);
@@ -48,6 +53,8 @@ public class DisciplineReportController : Controller
 
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector,Docente,Teacher")]
     public async Task<IActionResult> CreateWithFiles()
     {
         try
@@ -77,35 +84,35 @@ public class DisciplineReportController : Controller
             if (files.Any())
             {
                 var documentList = new List<object>();
+                var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "discipline");
+                if (!Directory.Exists(uploadsPath)) Directory.CreateDirectory(uploadsPath);
+
                 foreach (var file in files)
                 {
-                    if (file.Length > 0)
+                    // Validar tipo y tamaño antes de guardar
+                    var (isValid, validationError) = FileUploadValidator.Validate(file, FileUploadValidator.AllowedDocumentExtensions);
+                    if (!isValid)
                     {
-                        // Crear directorio si no existe
-                        var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "discipline");
-                        if (!Directory.Exists(uploadsPath))
-                        {
-                            Directory.CreateDirectory(uploadsPath);
-                        }
-
-                        // Generar nombre único para el archivo
-                        var fileName = $"{Guid.NewGuid()}_{file.FileName}";
-                        var filePath = Path.Combine(uploadsPath, fileName);
-
-                        // Guardar archivo
-                        using (var stream = new FileStream(filePath, FileMode.Create))
-                        {
-                            await file.CopyToAsync(stream);
-                        }
-
-                        documentList.Add(new
-                        {
-                            fileName = file.FileName,
-                            savedName = fileName,
-                            size = file.Length,
-                            uploadDate = DateTime.UtcNow
-                        });
+                        return Json(new { success = false, message = $"Archivo rechazado: {validationError}" });
                     }
+
+                    // Generar nombre único (Path.GetFileName evita path traversal)
+                    var safeExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                    var fileName = $"{Guid.NewGuid()}{safeExtension}";
+                    var filePath = Path.Combine(uploadsPath, fileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    documentList.Add(new
+                    {
+                        fileName = Path.GetFileName(file.FileName), // nombre original (sin rutas)
+                        savedName = fileName,
+                        size = file.Length,
+                        uploadDate = DateTime.UtcNow
+                    });
                 }
                 documentsJson = JsonSerializer.Serialize(documentList);
             }
@@ -121,13 +128,56 @@ public class DisciplineReportController : Controller
             // Obtener usuario autenticado y su school_id
             var currentUser = await _currentUserService.GetCurrentUserAsync();
             var currentUserId = await _currentUserService.GetCurrentUserIdAsync();
-            
+            var schoolScopeId = await _currentUserService.GetCurrentSchoolIdAsync();
+            if (!schoolScopeId.HasValue)
+            {
+                return Json(new { success = false, error = "Su cuenta no tiene escuela asignada; no puede crear reportes de disciplina." });
+            }
+
+            if (!Guid.TryParse(studentId, out var studentGuid) || !Guid.TryParse(teacherId, out var teacherGuid))
+            {
+                return Json(new { success = false, error = "Identificadores de estudiante o docente inválidos." });
+            }
+
+            var studentInSchool = await _context.Users.AsNoTracking()
+                .AnyAsync(u => u.Id == studentGuid && u.SchoolId == schoolScopeId);
+            var teacherInSchool = await _context.Users.AsNoTracking()
+                .AnyAsync(u => u.Id == teacherGuid && u.SchoolId == schoolScopeId);
+            if (!studentInSchool || !teacherInSchool)
+            {
+                return Json(new { success = false, error = "El estudiante o el docente no pertenecen a su escuela." });
+            }
+
+            if (!string.IsNullOrEmpty(subjectId) && Guid.TryParse(subjectId, out var subjectGuid))
+            {
+                var subjectOk = await _context.Subjects.AsNoTracking()
+                    .AnyAsync(s => s.Id == subjectGuid && s.SchoolId == schoolScopeId);
+                if (!subjectOk)
+                    return Json(new { success = false, error = "La materia no es válida para su escuela." });
+            }
+
+            if (!string.IsNullOrEmpty(groupId) && Guid.TryParse(groupId, out var groupGuid))
+            {
+                var groupOk = await _context.Groups.AsNoTracking()
+                    .AnyAsync(g => g.Id == groupGuid && g.SchoolId == schoolScopeId);
+                if (!groupOk)
+                    return Json(new { success = false, error = "El grupo no es válido para su escuela." });
+            }
+
+            if (!string.IsNullOrEmpty(gradeLevelId) && Guid.TryParse(gradeLevelId, out var gradeGuid))
+            {
+                var gradeOk = await _context.GradeLevels.AsNoTracking()
+                    .AnyAsync(gl => gl.Id == gradeGuid && gl.SchoolId == schoolScopeId);
+                if (!gradeOk)
+                    return Json(new { success = false, error = "El grado no es válido para su escuela." });
+            }
+
             var disciplineReport = new DisciplineReport
             {
                 Id = Guid.NewGuid(),
-                SchoolId = currentUser?.SchoolId, // ✅ SchoolId del usuario autenticado
-                StudentId = Guid.Parse(studentId),
-                TeacherId = Guid.Parse(teacherId),
+                SchoolId = schoolScopeId.Value,
+                StudentId = studentGuid,
+                TeacherId = teacherGuid,
                 SubjectId = !string.IsNullOrEmpty(subjectId) ? Guid.Parse(subjectId) : (Guid?)null,
                 GroupId = !string.IsNullOrEmpty(groupId) ? Guid.Parse(groupId) : (Guid?)null,
                 GradeLevelId = !string.IsNullOrEmpty(gradeLevelId) ? Guid.Parse(gradeLevelId) : (Guid?)null,
@@ -157,11 +207,13 @@ public class DisciplineReportController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al crear el reporte de disciplina");
-            return Json(new { success = false, error = "Error al crear el reporte", details = ex.Message });
+            return Json(new { success = false, error = "Error al crear el reporte", details = "Error interno. Intente nuevamente." });
         }
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector,Docente,Teacher")]
     public async Task<IActionResult> UpdateWithFilesForTeacher()
     {
         try
@@ -213,14 +265,19 @@ public class DisciplineReportController : Controller
 
                 foreach (var file in files.Where(f => f.Length > 0))
                 {
-                    var fileName = $"{Guid.NewGuid()}_{file.FileName}";
+                    var (isValid, validationError) = FileUploadValidator.Validate(file, FileUploadValidator.AllowedDocumentExtensions);
+                    if (!isValid)
+                        return Json(new { success = false, message = $"Archivo rechazado: {validationError}" });
+
+                    var safeExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                    var fileName = $"{Guid.NewGuid()}{safeExtension}";
                     var filePath = Path.Combine(uploadsPath, fileName);
                     await using (var stream = new FileStream(filePath, FileMode.Create))
                         await file.CopyToAsync(stream);
 
                     arr.Add(new JsonObject
                     {
-                        ["fileName"] = file.FileName,
+                        ["fileName"] = Path.GetFileName(file.FileName),
                         ["savedName"] = fileName,
                         ["size"] = file.Length,
                         ["uploadDate"] = DateTime.UtcNow
@@ -245,11 +302,13 @@ public class DisciplineReportController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al actualizar reporte de disciplina (profesor)");
-            return Json(new { success = false, error = "Error al actualizar el registro", details = ex.Message });
+            return Json(new { success = false, error = "Error al actualizar el registro", details = "Error interno. Intente nuevamente." });
         }
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector,Docente,Teacher")]
     public async Task<IActionResult> TeacherDeleteReport([FromBody] TeacherDisciplineReportIdDto dto)
     {
         try
@@ -268,7 +327,7 @@ public class DisciplineReportController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al eliminar reporte de disciplina (profesor)");
-            return Json(new { success = false, error = "Error al eliminar el registro", details = ex.Message });
+            return Json(new { success = false, error = "Error al eliminar el registro", details = "Error interno. Intente nuevamente." });
         }
     }
 
@@ -286,7 +345,7 @@ public class DisciplineReportController : Controller
         if (report == null || report.TeacherId != teacherUserId.Value)
             return null;
 
-        if (currentUser.SchoolId.HasValue && report.SchoolId.HasValue && report.SchoolId != currentUser.SchoolId)
+        if (!currentUser.SchoolId.HasValue || report.SchoolId != currentUser.SchoolId.Value)
             return null;
 
         return report;
@@ -334,6 +393,7 @@ public class DisciplineReportController : Controller
         }
     }
 
+    [Authorize(Roles = "Director,Inspector")]
     public async Task<IActionResult> Edit(Guid id)
     {
         var report = await _disciplineReportService.GetByIdAsync(id);
@@ -342,6 +402,8 @@ public class DisciplineReportController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector")]
     public async Task<IActionResult> Edit(DisciplineReport report)
     {
         if (ModelState.IsValid)
@@ -352,6 +414,7 @@ public class DisciplineReportController : Controller
         return View(report);
     }
 
+    [Authorize(Roles = "Director,Inspector")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var report = await _disciplineReportService.GetByIdAsync(id);
@@ -360,6 +423,8 @@ public class DisciplineReportController : Controller
     }
 
     [HttpPost, ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector")]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         await _disciplineReportService.DeleteAsync(id);
@@ -367,6 +432,7 @@ public class DisciplineReportController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Director,Inspector,Docente,Teacher")]
     public async Task<IActionResult> GetForTeacherEdit(Guid id)
     {
         var report = await GetOwnedDisciplineReportForTeacherAsync(id);
@@ -388,8 +454,12 @@ public class DisciplineReportController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Director,Inspector,Docente,Teacher")]
     public async Task<IActionResult> GetByStudent(Guid studentId)
     {
+        if (!await CallerMayAccessStudentDisciplineDataAsync(studentId))
+            return new JsonResult(new { error = "No autorizado para ver disciplina de este estudiante." }) { StatusCode = StatusCodes.Status403Forbidden };
+
         var reports = await _disciplineReportService.GetByStudentDtoAsync(studentId);
         return Json(reports.Select(r => new {
             id = r.Id,
@@ -409,6 +479,7 @@ public class DisciplineReportController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Director,Inspector,Docente,Teacher")]
     public async Task<IActionResult> GetFiltered(DateTime? fechaInicio, DateTime? fechaFin, Guid? gradoId, Guid? groupId = null, Guid? studentId = null)
     {
         if (!gradoId.HasValue)
@@ -442,12 +513,13 @@ public class DisciplineReportController : Controller
         }
         catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new { error = "Error interno. Intente nuevamente." });
         }
     }
 
     [HttpGet]
-    public async Task<IActionResult> ExportToExcel(DateTime? fechaInicio, DateTime? fechaFin, Guid? gradoId)
+    [Authorize(Roles = "Director,Inspector")]
+    public async Task<IActionResult> ExportToCsv(DateTime? fechaInicio, DateTime? fechaFin, Guid? gradoId)
     {
         var reports = await _disciplineReportService.GetFilteredAsync(fechaInicio, fechaFin, gradoId);
         var csv = "Estudiante,Fecha,Tipo,Estado,Descripción\n" +
@@ -457,6 +529,8 @@ public class DisciplineReportController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector,Docente,Teacher")]
     public async Task<IActionResult> SendEmailToStudent([FromBody] SendDisciplineEmailDto request)
     {
         try
@@ -464,6 +538,27 @@ public class DisciplineReportController : Controller
             if (request.StudentId == Guid.Empty || request.DisciplineReportId == Guid.Empty)
             {
                 return Json(new { success = false, message = "ID de estudiante y reporte son requeridos" });
+            }
+
+            var currentUser = await _currentUserService.GetCurrentUserAsync();
+            if (currentUser?.SchoolId == null)
+            {
+                return Json(new { success = false, message = "No se pudo determinar la escuela del usuario." });
+            }
+
+            var studentSchoolId = await _context.Users.AsNoTracking()
+                .Where(u => u.Id == request.StudentId)
+                .Select(u => u.SchoolId)
+                .FirstOrDefaultAsync();
+            if (studentSchoolId != currentUser.SchoolId)
+            {
+                return Json(new { success = false, message = "No autorizado." });
+            }
+
+            var reportScoped = await _disciplineReportService.GetByIdAsync(request.DisciplineReportId);
+            if (reportScoped == null)
+            {
+                return Json(new { success = false, message = "Reporte no encontrado o no pertenece a su escuela." });
             }
 
             var success = await _emailService.SendDisciplineReportEmailAsync(
@@ -488,6 +583,7 @@ public class DisciplineReportController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Director,Inspector,Docente,Teacher")]
     public async Task<IActionResult> GetByCounselor(string trimester = null)
     {
         try
@@ -524,6 +620,7 @@ public class DisciplineReportController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Director,Inspector,Docente,Teacher,Parent,Acudiente")]
     public async Task<IActionResult> GetVisibleDisciplineInfo(Guid studentId, string trimester = null)
     {
         try
@@ -538,7 +635,8 @@ public class DisciplineReportController : Controller
             var role = (currentUser.Role ?? "").Trim().ToLowerInvariant();
             var canView = role switch
             {
-                "director" => true,
+                // Director debe estar en la misma escuela que el estudiante — no bypass global
+                "director" => await CanSameSchoolStaffViewStudentDisciplineAsync(currentUser, studentId),
                 "inspector" or "docente" => await CanSameSchoolStaffViewStudentDisciplineAsync(currentUser, studentId),
                 "teacher" => await CanTeacherViewStudentDiscipline(currentUser.Id, studentId)
                     || await CanSameSchoolStaffViewStudentDisciplineAsync(currentUser, studentId),
@@ -611,6 +709,17 @@ public class DisciplineReportController : Controller
         return list;
     }
 
+    private async Task<bool> CallerMayAccessStudentDisciplineDataAsync(Guid studentId)
+    {
+        var current = await _currentUserService.GetCurrentUserAsync();
+        if (current == null || !current.SchoolId.HasValue) return false;
+        var stSchool = await _context.Users.AsNoTracking()
+            .Where(u => u.Id == studentId)
+            .Select(u => u.SchoolId)
+            .FirstOrDefaultAsync();
+        return stSchool == current.SchoolId;
+    }
+
     private async Task<bool> CanSameSchoolStaffViewStudentDisciplineAsync(User staffUser, Guid studentId)
     {
         if (staffUser.SchoolId == null)
@@ -643,11 +752,14 @@ public class DisciplineReportController : Controller
             var gradeIds = counselorGroups.Where(cg => cg.GradeId.HasValue).Select(cg => cg.GradeId.Value).ToList();
 
             var studentAssignment = await _context.StudentAssignments
-                .Where(sa => sa.StudentId == studentId && 
+                .Where(sa => sa.StudentId == studentId &&
                            (groupIds.Contains(sa.GroupId) || gradeIds.Contains(sa.GradeId)))
                 .FirstOrDefaultAsync();
 
-            return studentAssignment != null;
+            if (studentAssignment == null) return false;
+
+            return await _context.Users.AsNoTracking()
+                .AnyAsync(u => u.Id == studentId && u.SchoolId == currentUser.SchoolId);
         }
         catch (Exception ex)
         {
@@ -660,18 +772,29 @@ public class DisciplineReportController : Controller
     {
         try
         {
-            // Verificar si el estudiante es hijo del padre/madre
-            // Esto requeriría una relación padre-hijo en la base de datos
-            // Por ahora, asumimos que si el usuario es "parent", puede ver la información
-            // En un sistema real, necesitarías verificar la relación familiar
-            
             var currentUser = await _currentUserService.GetCurrentUserAsync();
-            if (currentUser?.Role?.ToLower() != "parent") return false;
+            if (currentUser == null) return false;
+            var role = (currentUser.Role ?? "").Trim().ToLowerInvariant();
+            if (role != "parent" && role != "acudiente") return false;
 
-            // Aquí deberías implementar la lógica para verificar la relación padre-hijo
-            // Por ejemplo, consultando una tabla de relaciones familiares
-            // Por ahora, retornamos true si es padre/madre
-            return true;
+            var studentSchoolId = await _context.Users.AsNoTracking()
+                .Where(u => u.Id == studentId)
+                .Select(u => u.SchoolId)
+                .FirstOrDefaultAsync();
+            if (currentUser.SchoolId.HasValue && studentSchoolId != currentUser.SchoolId)
+                return false;
+
+            var linkedViaStudentsTable = await _context.Students.AsNoTracking()
+                .AnyAsync(s => s.Id == studentId && s.ParentId == parentId);
+
+            if (linkedViaStudentsTable)
+                return true;
+
+            if (!currentUser.SchoolId.HasValue)
+                return false;
+
+            return await _context.Prematriculations.AsNoTracking()
+                .AnyAsync(p => p.StudentId == studentId && p.ParentId == parentId && p.SchoolId == currentUser.SchoolId.Value);
         }
         catch (Exception ex)
         {
@@ -681,6 +804,8 @@ public class DisciplineReportController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Director,Inspector,Teacher,Docente")]
     public async Task<IActionResult> UpdateStatus([FromBody] UpdateDisciplineStatusDto request)
     {
         try
@@ -694,15 +819,16 @@ public class DisciplineReportController : Controller
             // Verificar permisos según el rol
             var canUpdate = currentUser.Role?.ToLower() switch
             {
-                "director" => true, // El director puede cambiar cualquier estado
+                "director" => true,
+                "inspector" => true,
                 "teacher" => request.Status?.ToLower() == "escalado", // Los profesores solo pueden escalar
                 _ => false
             };
 
-            // Verificar si se está intentando aplicar sanciones graves
+            // Solo el director puede aplicar sanciones graves
             var severeSanctions = new[] { "suspension", "suspensión", "condicional", "expulsion", "expulsión" };
             var isSevereSanction = severeSanctions.Any(s => request.Status?.ToLower().Contains(s) == true);
-            
+
             if (isSevereSanction && currentUser.Role?.ToLower() != "director")
             {
                 return Forbid("Solo el director puede aplicar sanciones graves como suspensiones o clasificar estudiantes como condicionales");
@@ -771,23 +897,24 @@ public class DisciplineReportController : Controller
                                $"Descripción: {report.Description}\n\n" +
                                $"Comentarios adicionales: {comments ?? "Sin comentarios adicionales"}";
 
-            // Crear mensaje para el director
             var message = new Message
             {
                 Id = Guid.NewGuid(),
+                SchoolId = currentUser.SchoolId,
                 SenderId = currentUserId.Value,
                 RecipientId = director.Id,
                 Subject = "Caso de Disciplina Escalado",
                 Content = messageContent,
                 MessageType = "DisciplineEscalation",
                 IsRead = false,
+                SentAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow
             };
 
-            // Aquí deberías usar el servicio de mensajería para enviar el mensaje
-            // await _messagingService.SendMessageAsync(message);
-            
-            _logger.LogInformation("Mensaje de escalación enviado al director {DirectorId} para el reporte {ReportId}", 
+            _context.Messages.Add(message);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Mensaje de escalación enviado al director {DirectorId} para el reporte {ReportId}",
                 director.Id, reportId);
         }
         catch (Exception ex)

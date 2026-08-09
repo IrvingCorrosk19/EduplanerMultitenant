@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Models;
 
+[Authorize(Roles = "Director,superadmin")]
 public class AuditLogController : Controller
 {
     private readonly IAuditLogService _auditLogService;
@@ -10,10 +12,16 @@ public class AuditLogController : Controller
         _auditLogService = auditLogService;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int page = 1, int pageSize = 100)
     {
-        var logs = await _auditLogService.GetAllAsync();
-        return View(logs);
+        var (items, totalCount) = await _auditLogService.GetAllAsync(page, pageSize);
+
+        ViewBag.CurrentPage = page;
+        ViewBag.PageSize = pageSize;
+        ViewBag.TotalCount = totalCount;
+        ViewBag.TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        return View(items);
     }
 
     public async Task<IActionResult> Details(Guid id)
@@ -23,22 +31,12 @@ public class AuditLogController : Controller
         return View(log);
     }
 
-    public IActionResult Create() => View();
-
-    [HttpPost]
-    public async Task<IActionResult> Create(AuditLog log)
-    {
-        if (ModelState.IsValid)
-        {
-            await _auditLogService.LogActionAsync(log);
-            return RedirectToAction(nameof(Index));
-        }
-        return View(log);
-    }
-
     public async Task<IActionResult> LogsByUser(Guid userId)
     {
         var logs = await _auditLogService.GetByUserAsync(userId);
+        ViewBag.CurrentPage = 1;
+        ViewBag.TotalPages = 1;
+        ViewBag.TotalCount = logs.Count;
         return View("Index", logs);
     }
 }

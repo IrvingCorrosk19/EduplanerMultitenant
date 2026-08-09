@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolManager.Dtos;
 using SchoolManager.Services.Interfaces;
@@ -70,7 +70,7 @@ public class TeacherWorkPlanController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { success = false, message = ex.Message });
+            return BadRequest(new { success = false, message = "Error interno. Intente nuevamente." });
         }
         catch (UnauthorizedAccessException)
         {
@@ -110,7 +110,7 @@ public class TeacherWorkPlanController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { success = false, message = ex.Message });
+            return BadRequest(new { success = false, message = "Error interno. Intente nuevamente." });
         }
         catch (UnauthorizedAccessException)
         {
@@ -154,7 +154,7 @@ public class TeacherWorkPlanController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            TempData["Error"] = ex.Message;
+            TempData["Error"] = "Error interno. Intente nuevamente.";
             return RedirectToAction(nameof(Index));
         }
     }

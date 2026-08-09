@@ -329,8 +329,11 @@ public class PaymentService : IPaymentService
     public async Task<bool> DeleteAsync(Guid id)
     {
         var schoolId = await _currentUserService.GetCurrentSchoolIdAsync();
-        var payment = await _context.Payments.FindAsync(id);
-        if (payment == null || payment.SchoolId != schoolId)
+        // Where() con schoolId explícito — FindAsync bypasaba el GQF de tenant
+        var payment = await _context.Payments
+            .Where(p => p.Id == id && p.SchoolId == schoolId)
+            .FirstOrDefaultAsync();
+        if (payment == null)
             return false;
 
         // No permitir eliminar pagos confirmados

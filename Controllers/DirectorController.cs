@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using SchoolManager.ViewModels;
 using System;
 using System.Threading.Tasks;
@@ -79,6 +79,7 @@ namespace SchoolManager.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> FiltrarPorTrimestre([FromBody] string trimestre)
         {
             try
@@ -102,7 +103,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = "Error al obtener el desempeño de materias.", details = ex.Message });
+                return BadRequest(new { error = "Error al obtener el desempeño de materias.", details = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -116,7 +117,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = "Error al obtener el desempeño de profesores.", details = ex.Message });
+                return BadRequest(new { error = "Error al obtener el desempeño de profesores.", details = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -130,7 +131,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = "Error al obtener la aprobación de materias.", details = ex.Message });
+                return BadRequest(new { error = "Error al obtener la aprobación de materias.", details = "Error interno. Intente nuevamente." });
             }
         }
 
@@ -144,7 +145,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = "Error al obtener las alertas.", details = ex.Message });
+                return BadRequest(new { error = "Error al obtener las alertas.", details = "Error interno. Intente nuevamente." });
             }
         }
     }

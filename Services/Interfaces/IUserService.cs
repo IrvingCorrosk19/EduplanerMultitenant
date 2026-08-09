@@ -6,8 +6,14 @@ public interface IUserService
 
     /// <summary>
     /// Login y flujos anónimos: ignora filtros de tenant y resuelve email+escuela o detecta ambigüedad.
+    /// Solo usuarios activos con escuela activa (o SuperAdmin sin escuela).
     /// </summary>
     Task<User?> GetByEmailForLoginAsync(string email, Guid? schoolId);
+
+    /// <summary>
+    /// Escuelas activas asociadas a un correo activo. Usado para el selector condicional del Login.
+    /// </summary>
+    Task<IReadOnlyList<SchoolInfo>> GetLoginSchoolsByEmailAsync(string email);
 
     Task<List<User>> GetAllAsync();
     Task<User?> GetByIdAsync(Guid id);

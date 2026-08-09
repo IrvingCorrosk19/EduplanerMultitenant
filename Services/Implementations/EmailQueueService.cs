@@ -132,7 +132,7 @@ public class EmailQueueService : IEmailQueueService
                 continue;
             }
 
-            var plainPassword = DefaultTemporaryPassword.Value;
+            var plainPassword = DefaultTemporaryPassword.Generate(); // unique per user
             user.PasswordHash        = BCrypt.Net.BCrypt.HashPassword(plainPassword);
             user.PasswordEmailStatus = PasswordEmailStatusValues.Pending;
             user.UpdatedAt           = now;

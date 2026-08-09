@@ -1,6 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using SchoolManager.Application.Interfaces;
+using SchoolManager.Constants;
 using SchoolManager.Models;
 using SchoolManager.Services.Interfaces;
 using SchoolManager.ViewModels;
@@ -24,6 +26,7 @@ namespace SchoolManager.Controllers
         private readonly IDateTimeHomologationService _dateTimeHomologationService;
         private readonly ICurrentUserService _currentUserService;
         private readonly IShiftService _shiftService;
+        private readonly ILogger<StudentAssignmentController> _logger;
 
         public StudentAssignmentController(
             IUserService userService,
@@ -34,7 +37,8 @@ namespace SchoolManager.Controllers
             ISubjectAssignmentService subjectAssignmentService,
             IDateTimeHomologationService dateTimeHomologationService,
             ICurrentUserService currentUserService,
-            IShiftService shiftService)
+            IShiftService shiftService,
+            ILogger<StudentAssignmentController> logger)
         {
             _userService = userService;
             _subjectService = subjectService;
@@ -45,9 +49,11 @@ namespace SchoolManager.Controllers
             _dateTimeHomologationService = dateTimeHomologationService;
             _currentUserService = currentUserService;
             _shiftService = shiftService;
+            _logger = logger;
         }
 
         [HttpPost("/StudentAssignment/UpdateGroupAndGrade")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateGroupAndGrade(Guid studentId, Guid gradeId, Guid groupId)
         {
             if (studentId == Guid.Empty || gradeId == Guid.Empty || groupId == Guid.Empty)
@@ -254,6 +260,7 @@ namespace SchoolManager.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> GuardarAsignacion([FromBody] StudentAssignmentRequest request)
         {
             if (request.GroupIds == null || !request.GroupIds.Any())
@@ -311,6 +318,7 @@ namespace SchoolManager.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateAssignments(Guid userId, List<Guid> subjectIds, List<Guid> groupIds, List<Guid> gradeLevelIds)
         {
             var user = await _userService.GetByIdWithRelationsAsync(userId);
@@ -329,7 +337,7 @@ namespace SchoolManager.Controllers
                 var userEmail = User.Identity?.Name;
                 if (string.IsNullOrEmpty(userEmail))
                 {
-                    Console.WriteLine("[GetCurrentUserSchoolId] No se pudo obtener el email del usuario actual");
+                    _logger.LogWarning("[GetCurrentUserSchoolId] No se pudo obtener la identidad del usuario actual");
                     return null;
                 }
 
@@ -338,12 +346,13 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[GetCurrentUserSchoolId] Error: {ex.Message}");
+                _logger.LogError(ex, "[GetCurrentUserSchoolId] Error al obtener SchoolId del usuario actual");
                 return null;
             }
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveAssignments([FromBody] List<StudentAssignmentInputModel> asignaciones)
         {
             if (asignaciones == null || asignaciones.Count == 0)
@@ -358,13 +367,13 @@ namespace SchoolManager.Controllers
             {
                 try
                 {
-                    Console.WriteLine($"[SaveAssignments] Procesando: {item.Estudiante} - {item.Grado} - {item.Grupo}");
-                    
+                    _logger.LogDebug("[SaveAssignments] Procesando: Grado={Grado}, Grupo={Grupo}", item.Grado, item.Grupo);
+
                     // Buscar o crear el estudiante
                     var student = await _userService.GetByEmailAsync(item.Estudiante);
                     if (student == null)
                     {
-                        Console.WriteLine($"[SaveAssignments] Estudiante no encontrado, creando: {item.Estudiante}");
+                        _logger.LogDebug("[SaveAssignments] Estudiante no encontrado, creando nuevo registro");
                         
                         // Crear el estudiante automáticamente
                         var newStudent = new User
@@ -383,7 +392,7 @@ namespace SchoolManager.Controllers
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow,
                             SchoolId = await GetCurrentUserSchoolId(),
-                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"), // Contraseña temporal por defecto hasheada
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword(DefaultTemporaryPassword.Generate()),
                             TwoFactorEnabled = false,
                             LastLogin = null,
                             Inclusivo = item.Inclusivo,
@@ -393,12 +402,12 @@ namespace SchoolManager.Controllers
                         await _userService.CreateAsync(newStudent, new List<Guid>(), new List<Guid>());
                         student = newStudent;
                         estudiantesCreados++;
-                        
-                        Console.WriteLine($"[SaveAssignments] Estudiante creado con ID: {student.Id}, Jornada: {student.Shift}");
+
+                        _logger.LogInformation("[SaveAssignments] Estudiante creado con ID: {StudentId}", student.Id);
                     }
                     else
                     {
-                        Console.WriteLine($"[SaveAssignments] Estudiante encontrado, actualizando campos Inclusivo y Jornada: {item.Estudiante}");
+                        _logger.LogDebug("[SaveAssignments] Estudiante encontrado, actualizando campos Inclusivo y Jornada: StudentId={StudentId}", student.Id);
                         
                         // Actualizar el campo Inclusivo y Jornada del estudiante existente
                         student.Inclusivo = item.Inclusivo;
@@ -409,8 +418,8 @@ namespace SchoolManager.Controllers
                         student.UpdatedAt = DateTime.UtcNow;
                         
                         await _userService.UpdateAsync(student, new List<Guid>(), new List<Guid>());
-                        
-                        Console.WriteLine($"[SaveAssignments] Campos Inclusivo y Jornada actualizados para estudiante: {student.Id}, Jornada: {student.Shift}");
+
+                        _logger.LogDebug("[SaveAssignments] Campos Inclusivo y Jornada actualizados para StudentId={StudentId}", student.Id);
                     }
 
                     var grade = await _gradeLevelService.GetByNameAsync(item.Grado);
@@ -430,7 +439,7 @@ namespace SchoolManager.Controllers
                             group.Shift = shift.Name; // Mantener por compatibilidad
                             group.UpdatedAt = DateTime.UtcNow;
                             await _groupService.UpdateAsync(group);
-                            Console.WriteLine($"[SaveAssignments] Jornada '{shift.Name}' (ID: {shift.Id}) asignada al grupo {group.Name}");
+                            _logger.LogDebug("[SaveAssignments] Jornada asignada al grupo: ShiftId={ShiftId}, GroupId={GroupId}", shift.Id, group.Id);
                         }
                     }
 
@@ -440,12 +449,12 @@ namespace SchoolManager.Controllers
                         continue;
                     }
 
-                    Console.WriteLine($"[SaveAssignments] Verificando si existe asignación: StudentId={student.Id}, GradeId={grade.Id}, GroupId={group.Id}, ShiftId={shift?.Id}");
+                    _logger.LogDebug("[SaveAssignments] Verificando si existe asignación: StudentId={StudentId}, GradeId={GradeId}, GroupId={GroupId}", student.Id, grade.Id, group.Id);
                     
                     bool exists = await _studentAssignmentService.ExistsAsync(student.Id, grade.Id, group.Id);
                     if (exists)
                     {
-                        Console.WriteLine($"[SaveAssignments] Asignación ya existe, saltando");
+                        _logger.LogDebug("[SaveAssignments] Asignación ya existe, saltando: StudentId={StudentId}", student.Id);
                         duplicadas++;
                         continue;
                     }
@@ -460,16 +469,15 @@ namespace SchoolManager.Controllers
                         CreatedAt = DateTime.UtcNow
                     };
 
-                    Console.WriteLine($"[SaveAssignments] Creando nueva asignación");
+                    _logger.LogDebug("[SaveAssignments] Creando nueva asignación: StudentId={StudentId}", student.Id);
                     await _studentAssignmentService.InsertAsync(assignment);
                     insertadas++;
-                    Console.WriteLine($"[SaveAssignments] Asignación creada exitosamente");
+                    _logger.LogDebug("[SaveAssignments] Asignación creada exitosamente: AssignmentId={AssignmentId}", assignment.Id);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[SaveAssignments] Excepción en {item.Estudiante}: {ex.Message}");
-                    Console.WriteLine($"[SaveAssignments] StackTrace: {ex.StackTrace}");
-                    errores.Add($"Excepción en {item.Estudiante}: {ex.Message}");
+                    _logger.LogError(ex, "[SaveAssignments] Excepción al procesar asignación: Grado={Grado}, Grupo={Grupo}", item.Grado, item.Grupo);
+                    errores.Add("Error interno. Intente nuevamente.");
                 }
             }
 

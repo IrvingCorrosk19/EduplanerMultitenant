@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using SchoolManager.Models;
 using SchoolManager.Services.Interfaces;
 using SchoolManager.ViewModels;
@@ -10,6 +12,7 @@ using System.Threading.Tasks;
 
 namespace SchoolManager.Controllers
 {
+    [Authorize(Roles = "Director,Inspector,secretaria,admin,superadmin")]
     public class AcademicCatalogController : Controller
     {
         private readonly ISpecialtyService _specialtyService;
@@ -20,6 +23,7 @@ namespace SchoolManager.Controllers
         private readonly IShiftService _shiftService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ITrimesterService _trimesterService;
+        private readonly ILogger<AcademicCatalogController> _logger;
 
         public AcademicCatalogController(
             ISpecialtyService specialtyService,
@@ -29,7 +33,8 @@ namespace SchoolManager.Controllers
             IGroupService groupService,
             IShiftService shiftService,
             ICurrentUserService currentUserService,
-            ITrimesterService trimesterService)
+            ITrimesterService trimesterService,
+            ILogger<AcademicCatalogController> logger)
         {
             _specialtyService = specialtyService;
             _areaService = areaService;
@@ -39,6 +44,7 @@ namespace SchoolManager.Controllers
             _shiftService = shiftService;
             _currentUserService = currentUserService;
             _trimesterService = trimesterService;
+            _logger = logger;
         }
 
         public async Task<IActionResult> Index()
@@ -73,6 +79,7 @@ namespace SchoolManager.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveCatalog([FromBody] List<AcademicCatalogInputModel> catalogData)
         {
             if (catalogData == null || catalogData.Count == 0)
@@ -98,7 +105,7 @@ namespace SchoolManager.Controllers
             {
                 try
                 {
-                    Console.WriteLine($"[SaveCatalog] Procesando: {item.Especialidad} - {item.Area} - {item.Materia} - {item.Grado} - {item.Grupo}");
+                    _logger.LogDebug("[SaveCatalog] Procesando ítem: Grado={Grado}, Grupo={Grupo}", item.Grado, item.Grupo);
 
                     // Normalizar entradas
                     var especialidad = string.IsNullOrWhiteSpace(item.Especialidad) ? "N/A" : item.Especialidad.Trim().ToUpper();
@@ -157,12 +164,12 @@ namespace SchoolManager.Controllers
                     if (groupEntity.Name == grupo && groupEntity.Id != Guid.Empty)
                         gruposCreados++;
 
-                    Console.WriteLine($"[SaveCatalog] Procesado exitosamente: {especialidad} - {area} - {materia} - {grado} - {grupo}");
+                    _logger.LogDebug("[SaveCatalog] Ítem procesado exitosamente: Grado={Grado}, Grupo={Grupo}", grado, grupo);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[SaveCatalog] Excepción en {item.Especialidad} - {item.Area} - {item.Materia}: {ex.Message}");
-                    errores.Add($"Excepción en {item.Especialidad} - {item.Area} - {item.Materia}: {ex.Message}");
+                    _logger.LogError(ex, "[SaveCatalog] Excepción al procesar ítem: Grado={Grado}, Grupo={Grupo}", item.Grado, item.Grupo);
+                    errores.Add($"Error al procesar ítem: {item.Especialidad} - {item.Area} - {item.Materia}. Intente nuevamente.");
                 }
             }
 
@@ -181,6 +188,7 @@ namespace SchoolManager.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> GuardarTrimestres([FromBody] List<TrimesterDto> trimestres)
         {
             try
@@ -195,11 +203,12 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, message = "Error al guardar trimestres. Intente nuevamente." });
             }
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ActivarTrimestre([FromBody] TrimestreIdRequest request)
         {
             try
@@ -219,17 +228,18 @@ namespace SchoolManager.Controllers
                     return NotFound(new { success = false, message = "Trimestre no encontrado." });
                 }
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
-                return Forbid(ex.Message);
+                return Forbid();
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, message = "Error al activar trimestre. Intente nuevamente." });
             }
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DesactivarTrimestre([FromBody] TrimestreIdRequest request)
         {
             try
@@ -249,17 +259,18 @@ namespace SchoolManager.Controllers
                     return NotFound(new { success = false, message = "Trimestre no encontrado." });
                 }
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
-                return Forbid(ex.Message);
+                return Forbid();
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, message = "Error al desactivar trimestre. Intente nuevamente." });
             }
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditarTrimestre([FromBody] EditarTrimestreRequest request)
         {
             try
@@ -301,17 +312,19 @@ namespace SchoolManager.Controllers
                     return NotFound(new { success = false, message = "Trimestre no encontrado." });
                 }
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
-                return Forbid(ex.Message);
+                return Forbid();
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, message = "Error al editar trimestre. Intente nuevamente." });
             }
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Director,admin,superadmin")]
         public async Task<IActionResult> EliminarTodosLosTrimestres()
         {
             try
@@ -321,7 +334,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, message = "Error al eliminar trimestres. Intente nuevamente." });
             }
         }
 
@@ -330,6 +343,7 @@ namespace SchoolManager.Controllers
         // ============================================
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateShift([FromBody] CreateShiftRequest request)
         {
             try
@@ -357,20 +371,21 @@ namespace SchoolManager.Controllers
                 };
 
                 var createdShift = await _shiftService.CreateAsync(shift);
-                return Ok(new { 
-                    success = true, 
+                return Ok(new {
+                    success = true,
                     id = createdShift.Id,
                     name = createdShift.Name,
-                    message = $"Jornada '{shiftName}' creada correctamente." 
+                    message = $"Jornada '{shiftName}' creada correctamente."
                 });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, message = "Error al crear la jornada. Intente nuevamente." });
             }
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateShift([FromBody] UpdateShiftRequest request)
         {
             try
@@ -411,18 +426,19 @@ namespace SchoolManager.Controllers
                     await _groupService.UpdateAsync(group);
                 }
 
-                return Ok(new { 
-                    success = true, 
-                    message = $"Jornada actualizada correctamente. {groupsToUpdate.Count} grupo(s) actualizado(s)." 
+                return Ok(new {
+                    success = true,
+                    message = $"Jornada actualizada correctamente. {groupsToUpdate.Count} grupo(s) actualizado(s)."
                 });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, message = "Error al actualizar la jornada. Intente nuevamente." });
             }
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteShift([FromBody] DeleteShiftRequest request)
         {
             try
@@ -452,14 +468,14 @@ namespace SchoolManager.Controllers
                 // Marcar jornada como inactiva (no se elimina físicamente)
                 await _shiftService.DeleteAsync(request.Id);
 
-                return Ok(new { 
-                    success = true, 
-                    message = $"Jornada eliminada correctamente. {groupsToUpdate.Count} grupo(s) actualizado(s)." 
+                return Ok(new {
+                    success = true,
+                    message = $"Jornada eliminada correctamente. {groupsToUpdate.Count} grupo(s) actualizado(s)."
                 });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, message = "Error al eliminar la jornada. Intente nuevamente." });
             }
         }
 
@@ -482,7 +498,7 @@ namespace SchoolManager.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, message = "Error al obtener datos de jornadas. Intente nuevamente." });
             }
         }
     }

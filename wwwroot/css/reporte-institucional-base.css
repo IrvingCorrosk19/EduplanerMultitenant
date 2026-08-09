@@ -1,0 +1,162 @@
+/* Base impresión informes institucionales MEDUCA */
+.reporte-institucional-body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    color: #000;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+}
+
+.reporte-institucional-toolbar {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 1000;
+    display: flex;
+    gap: 6px;
+}
+
+.reporte-institucional-toolbar button {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    padding: 6px 12px;
+    border: 1px solid #000;
+    background: #fff;
+    cursor: pointer;
+}
+
+#printArea {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 13.5in;
+    margin: 0 auto;
+    padding: 0.15in 0.2in 0.25in;
+    background: #fff;
+}
+
+.ri-header {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    margin-bottom: 4pt;
+}
+
+.ri-header-logo {
+    display: table-cell;
+    width: 1.1in;
+    vertical-align: middle;
+    text-align: left;
+}
+
+.ri-header-logo img {
+    max-width: 1in;
+    max-height: 1in;
+    object-fit: contain;
+}
+
+.ri-header-text {
+    display: table-cell;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.ri-header-text .line {
+    display: block;
+    line-height: 1.25;
+    font-size: 11pt;
+}
+
+.ri-header-text .line.bold {
+    font-weight: bold;
+}
+
+.ri-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 9pt;
+}
+
+.ri-tabla th,
+.ri-tabla td {
+    border: 1px solid #000;
+    padding: 1pt 2pt;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.ri-tabla thead th {
+    font-weight: bold;
+    background: #fff;
+    color: #000;
+}
+
+.ri-tabla tbody tr {
+    height: 15pt;
+}
+
+.vertical-header {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    text-align: center;
+    vertical-align: middle;
+    font-weight: bold;
+    font-size: 8.5pt;
+    line-height: 1;
+    padding: 2pt 0 !important;
+}
+
+.vertical-header.trimestre-label {
+    font-size: 8.5pt;
+}
+
+.th-horizontal {
+    writing-mode: horizontal-tb;
+    transform: none;
+    vertical-align: middle;
+    font-size: 8pt;
+    padding: 3pt 2pt !important;
+    line-height: 1.1;
+}
+
+@media print {
+    @page {
+        margin: 6mm 5mm;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .reporte-institucional-body {
+        background: #fff;
+    }
+
+    #printArea {
+        max-width: none;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+    }
+
+    .ri-tabla thead {
+        display: table-header-group;
+    }
+
+    .ri-tabla tr {
+        page-break-inside: avoid;
+    }
+
+    .ri-header-logo img {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+@media print and (orientation: landscape) {
+    @page {
+        size: landscape;
+    }
+}

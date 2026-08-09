@@ -130,7 +130,13 @@ namespace SchoolManager.Services.Implementations
             try
             {
                 _logger.LogInformation("Obteniendo asignaciones de consejeros para escuela: {SchoolId}", schoolId);
-                
+
+                // Fetch school name once to avoid N+1 inside the Select projection.
+                var schoolName = await _context.Schools.IgnoreQueryFilters()
+                    .Where(s => s.Id == schoolId)
+                    .Select(s => s.Name)
+                    .FirstOrDefaultAsync() ?? "N/A";
+
                 // Lista completa de registros en counselor_assignments para la escuela (activas e inactivas).
                 // No usar navegación School con Include: School tiene HasQueryFilter(IsActive) y en algunos
                 // escenarios EF puede traducir el join de forma que excluya filas dependientes.
@@ -142,10 +148,7 @@ namespace SchoolManager.Services.Implementations
                     {
                         Id = ca.Id,
                         SchoolId = ca.SchoolId,
-                        SchoolName = _context.Schools.IgnoreQueryFilters()
-                            .Where(s => s.Id == ca.SchoolId)
-                            .Select(s => s.Name)
-                            .FirstOrDefault() ?? "N/A",
+                        SchoolName = schoolName,
                         UserId = ca.UserId,
                         UserName = ca.User.Name,
                         UserLastName = ca.User.LastName,
@@ -538,7 +541,7 @@ namespace SchoolManager.Services.Implementations
             {
                 _logger.LogInformation("Actualizando asignación de consejero con ID: {Id}", id);
 
-                var assignment = await _context.CounselorAssignments.FindAsync(id);
+                var assignment = await _context.CounselorAssignments.Where(ca => ca.Id == id).FirstOrDefaultAsync();
                 if (assignment == null)
                 {
                     throw new InvalidOperationException("Asignación de consejero no encontrada");
@@ -567,45 +570,35 @@ namespace SchoolManager.Services.Implementations
         {
             try
             {
-                Console.WriteLine($"[SERVICE DEBUG] DeleteAsync called with ID: {id}");
                 _logger.LogInformation("Eliminando asignación de consejero con ID: {Id}", id);
 
                 // Verificar si el ID es válido
                 if (id == Guid.Empty)
                 {
-                    Console.WriteLine("[SERVICE ERROR] ID is empty or invalid");
                     _logger.LogError("ID de asignación de consejero inválido en servicio: {Id}", id);
                     return false;
                 }
 
-                Console.WriteLine($"[SERVICE DEBUG] Searching for assignment with ID: {id}");
-                var assignment = await _context.CounselorAssignments.FindAsync(id);
+                var assignment = await _context.CounselorAssignments.Where(ca => ca.Id == id).FirstOrDefaultAsync();
                 if (assignment == null)
                 {
-                    Console.WriteLine($"[SERVICE ERROR] Assignment not found in database with ID: {id}");
                     _logger.LogWarning("Asignación de consejero no encontrada con ID: {Id}", id);
                     return false;
                 }
 
-                Console.WriteLine($"[SERVICE DEBUG] Assignment found: UserId={assignment.UserId}, SchoolId={assignment.SchoolId}, IsActive={assignment.IsActive}");
-                _logger.LogInformation("Asignación encontrada en servicio: UserId={UserId}, SchoolId={SchoolId}, IsActive={IsActive}", 
+                _logger.LogInformation("Asignación encontrada en servicio: UserId={UserId}, SchoolId={SchoolId}, IsActive={IsActive}",
                     assignment.UserId, assignment.SchoolId, assignment.IsActive);
 
-                Console.WriteLine("[SERVICE DEBUG] Removing assignment from context");
                 _context.CounselorAssignments.Remove(assignment);
-                
-                Console.WriteLine("[SERVICE DEBUG] Saving changes to database");
-                var changesSaved = await _context.SaveChangesAsync();
-                Console.WriteLine($"[SERVICE DEBUG] Changes saved: {changesSaved}");
 
-                Console.WriteLine($"[SERVICE SUCCESS] Assignment deleted successfully with ID: {id}");
+                var changesSaved = await _context.SaveChangesAsync();
+                _logger.LogDebug("Cambios guardados en DeleteAsync: {ChangesSaved}", changesSaved);
+
                 _logger.LogInformation("Asignación de consejero eliminada exitosamente con ID: {Id}", id);
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SERVICE ERROR] Exception in DeleteAsync: {ex.Message}");
-                Console.WriteLine($"[SERVICE ERROR] Stack trace: {ex.StackTrace}");
                 _logger.LogError(ex, "Error al eliminar asignación de consejero con ID: {Id}", id);
                 throw;
             }
@@ -617,7 +610,7 @@ namespace SchoolManager.Services.Implementations
             {
                 _logger.LogInformation("Cambiando estado de asignación de consejero con ID: {Id}", id);
 
-                var assignment = await _context.CounselorAssignments.FindAsync(id);
+                var assignment = await _context.CounselorAssignments.Where(ca => ca.Id == id).FirstOrDefaultAsync();
                 if (assignment == null)
                 {
                     _logger.LogWarning("Asignación de consejero no encontrada con ID: {Id}", id);
@@ -916,6 +909,43 @@ namespace SchoolManager.Services.Implementations
                 .OrderBy(c => c.GradeName)
                 .ThenBy(c => c.GroupName)
                 .ToList();
+        }
+
+        public async Task<string?> GetConsejeroNombrePorGrupoGradoAsync(Guid schoolId, Guid groupId, Guid gradeLevelId)
+        {
+            var baseQuery = _context.CounselorAssignments
+                .AsNoTracking()
+                .Include(ca => ca.User)
+                .Where(ca => ca.SchoolId == schoolId && ca.IsActive && ca.IsCounselor);
+
+            var assignment = await baseQuery
+                .Where(ca => ca.GroupId == groupId && ca.GradeId == gradeLevelId)
+                .FirstOrDefaultAsync();
+
+            assignment ??= await baseQuery
+                .Where(ca => ca.GroupId == groupId && ca.GradeId == null)
+                .FirstOrDefaultAsync();
+
+            assignment ??= await baseQuery
+                .Where(ca => ca.GradeId == gradeLevelId && ca.GroupId == null)
+                .FirstOrDefaultAsync();
+
+            assignment ??= await baseQuery
+                .Where(ca => ca.GradeId == null && ca.GroupId == null)
+                .FirstOrDefaultAsync();
+
+            if (assignment?.User == null)
+                return null;
+
+            var nombre = (assignment.User.Name ?? "").Trim();
+            var apellido = (assignment.User.LastName ?? "").Trim();
+            if (string.IsNullOrEmpty(nombre) && string.IsNullOrEmpty(apellido))
+                return "";
+            if (string.IsNullOrEmpty(apellido))
+                return nombre;
+            if (string.IsNullOrEmpty(nombre))
+                return apellido;
+            return $"{nombre} {apellido}";
         }
     }
 }

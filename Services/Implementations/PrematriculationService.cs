@@ -789,7 +789,8 @@ public class PrematriculationService : IPrematriculationService
                     ShiftId = group?.ShiftId,
                     IsActive = true,
                     AcademicYearId = activeAcademicYear?.Id, // Asignar año académico si existe
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    SchoolId = prematriculation.SchoolId
                 };
                 _context.StudentAssignments.Add(assignment);
             }
@@ -924,7 +925,7 @@ public class PrematriculationService : IPrematriculationService
 
     public async Task<bool> CheckGroupCapacityAsync(Guid groupId, Guid? excludePrematriculationId = null)
     {
-        var group = await _context.Groups.FindAsync(groupId);
+        var group = await _context.Groups.Where(x => x.Id == groupId).FirstOrDefaultAsync();
         if (group == null)
             return false;
 

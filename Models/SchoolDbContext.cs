@@ -107,6 +107,10 @@ public partial class SchoolDbContext : DbContext
     public virtual DbSet<TeacherWorkPlanDetail> TeacherWorkPlanDetails { get; set; }
     public virtual DbSet<TeacherWorkPlanReviewLog> TeacherWorkPlanReviewLogs { get; set; }
 
+    public virtual DbSet<StaffInstitutionalProfile> StaffInstitutionalProfiles { get; set; }
+    public virtual DbSet<InstitutionalCredentialCard> InstitutionalCredentialCards { get; set; }
+    public virtual DbSet<StaffQrToken> StaffQrTokens { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.AddInterceptors(new DateTimeInterceptor());
@@ -130,6 +134,9 @@ public partial class SchoolDbContext : DbContext
 
             entity.ToTable("activities");
 
+            // CRIT-03: filtro de aislamiento multitenant — excluye actividades de escuelas inactivas
+            entity.HasQueryFilter(a => a.School != null && a.School.IsActive);
+
             entity.HasIndex(e => e.ActivityTypeId, "IX_activities_ActivityTypeId");
 
             entity.HasIndex(e => e.TrimesterId, "IX_activities_TrimesterId");
@@ -145,6 +152,11 @@ public partial class SchoolDbContext : DbContext
             entity.HasIndex(e => e.Trimester, "idx_activities_trimester");
 
             entity.HasIndex(e => new { e.Name, e.Type, e.SubjectId, e.GroupId, e.TeacherId, e.Trimester }, "idx_activities_unique_lookup");
+
+            // Enterprise: reportes / gradebook — filtro temprano por tenant + grupo/grado/docente
+            entity.HasIndex(e => new { e.SchoolId, e.GroupId, e.GradeLevelId }, "IX_activities_school_group_grade");
+            entity.HasIndex(e => new { e.SchoolId, e.TeacherId, e.GroupId }, "IX_activities_school_teacher_group");
+            entity.HasIndex(e => new { e.SchoolId, e.SubjectId, e.GroupId, e.Trimester }, "IX_activities_school_subject_group_trimester");
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("uuid_generate_v4()")
@@ -240,7 +252,8 @@ public partial class SchoolDbContext : DbContext
 
             entity.ToTable("activity_types");
 
-            entity.HasIndex(e => e.Name, "activity_types_name_key").IsUnique();
+            // Índice único compuesto: permite que distintas escuelas tengan tipos de actividad con el mismo nombre
+            entity.HasIndex(e => new { e.SchoolId, e.Name }, "activity_types_school_name_key").IsUnique();
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -286,7 +299,8 @@ public partial class SchoolDbContext : DbContext
 
             entity.ToTable("area");
 
-            entity.HasIndex(e => e.Name, "area_name_key").IsUnique();
+            // Índice único compuesto: permite que distintas escuelas tengan áreas con el mismo nombre
+            entity.HasIndex(e => new { e.SchoolId, e.Name }, "area_school_name_key").IsUnique();
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -327,6 +341,9 @@ public partial class SchoolDbContext : DbContext
 
             entity.ToTable("attendance");
 
+            // CRIT-03: filtro de aislamiento multitenant — excluye asistencias de escuelas inactivas
+            entity.HasQueryFilter(a => a.School != null && a.School.IsActive);
+
             entity.HasIndex(e => e.GradeId, "IX_attendance_grade_id");
 
             entity.HasIndex(e => e.GroupId, "IX_attendance_group_id");
@@ -334,6 +351,12 @@ public partial class SchoolDbContext : DbContext
             entity.HasIndex(e => e.StudentId, "IX_attendance_student_id");
 
             entity.HasIndex(e => e.TeacherId, "IX_attendance_teacher_id");
+
+            entity.HasIndex(e => e.SchoolId, "IX_attendance_school_id");
+
+            // Enterprise: informes de asistencia por rango de fechas (SchoolId primero)
+            entity.HasIndex(e => new { e.SchoolId, e.GroupId, e.Date }, "IX_attendance_school_group_date");
+            entity.HasIndex(e => new { e.SchoolId, e.StudentId, e.Date }, "IX_attendance_school_student_date");
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("uuid_generate_v4()")
@@ -430,6 +453,13 @@ public partial class SchoolDbContext : DbContext
 
             entity.ToTable("discipline_reports");
 
+            // CRIT-03: filtro de aislamiento multitenant — excluye reportes de disciplina de escuelas inactivas
+            entity.HasQueryFilter(d => d.School != null && d.School.IsActive);
+
+            entity.HasIndex(e => e.SchoolId, "IX_discipline_reports_school_id");
+
+            entity.HasIndex(e => new { e.SchoolId, e.Date }, "IX_discipline_reports_school_date");
+
             entity.HasIndex(e => e.GradeLevelId, "IX_discipline_reports_grade_level_id");
 
             entity.HasIndex(e => e.GroupId, "IX_discipline_reports_group_id");
@@ -495,7 +525,10 @@ public partial class SchoolDbContext : DbContext
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
 
-            entity.HasOne(d => d.School).WithMany().HasForeignKey(d => d.SchoolId);
+            entity.HasOne(d => d.School).WithMany()
+                .HasForeignKey(d => d.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("discipline_reports_school_id_fkey");
             entity.HasOne(d => d.CreatedByUser).WithMany().HasForeignKey(d => d.CreatedBy);
             entity.HasOne(d => d.UpdatedByUser).WithMany().HasForeignKey(d => d.UpdatedBy);
         });
@@ -563,6 +596,8 @@ public partial class SchoolDbContext : DbContext
                 .HasConstraintName("orientation_reports_teacher_id_fkey");
 
             entity.Property(e => e.SchoolId).HasColumnName("school_id");
+            entity.HasIndex(e => new { e.SchoolId, e.Date }, "IX_orientation_reports_school_date");
+            entity.HasIndex(e => new { e.SchoolId, e.Status }, "IX_orientation_reports_school_status");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
 
@@ -577,7 +612,8 @@ public partial class SchoolDbContext : DbContext
 
             entity.ToTable("grade_levels");
 
-            entity.HasIndex(e => e.Name, "grade_levels_name_key").IsUnique();
+            // Índice único compuesto: permite que distintas escuelas tengan grados con el mismo nombre
+            entity.HasIndex(e => new { e.SchoolId, e.Name }, "grade_levels_school_name_key").IsUnique();
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -758,7 +794,10 @@ public partial class SchoolDbContext : DbContext
 
             entity.ToTable("specialties");
 
-            entity.HasIndex(e => e.Name, "specialties_name_key").IsUnique();
+            // Índice único compuesto: permite que distintas escuelas tengan especialidades con el mismo nombre
+            entity.HasIndex(e => new { e.SchoolId, e.Name }, "specialties_school_name_key").IsUnique();
+
+            entity.HasIndex(e => e.SchoolId, "IX_specialties_school_id");
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -832,6 +871,9 @@ public partial class SchoolDbContext : DbContext
 
             entity.ToTable("students");
 
+            // CRIT-03: filtro de aislamiento multitenant — excluye estudiantes de escuelas inactivas
+            entity.HasQueryFilter(s => s.School != null && s.School.IsActive);
+
             entity.HasIndex(e => e.ParentId, "IX_students_parent_id");
 
             entity.HasIndex(e => e.SchoolId, "IX_students_school_id");
@@ -871,6 +913,9 @@ public partial class SchoolDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("student_activity_scores_pkey");
 
             entity.ToTable("student_activity_scores");
+
+            // CRIT-03: filtro de aislamiento multitenant — excluye calificaciones de escuelas inactivas
+            entity.HasQueryFilter(s => s.School != null && s.School.IsActive);
 
             entity.HasIndex(e => e.ActivityId, "idx_scores_activity");
 
@@ -914,6 +959,11 @@ public partial class SchoolDbContext : DbContext
             entity.Property(e => e.AcademicYearId).HasColumnName("academic_year_id");
             entity.HasIndex(e => e.AcademicYearId, "IX_student_activity_scores_academic_year_id");
             entity.HasIndex(e => new { e.StudentId, e.AcademicYearId }, "IX_student_activity_scores_student_academic_year");
+
+            entity.HasIndex(e => e.SchoolId, "IX_student_activity_scores_school_id");
+
+            // Enterprise: carga masiva de notas por actividades (reportes / gradebook)
+            entity.HasIndex(e => new { e.SchoolId, e.ActivityId }, "IX_student_activity_scores_school_activity");
 
             entity.HasOne(d => d.AcademicYear).WithMany(p => p.StudentActivityScores)
                 .HasForeignKey(d => d.AcademicYearId)
@@ -984,6 +1034,18 @@ public partial class SchoolDbContext : DbContext
                 .HasForeignKey(d => d.AcademicYearId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("student_assignments_academic_year_id_fkey");
+
+            entity.Property(e => e.SchoolId).HasColumnName("school_id");
+            entity.HasIndex(e => e.SchoolId, "IX_student_assignments_school_id");
+            entity.HasIndex(e => new { e.SchoolId, e.StudentId, e.IsActive }, "IX_student_assignments_school_student_active");
+
+            // Enterprise: listados de grupo/grado activos por escuela (reportes institucionales)
+            entity.HasIndex(e => new { e.SchoolId, e.GroupId, e.GradeId, e.IsActive }, "IX_student_assignments_school_group_grade_active");
+
+            entity.HasOne(d => d.School).WithMany(p => p.StudentAssignments)
+                .HasForeignKey(d => d.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("student_assignments_school_id_fkey");
         });
 
         modelBuilder.Entity<Subject>(entity =>
@@ -1113,6 +1175,10 @@ public partial class SchoolDbContext : DbContext
                 .HasColumnName("created_at");
             entity.Property(e => e.SubjectAssignmentId).HasColumnName("subject_assignment_id");
             entity.Property(e => e.TeacherId).HasColumnName("teacher_id");
+            entity.Property(e => e.SchoolId).HasColumnName("school_id");
+
+            entity.HasIndex(e => e.SchoolId, "IX_teacher_assignments_school_id");
+            entity.HasIndex(e => new { e.SchoolId, e.TeacherId }, "IX_teacher_assignments_school_teacher");
 
             entity.HasOne(d => d.SubjectAssignment).WithMany(p => p.TeacherAssignments)
                 .HasForeignKey(d => d.SubjectAssignmentId)
@@ -1123,6 +1189,11 @@ public partial class SchoolDbContext : DbContext
                 .HasForeignKey(d => d.TeacherId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("teacher_assignments_teacher_id_fkey");
+
+            entity.HasOne(d => d.School).WithMany(p => p.TeacherAssignments)
+                .HasForeignKey(d => d.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("teacher_assignments_school_id_fkey");
         });
 
         modelBuilder.Entity<Trimester>(entity =>
@@ -1251,9 +1322,18 @@ public partial class SchoolDbContext : DbContext
 
             entity.ToTable("users");
 
+            // CRIT-03: filtro de aislamiento multitenant.
+            // Usuarios SuperAdmin (SchoolId == null) siempre visibles.
+            // Usuarios de escuelas: solo si la escuela está activa.
+            entity.HasQueryFilter(u => u.SchoolId == null || (u.SchoolNavigation != null && u.SchoolNavigation.IsActive));
+
             entity.HasIndex(e => e.SchoolId, "IX_users_school_id");
 
             entity.HasIndex(e => e.Role, "IX_users_role");
+
+            // Enterprise: directorios y filtros RBAC por tenant
+            entity.HasIndex(e => new { e.SchoolId, e.Role }, "IX_users_school_role");
+            entity.HasIndex(e => new { e.SchoolId, e.Status }, "IX_users_school_status");
 
             entity.HasIndex(e => e.DocumentId, "users_document_id_key").IsUnique();
 
@@ -1579,6 +1659,72 @@ public partial class SchoolDbContext : DbContext
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
+        modelBuilder.Entity<StaffInstitutionalProfile>(entity =>
+        {
+            entity.HasKey(e => e.UserId).HasName("staff_institutional_profiles_pkey");
+            entity.ToTable("staff_institutional_profiles");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.SchoolId).HasColumnName("school_id");
+            entity.Property(e => e.JobTitle).HasMaxLength(200).HasColumnName("job_title");
+            entity.Property(e => e.Department).HasMaxLength(200).HasColumnName("department");
+            entity.Property(e => e.EmployeeCode).HasMaxLength(80).HasColumnName("employee_code");
+            entity.HasIndex(e => e.SchoolId, "IX_staff_institutional_profiles_school_id");
+            entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId)
+                .HasConstraintName("staff_institutional_profiles_user_id_fkey")
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.School).WithMany().HasForeignKey(d => d.SchoolId)
+                .HasConstraintName("staff_institutional_profiles_school_id_fkey")
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<InstitutionalCredentialCard>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("institutional_credential_cards_pkey");
+            entity.ToTable("institutional_credential_cards");
+            entity.HasIndex(e => e.CardNumber, "IX_institutional_credential_cards_card_number").IsUnique();
+            entity.HasIndex(e => e.UserId, "IX_institutional_credential_cards_user_id");
+            entity.HasIndex(e => e.SchoolId, "IX_institutional_credential_cards_school_id");
+            entity.HasIndex(e => new { e.UserId, e.Status }, "IX_institutional_credential_cards_user_id_status");
+            entity.HasIndex(e => new { e.SchoolId, e.Status }, "IX_institutional_credential_cards_school_id_status");
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()").HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.SchoolId).HasColumnName("school_id");
+            entity.Property(e => e.CardNumber).IsRequired().HasMaxLength(50).HasColumnName("card_number");
+            entity.Property(e => e.IssuedAt).HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp with time zone").HasColumnName("issued_at");
+            entity.Property(e => e.ExpiresAt).HasColumnType("timestamp with time zone").HasColumnName("expires_at");
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20).HasDefaultValue("active").HasColumnName("status");
+            entity.Property(e => e.IsPrinted).HasDefaultValue(false).HasColumnName("is_printed");
+            entity.Property(e => e.PrintedAt).HasColumnType("timestamp with time zone").HasColumnName("printed_at");
+            entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId)
+                .HasConstraintName("institutional_credential_cards_user_id_fkey")
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.School).WithMany().HasForeignKey(d => d.SchoolId)
+                .HasConstraintName("institutional_credential_cards_school_id_fkey")
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<StaffQrToken>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("staff_qr_tokens_pkey");
+            entity.ToTable("staff_qr_tokens");
+            entity.HasIndex(e => e.Token, "IX_staff_qr_tokens_token").IsUnique();
+            entity.HasIndex(e => e.UserId, "IX_staff_qr_tokens_user_id");
+            entity.HasIndex(e => e.SchoolId, "IX_staff_qr_tokens_school_id");
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()").HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.SchoolId).HasColumnName("school_id");
+            entity.Property(e => e.Token).IsRequired().HasMaxLength(500).HasColumnName("token");
+            entity.Property(e => e.ExpiresAt).HasColumnType("timestamp with time zone").HasColumnName("expires_at");
+            entity.Property(e => e.IsRevoked).HasDefaultValue(false).HasColumnName("is_revoked");
+            entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId)
+                .HasConstraintName("staff_qr_tokens_user_id_fkey")
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.School).WithMany().HasForeignKey(d => d.SchoolId)
+                .HasConstraintName("staff_qr_tokens_school_id_fkey")
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         OnModelCreatingPartial(modelBuilder);
     }
 
@@ -1725,6 +1871,7 @@ public partial class SchoolDbContext : DbContext
             entity.HasIndex(e => e.SchoolId, "idx_messages_school");
             entity.HasIndex(e => e.SentAt, "idx_messages_sent_at");
             entity.HasIndex(e => new { e.RecipientId, e.IsRead }, "idx_messages_recipient_unread");
+            entity.HasIndex(e => new { e.SchoolId, e.SentAt }, "IX_messages_school_sent_at");
         });
 
         // Configuración de PrematriculationPeriod
@@ -1810,6 +1957,8 @@ public partial class SchoolDbContext : DbContext
             entity.HasIndex(e => e.StudentId, "IX_prematriculations_student_id");
             entity.HasIndex(e => e.PrematriculationPeriodId, "IX_prematriculations_period_id");
             entity.HasIndex(e => e.PrematriculationCode, "IX_prematriculations_code").IsUnique();
+            entity.HasIndex(e => new { e.SchoolId, e.Status }, "IX_prematriculations_school_status");
+            entity.HasIndex(e => new { e.SchoolId, e.PrematriculationPeriodId, e.Status }, "IX_prematriculations_school_period_status");
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("uuid_generate_v4()")
@@ -1938,6 +2087,8 @@ public partial class SchoolDbContext : DbContext
             entity.HasIndex(e => e.SchoolId, "IX_payments_school_id");
             entity.HasIndex(e => e.PrematriculationId, "IX_payments_prematriculation_id");
             entity.HasIndex(e => e.ReceiptNumber, "IX_payments_receipt_number").IsUnique();
+            entity.HasIndex(e => new { e.SchoolId, e.PaymentDate }, "IX_payments_school_payment_date");
+            entity.HasIndex(e => new { e.SchoolId, e.PaymentStatus }, "IX_payments_school_payment_status");
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("uuid_generate_v4()")
@@ -2407,6 +2558,7 @@ public partial class SchoolDbContext : DbContext
             entity.HasIndex(e => e.CorrelationId, "IX_email_jobs_correlation_id");
             entity.HasIndex(e => e.RequestedAt, "IX_email_jobs_requested_at");
             entity.HasIndex(e => e.Status, "IX_email_jobs_status");
+            entity.HasIndex(e => e.SchoolId, "IX_email_jobs_school_id");
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("uuid_generate_v4()")
                 .HasColumnName("id");

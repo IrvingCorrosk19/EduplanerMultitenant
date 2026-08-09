@@ -220,7 +220,7 @@ public sealed class EmailJobService : IEmailJobService
         Guid actorUserId,
         CancellationToken ct = default)
     {
-        var job = await _db.EmailJobs.FindAsync([jobId], ct);
+        var job = await _db.EmailJobs.Where(x => x.Id == jobId).FirstOrDefaultAsync(ct);
         if (job == null)
             return new RetryResultDto { Success = false, Message = "Job no encontrado." };
 
@@ -278,7 +278,7 @@ public sealed class EmailJobService : IEmailJobService
         Guid actorUserId,
         CancellationToken ct = default)
     {
-        var item = await _db.EmailQueues.FindAsync([queueItemId], ct);
+        var item = await _db.EmailQueues.Where(x => x.Id == queueItemId).FirstOrDefaultAsync(ct);
         if (item == null)
             return new RetryResultDto { Success = false, Message = "Ítem no encontrado." };
 
@@ -287,7 +287,7 @@ public sealed class EmailJobService : IEmailJobService
             return new RetryResultDto { Success = false, Message = "El ítem no pertenece al job indicado." };
 
         // Cargar job para validación de tenant y logging
-        var job = await _db.EmailJobs.FindAsync([jobId], ct);
+        var job = await _db.EmailJobs.Where(x => x.Id == jobId).FirstOrDefaultAsync(ct);
         if (job == null)
             return new RetryResultDto { Success = false, Message = "Job no encontrado." };
 

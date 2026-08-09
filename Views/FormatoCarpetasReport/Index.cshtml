@@ -1,0 +1,90 @@
+@{
+    var esDocente = ViewBag.EsDocente as bool? == true;
+    ViewData["Title"] = "Formato para Carpetas";
+    Layout = "_AdminLayout";
+}
+
+<div class="content-header">
+    <div class="container-fluid">
+        <a href="@Url.Action("Index", "Reportes")" class="text-muted small">&larr; Catálogo de reportes</a>
+        <h1 class="m-0 mt-1" style="font-size:1.35rem;">Formato para Carpetas</h1>
+        <p class="text-muted small">Premedia: promedios, ausencias (A) y tardanzas (T) por trimestre.
+            @if (esDocente) { <span>Solo <strong>sus asignaciones</strong>.</span> }
+        </p>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        @if (TempData["Error"] != null) { <div class="alert alert-danger">@TempData["Error"]</div> }
+        <form class="border p-3 bg-white" style="max-width:960px;">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Grado *</label>
+                    <select class="form-select form-select-sm" id="nivelEducativo" required><option value="">--</option></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Materia *</label>
+                    <select class="form-select form-select-sm" id="materiaId" required disabled><option value="">--</option></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Grupo *</label>
+                    <select class="form-select form-select-sm" id="grupoCombo" required disabled><option value="">--</option></select>
+                    <input type="hidden" id="groupId" /><input type="hidden" id="gradeLevelId" />
+                </div>
+            </div>
+            <div class="mt-3 d-flex flex-wrap gap-2">
+                <button type="button" id="btn-vista" class="btn btn-primary btn-sm" disabled>Ver reporte</button>
+                <button type="button" id="btn-excel" class="btn btn-outline-secondary btn-sm" disabled>Descargar Excel (.xls)</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+<script>
+$(function () {
+    $.get('@Url.Action("ObtenerNivelesFiltro", "AprobadosReprobados")').done(r => {
+        const s = $('#nivelEducativo').html('<option value="">-- Seleccione --</option>');
+        if (r.success && r.data) r.data.forEach(n => s.append(`<option value="${n.id}">${n.nombre}</option>`));
+    });
+    function params() {
+        return '?nivelEducativo=' + encodeURIComponent($('#nivelEducativo').val()) +
+            '&materiaId=' + encodeURIComponent($('#materiaId').val()) +
+            '&groupId=' + encodeURIComponent($('#groupId').val()) +
+            '&gradeLevelId=' + encodeURIComponent($('#gradeLevelId').val());
+    }
+    function setBtns(ok) { $('#btn-vista,#btn-excel').prop('disabled', !ok); }
+    $('#nivelEducativo').change(function () {
+        $('#materiaId').prop('disabled', true).html('<option value="">Cargando...</option>');
+        $('#grupoCombo').prop('disabled', true).html('<option value="">--</option>');
+        $('#groupId,#gradeLevelId').val(''); setBtns(false);
+        if (!$(this).val()) return;
+        $.get('@Url.Action("ObtenerMateriasFiltro", "AprobadosReprobados")', { nivelEducativo: $(this).val() })
+            .done(r => {
+                const s = $('#materiaId').html('<option value="">-- Seleccione --</option>');
+                if (r.success && r.data) r.data.forEach(m => s.append(`<option value="${m.id}">${m.nombre}</option>`));
+                s.prop('disabled', false);
+            });
+    });
+    $('#materiaId').change(function () {
+        const nivel = $('#nivelEducativo').val();
+        if (!$(this).val() || !nivel) return;
+        $('#grupoCombo').prop('disabled', true).html('<option value="">Cargando...</option>');
+        $.get('@Url.Action("ObtenerGruposFiltro", "AprobadosReprobados")', { materiaId: $(this).val(), nivelEducativo: nivel })
+            .done(r => {
+                const s = $('#grupoCombo').html('<option value="">-- Seleccione --</option>');
+                if (r.success && r.data) r.data.forEach(g => s.append(`<option value="${g.groupId}|${g.gradeLevelId}">${g.nombre}</option>`));
+                s.prop('disabled', false);
+            });
+    });
+    $('#grupoCombo').change(function () {
+        const p = ($(this).val() || '').split('|');
+        $('#groupId').val(p[0] || ''); $('#gradeLevelId').val(p[1] || '');
+        setBtns(!!(p[0] && p[1] && $('#materiaId').val()));
+    });
+    $('#btn-vista').click(() => { if ($('#groupId').val()) window.open('@Url.Action("VistaPrevia", "FormatoCarpetasReport")' + params(), '_blank'); });
+    $('#btn-excel').click(() => { if ($('#groupId').val()) window.location.href = '@Url.Action("ExportarExcel", "FormatoCarpetasReport")' + params(); });
+});
+</script>
+}

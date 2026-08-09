@@ -1,0 +1,88 @@
+@model SchoolManager.ViewModels.CalificacionesExpresionesArtisticasReportViewModel
+@using SchoolManager.ViewModels
+@{
+    Layout = null;
+    string Fn(decimal? n) => CalificacionesExpresionesArtisticasFilaViewModel.FormatearNota(n);
+    var trim1 = Model.TrimestresEncabezado.Count > 0 ? Model.TrimestresEncabezado[0] : "I- TRIMESTRE ";
+    var trim2 = Model.TrimestresEncabezado.Count > 1 ? Model.TrimestresEncabezado[1] : "II- TRIMESTRE ";
+    var trim3 = Model.TrimestresEncabezado.Count > 2 ? Model.TrimestresEncabezado[2] : "III- TRIMESTRE ";
+    string LogoSrc(string? url) {
+        if (string.IsNullOrWhiteSpace(url)) return "";
+        if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return url;
+        return Url.Content($"/File/GetSchoolLogo?logoUrl={Uri.EscapeDataString(url)}") ?? "";
+    }
+    var logoSrc = LogoSrc(Model.LogoUrl);
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Calificaciones Expresiones Artísticas</title>
+    <link rel="stylesheet" href="~/css/reporte-institucional-base.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/reporte-calificaciones-tecnologia.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/reporte-calificaciones-exp.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/reporte-pagina-legal.css" asp-append-version="true" />
+</head>
+<body class="reporte-institucional-body reporte-tecnologia-body reporte-exp reporte-pagina-legal">
+    <div class="reporte-institucional-toolbar no-print">
+        <button type="button" onclick="window.print()">Imprimir</button>
+        <button type="button" onclick="window.close()">Cerrar</button>
+    </div>
+    <div id="printArea">
+        <header class="rt-header ri-header">
+            @if (!string.IsNullOrEmpty(logoSrc)) {
+                <div class="rt-header-logo ri-header-logo"><img src="@logoSrc" alt="Logo" onerror="this.parentElement.style.display='none'" /></div>
+            } else { <div class="rt-header-logo ri-header-logo"></div> }
+            <div class="rt-header-text ri-header-text">
+                <span class="line">@Model.MinisterioLinea</span>
+                <span class="line instituto bold">@Model.InstitutoNombre</span>
+                <span class="line">@Model.TituloInforme</span>
+            </div>
+        </header>
+        <table class="rt-meta" aria-label="Meta">
+            <tr>
+                <td class="meta-consejero">CONSEJERO (A): @Model.ConsejeroNombre</td>
+                <td class="meta-asignatura">@Model.AsignaturaLinea</td>
+                <td class="meta-grado">GRADO: @Model.GradoEtiqueta</td>
+            </tr>
+        </table>
+        <table class="rt-tabla ri-tabla">
+            <thead>
+                <tr class="rt-head-row">
+                    <th class="rt-col-num vertical-header th-numero">N°</th>
+                    <th class="rt-col-nombre th-nombre">NOMBRE DE LOS ESTUDIANTES</th>
+                    <th class="rt-col-nota vertical-header">EDUC. ARTÍSTICA</th>
+                    <th class="rt-col-nota vertical-header">EDUC. MUSICAL</th>
+                    <th class="rt-col-trim-label vertical-header trimestre-label">@trim1</th>
+                    <th class="rt-col-nota vertical-header">EDUC. ARTÍSTICA</th>
+                    <th class="rt-col-nota vertical-header">EDUC. MUSICAL</th>
+                    <th class="rt-col-trim-label vertical-header trimestre-label">@trim2</th>
+                    <th class="rt-col-nota vertical-header">EDUC. ARTÍSTICA</th>
+                    <th class="rt-col-nota vertical-header">EDUC. MUSICAL</th>
+                    <th class="rt-col-trim-label vertical-header trimestre-label">@trim3</th>
+                    <th class="rt-col-promedio vertical-header">PROMEDIO FINAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.Filas) {
+                    <tr>
+                        <td class="rt-col-num">@f.Numero</td>
+                        <td class="rt-col-nombre">@f.Nombre</td>
+                        <td>@Fn(f.NotaT1Artistica)</td><td>@Fn(f.NotaT1Musical)</td><td>@Fn(f.PromedioTrim1)</td>
+                        <td>@Fn(f.NotaT2Artistica)</td><td>@Fn(f.NotaT2Musical)</td><td>@Fn(f.PromedioTrim2)</td>
+                        <td>@Fn(f.NotaT3Artistica)</td><td>@Fn(f.NotaT3Musical)</td><td>@Fn(f.PromedioTrim3)</td>
+                        <td>@Fn(f.PromedioFinal)</td>
+                    </tr>
+                }
+                @for (var v = 0; v < Model.FilasPlantillaVacias; v++) {
+                    var n = Model.Filas.Count + v + 1;
+                    <tr>
+                        <td>@n</td><td></td>
+                        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
